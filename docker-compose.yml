@@ -1,0 +1,48 @@
+services:
+  backend:
+    environment:
+      - DJANGO_SETTINGS_MODULE=dachong_wms.settings
+    build:
+      context: ./backend
+    container_name: dachong_wms_backend
+    env_file:
+      - .env
+    command: >
+      sh -c "python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #   container_name: dachong_wms_frontend
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./frontend:/app
+  #   ports:
+  #     - "5173:5173"
+  #   depends_on:
+  #     - backend
+
+  db:
+    image: postgres:13
+    container_name: postgres_db
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  db_data:
+
+
+  
