@@ -72,6 +72,11 @@ check_tables:
 flush_db:
 	docker-compose exec db psql -U myuser -d mydatabase -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 	$(DJANGO_MANAGE) flush
+
+.PHONY: db_relations
+db_relations:
+	mkdir -p backend/docs/diagrams
+	$(DJANGO_MANAGE) graph_models --arrow-shape normal -a -o docs/diagrams/er-diagram.svg
 # General git hub commands
 .PHONY:update_from_branch
 update_from_branch:

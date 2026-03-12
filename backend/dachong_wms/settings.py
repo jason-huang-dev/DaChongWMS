@@ -61,6 +61,7 @@ THIRD_PARTY_APPS = [
     "rest_framework.authtoken",
     "django_filters",
     "drf_spectacular",
+    "django_extensions",
 ]
 
 LOCAL_APPS: List[str] = [

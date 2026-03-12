@@ -5,6 +5,11 @@ FROM python:3.14-slim
 # Set the working directory
 WORKDIR /app
 
+# Install system packages required for graph generation and building wheels
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends graphviz libgraphviz-dev build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install dependencies
 COPY requirements.txt .
 RUN pip install -r requirements.txt
