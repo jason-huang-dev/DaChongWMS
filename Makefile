@@ -6,6 +6,7 @@ BRANCH_NAME ?= main
 PARAMS ?= "--ff-only"
 DOCKER_COMPOSE= docker compose
 DJANGO_MANAGE= $(DOCKER_COMPOSE) exec backend python manage.py
+TEST_TARGET ?= 
 .DEFAULT_GOAL := update
 
 # Docker related commands
@@ -77,6 +78,10 @@ flush_db:
 db_relations:
 	mkdir -p backend/docs/diagrams
 	$(DJANGO_MANAGE) graph_models --arrow-shape normal -a -o docs/diagrams/er-diagram.svg
+
+.PHONY: test_backend
+test_backend:
+	$(DJANGO_MANAGE) test $(TEST_TARGET)
 # General git hub commands
 .PHONY:update_from_branch
 update_from_branch:

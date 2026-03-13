@@ -22,6 +22,11 @@ urlpatterns = [
         name="api-docs",
     ),
     path("api/warehouse/", include("warehouse.urls")),
+    path("api/locations/", include("locations.urls")),
+    path("api/inventory/", include("inventory.urls")),
+    path("api/staff/", include("staff.urls")),
+    path("api/login/", include("userlogin.urls")),
+    path("api/upload/", include("uploadfile.urls")),
     # Placeholder for future API apps – keep includes near docs for visibility.
     path("api/", include("rest_framework.urls")),
 ]

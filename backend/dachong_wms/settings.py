@@ -64,12 +64,33 @@ THIRD_PARTY_APPS = [
     "django_extensions",
 ]
 
+CATALOG_APPS: List[str] = [
+    "catalog.goods.apps.GoodsConfig",
+    "catalog.goodsunit.apps.GoodsunitConfig",
+    "catalog.goodsclass.apps.GoodsclassConfig",
+    "catalog.goodsbrand.apps.GoodsbrandConfig",
+    "catalog.goodscolor.apps.GoodscolorConfig",
+    "catalog.goodsshape.apps.GoodsshapeConfig",
+    "catalog.goodsspecs.apps.GoodsspecsConfig",
+    "catalog.goodsorigin.apps.GoodsoriginConfig",
+]
+
 LOCAL_APPS: List[str] = [
     "userprofile",
     "warehouse",
+    "locations.apps.LocationsConfig",
+    "inventory.apps.InventoryConfig",
+    "staff",
+    "userlogin",
+    "uploadfile",
+    "supplier",
+    "customer",
+    "payment",
+    "capital",
+    "scanner",
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS + CATALOG_APPS
 
 # Middleware -----------------------------------------------------------------
 MIDDLEWARE = [

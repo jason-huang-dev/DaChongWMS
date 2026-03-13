@@ -14,6 +14,13 @@ Security is foundational for a warehouse management system. This document aligns
 2. **Per-View Overrides**: High-risk endpoints (inventory adjustments, stock counts, approvals) must override `permission_classes` with custom implementations.
 3. **Role-Based Access Control**: Plan for `Role`/`Permission` models or integrate with Django groups. Document role scopes in `./ai/docs` when defined.
 
+## Current Role Gates
+
+- `locations` topology writes (`Zone`, `LocationType`, `Location`) now require `HTTP_OPERATOR` and a staff role of `Manager` or `Supervisor`.
+- `locations` lock writes require `HTTP_OPERATOR` and a staff role of `Manager`, `Supervisor`, or `StockControl`.
+- `inventory` writes require `HTTP_OPERATOR` and a staff role of `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
+- Read-only inventory and location queries remain tenant-scoped but do not require an operator header.
+
 ## Custom Permissions
 
 - Implement in `<app>/permissions.py` and keep logic small; offload heavy checks to services or domain modules to stay testable.
@@ -23,6 +30,7 @@ Security is foundational for a warehouse management system. This document aligns
 
 - Django admin leverages the same auth backend. Configure staff/superuser roles carefully; never assume admin actions are low risk.
 - API tokens should map to real users to preserve accountability.
+- Mutation endpoints should stamp the resolved operator name into audit fields rather than trusting client-supplied creator values.
 
 ## Security Best Practices
 

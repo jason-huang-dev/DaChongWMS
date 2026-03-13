@@ -10,7 +10,7 @@ Reliable inventory data requires disciplined modeling and migration practices.
 
 ## Modeling Guidelines
 
-1. **Explicit Entities**: Model inventory, warehouses, locations, stock movements, orders, receipts, adjustments, and user roles separately.
+1. **Explicit Entities**: Model inventory balances, movement history, holds, warehouses, locations, orders, receipts, adjustments, and user roles separately.
 2. **Timestamps & Audit Fields**: Include `created_at`, `updated_at`, and user references on records that affect stock or compliance.
 3. **Foreign Keys**: Always set `on_delete` behavior intentionally (`PROTECT` for critical references like warehouses, `CASCADE` where safe).
 4. **Constraints**: Use `UniqueConstraint`, `CheckConstraint`, and partial indexes to preserve invariants (e.g., SKU per warehouse uniqueness).
