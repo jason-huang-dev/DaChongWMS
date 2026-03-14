@@ -7,7 +7,13 @@ from django.urls import path, re_path
 from django.urls.resolvers import URLPattern
 from rest_framework.viewsets import ViewSet
 
-from .views import InventoryBalanceViewSet, InventoryHoldViewSet, InventoryMovementViewSet
+from .views import (
+    InventoryAdjustmentApprovalRuleViewSet,
+    InventoryAdjustmentReasonViewSet,
+    InventoryBalanceViewSet,
+    InventoryHoldViewSet,
+    InventoryMovementViewSet,
+)
 
 app_name = "inventory"
 
@@ -29,5 +35,31 @@ urlpatterns: List[URLPattern] = [
         r"^holds/(?P<pk>\d+)/$",
         _action(InventoryHoldViewSet, {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"}),
         name="hold-detail",
+    ),
+    path(
+        "adjustment-reasons/",
+        _action(InventoryAdjustmentReasonViewSet, {"get": "list", "post": "create"}),
+        name="adjustment-reason-list",
+    ),
+    re_path(
+        r"^adjustment-reasons/(?P<pk>\d+)/$",
+        _action(
+            InventoryAdjustmentReasonViewSet,
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"},
+        ),
+        name="adjustment-reason-detail",
+    ),
+    path(
+        "adjustment-rules/",
+        _action(InventoryAdjustmentApprovalRuleViewSet, {"get": "list", "post": "create"}),
+        name="adjustment-rule-list",
+    ),
+    re_path(
+        r"^adjustment-rules/(?P<pk>\d+)/$",
+        _action(
+            InventoryAdjustmentApprovalRuleViewSet,
+            {"get": "retrieve", "put": "update", "patch": "partial_update", "delete": "destroy"},
+        ),
+        name="adjustment-rule-detail",
     ),
 ]

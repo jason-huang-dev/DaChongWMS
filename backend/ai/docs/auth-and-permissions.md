@@ -4,37 +4,43 @@ Security is foundational for a warehouse management system. This document aligns
 
 ## Authentication Stack
 
-- **SessionAuthentication**: Enables admin access and browser-based debugging during early development.
-- **TokenAuthentication**: Supports stateless API clients (mobile scanners, future SPA auth). Tokens should be issued via DRF authtoken endpoints or a custom auth app.
-- Future providers (JWT, SSO) should be added to `REST_FRAMEWORK["DEFAULT_AUTHENTICATION_CLASSES"]` explicitly and documented here.
+- **SessionAuthentication**: browser/admin debugging and admin access.
+- **TokenAuthentication**: stateless API clients such as handheld scanners and future SPA/mobile clients.
+- Future JWT or SSO providers should be added explicitly and documented here.
 
 ## Permissions Strategy
 
-1. **Global Default**: `IsAuthenticatedOrReadOnly`. Anonymous users can read public endpoints (if any); mutations require auth.
-2. **Per-View Overrides**: High-risk endpoints (inventory adjustments, stock counts, approvals) must override `permission_classes` with custom implementations.
-3. **Role-Based Access Control**: Plan for `Role`/`Permission` models or integrate with Django groups. Document role scopes in `./ai/docs` when defined.
+1. Default reads stay tenant-scoped.
+2. Mutations require authentication and app-level role checks.
+3. High-risk actions use dedicated permission classes plus service-layer validation.
 
 ## Current Role Gates
 
-- `locations` topology writes (`Zone`, `LocationType`, `Location`) now require `HTTP_OPERATOR` and a staff role of `Manager` or `Supervisor`.
-- `locations` lock writes require `HTTP_OPERATOR` and a staff role of `Manager`, `Supervisor`, or `StockControl`.
-- `inventory` writes require `HTTP_OPERATOR` and a staff role of `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
-- Read-only inventory and location queries remain tenant-scoped but do not require an operator header.
+- `locations` topology writes require `Manager` or `Supervisor`.
+- `locations` lock writes require `Manager`, `Supervisor`, or `StockControl`.
+- `inventory` writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
+- `inventory` config writes (`adjustment-reasons`, `adjustment-rules`) require `Manager`, `Supervisor`, or `StockControl`.
+- `automation` schedule and retry writes require `Manager`, `Supervisor`, or `StockControl`.
+- `automation` alert evaluation and monitoring writes use the same `Manager`, `Supervisor`, or `StockControl` gate; read surfaces remain authenticated and tenant-safe.
+- `integrations` job, carrier-booking, and webhook-processing writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`; raw webhook intake is authenticated but does not require `HTTP_OPERATOR`.
+- `operations.inbound` writes require `Manager`, `Supervisor`, `Inbound`, or `StockControl`.
+- `operations.outbound` writes require `Manager`, `Supervisor`, `Outbound`, or `StockControl`.
+- `operations.counting` write endpoints require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`; approval queue/export actions are further limited to `Manager`, `Supervisor`, or `StockControl`.
+- `operations.transfers` writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
+- `operations.returns` writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
+- `reporting` KPI, operational export, rate-contract, storage-accrual, invoice, and billing-event writes require `Manager`, `Supervisor`, or `StockControl`.
+- `reporting` finance review and finance-export writes require `Finance`, `Manager`, or `Supervisor`.
 
-## Custom Permissions
+## Scanner-First Enforcement
 
-- Implement in `<app>/permissions.py` and keep logic small; offload heavy checks to services or domain modules to stay testable.
-- Permission classes should log authorization failures at INFO level when helpful for audits.
+- Inbound scan receive and outbound scan ship still require authenticated staff operators; they do not bypass standard role gates.
+- Scan completion for putaway and pick also validates task assignment when a task is explicitly assigned.
+- The current scan-first slice resolves direct SKU/location codes plus `scanner.BarcodeAlias` rows.
+- LPN-based receive, putaway, pick, and ship flows now validate `scanner.LicensePlate` state.
+- Device sessions and offline replay are still future work.
 
 ## Admin vs API
 
-- Django admin leverages the same auth backend. Configure staff/superuser roles carefully; never assume admin actions are low risk.
-- API tokens should map to real users to preserve accountability.
-- Mutation endpoints should stamp the resolved operator name into audit fields rather than trusting client-supplied creator values.
-
-## Security Best Practices
-
-- Enforce `CSRF_TRUSTED_ORIGINS` for browser clients behind load balancers.
-- Require HTTPS everywhere once the project leaves local development.
-- Rotate tokens/keys periodically; store them in secure secret managers in production environments.
-- Audit logs for sensitive endpoints (stock change, order release) should include `request.user`, request metadata, and old/new state when feasible.
+- Django admin uses the same auth backend and should be treated as a privileged surface.
+- Mutation endpoints must stamp resolved operator names into audit fields rather than trusting client-supplied values.
+- Tokens should map to real users or service identities so background and operational actions remain attributable.

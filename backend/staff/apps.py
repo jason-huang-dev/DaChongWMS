@@ -30,6 +30,7 @@ def seed_staff_types(**_: object) -> None:
         (5, "Inbound"),
         (6, "Outbound"),
         (7, "StockControl"),
+        (8, "Finance"),
     )
     existing = TypeListModel.objects.filter(openid__iexact="init_data")
     if existing.count() == len(seeds):

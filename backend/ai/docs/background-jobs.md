@@ -1,39 +1,53 @@
 # Background Jobs
 
-Warehouse workflows frequently require asynchronous processing (importing purchase orders, syncing ERP updates, sending notifications). Plan ahead for a Redis-backed job runner.
+DaChongWMS now runs background work through the `automation` app. The current implementation is database-backed and is used for integration execution, scheduled reporting, and scheduled billing.
 
-## Recommended Stack
+## Current Stack
 
-- **Celery + Redis**: Mature ecosystem, good Django integration, supports scheduled tasks and retries.
-- **Alternatives**: RQ or Dramatiq if requirements stay simple. Regardless, standardize on Redis for the broker to reuse infrastructure.
+- Queue storage: `automation.BackgroundTask`
+- Schedule storage: `automation.ScheduledTask`
+- Worker health: `automation.WorkerHeartbeat`
+- Alerting: `automation.AutomationAlert`
+- Worker entrypoint: `python manage.py run_background_worker`
+- Retry orchestration: automatic exponential backoff plus manual requeue for dead tasks
 
-## Project Integration Steps
+## What Runs Asynchronously
 
-1. Add Celery app (e.g., `backend/dachong_wms/celery.py`) and initialize in `__init__.py`.
-2. Configure broker URL via `CELERY_BROKER_URL` / `CELERY_RESULT_BACKEND` (point to Redis or a SQL backend as needed).
-3. Split task modules per Django app (e.g., `inventory/tasks.py`). Keep tasks thin; delegate logic to shared services.
-4. Provide management commands or process supervisor configs for running `celery worker`, `celery beat`, etc.
+- integration jobs created by `integrations`
+- carrier booking completion and carrier label generation
+- scheduled KPI snapshot generation
+- scheduled operational CSV report generation
+- scheduled storage accrual generation
+- scheduled invoice generation
+- scheduled finance export generation
 
-## Task Design Guidelines
+## Scheduling Rules
 
-- Keep payloads small; reference DB IDs over large serialized blobs.
-- Use retries with exponential backoff for network-bound tasks.
-- Record task outcomes (success/failure timestamps) when they affect inventory or compliance.
-- Emit structured logs containing task name, args, and correlation IDs for traceability.
+- Schedules are tenant-scoped.
+- Supported recurring task types are KPI snapshots, reports, storage accruals, invoices, and finance exports.
+- Invoice schedules require a customer plus `period_start`, `period_end`, and either `invoice_number` or `invoice_prefix` in `payload`.
+- Storage accrual schedules require warehouse/customer scope and may provide `payload.accrual_date`.
+- Finance export schedules require `payload.period_start` and `payload.period_end`.
 
-## When to Use Jobs
+## Retry Rules
 
-- Import/export operations that would block HTTP requests.
-- Notifications (email, SMS, webhooks) triggered by inventory events.
-- Periodic reconciliation tasks (inventory snapshots, stale reservation cleanup).
-- Long-running integration syncs (ERP, carrier APIs).
+- Failed tasks move to `RETRY` until `max_attempts` is exhausted.
+- When retries are exhausted, tasks move to `DEAD`.
+- Manual retry is available through `/api/automation/background-tasks/{id}/retry/`.
+- Integration-linked retries also reset the linked integration job and webhook/carrier state as needed.
 
-## Avoid Background Jobs For
+## Monitoring
 
-- Simple CRUD operations that finish within normal request budgets.
-- Inventory adjustments where synchronous confirmation is mandatory.
+- Every worker cycle writes a `WorkerHeartbeat` row with queue depth and processed count.
+- Alert evaluation opens tenant-scoped alerts for dead tasks, retry backlog, and stale workers.
+- Use `/api/automation/background-tasks/dashboard/` for queue health and `/api/automation/alerts/` for open alert inspection.
 
-## Observability
+## When To Keep Work Synchronous
 
-- Surface Celery metrics (queue backlog, failure rate) in monitoring dashboards.
-- Configure dead letter queues or alerts for repeated task failures.
+- single-record CRUD with short execution time
+- inventory mutations that must confirm success in the same request
+- approval actions where the user needs immediate final state
+
+## Future Scale-Out
+
+Redis/Celery or a similar broker-backed worker stack is still a valid future direction for higher throughput, parallelism, or cross-process scheduling. The current DB-backed worker is the supported baseline and now has heartbeat/alert instrumentation so the cutover decision can be made from observed backlog and failure data rather than assumption.

@@ -1,6 +1,12 @@
 from django_filters import FilterSet
 
-from .models import InventoryBalance, InventoryHold, InventoryMovement
+from .models import (
+    InventoryAdjustmentApprovalRule,
+    InventoryAdjustmentReason,
+    InventoryBalance,
+    InventoryHold,
+    InventoryMovement,
+)
 
 
 class InventoryBalanceFilter(FilterSet):
@@ -49,5 +55,33 @@ class InventoryHoldFilter(FilterSet):
             "held_by": ["exact", "icontains"],
             "released_by": ["exact", "icontains"],
             "released_at": ["gt", "gte", "lt", "lte", "range", "isnull"],
+            "create_time": ["gt", "gte", "lt", "lte", "range"],
+        }
+
+
+class InventoryAdjustmentReasonFilter(FilterSet):
+    class Meta:
+        model = InventoryAdjustmentReason
+        fields = {
+            "id": ["exact", "in", "range"],
+            "code": ["exact", "icontains"],
+            "name": ["exact", "icontains"],
+            "direction": ["exact"],
+            "requires_approval": ["exact"],
+            "is_active": ["exact"],
+            "create_time": ["gt", "gte", "lt", "lte", "range"],
+        }
+
+
+class InventoryAdjustmentApprovalRuleFilter(FilterSet):
+    class Meta:
+        model = InventoryAdjustmentApprovalRule
+        fields = {
+            "id": ["exact", "in", "range"],
+            "adjustment_reason": ["exact"],
+            "warehouse": ["exact", "isnull"],
+            "approver_role": ["exact", "icontains"],
+            "minimum_variance_qty": ["exact", "gt", "gte", "lt", "lte", "range"],
+            "is_active": ["exact"],
             "create_time": ["gt", "gte", "lt", "lte", "range"],
         }

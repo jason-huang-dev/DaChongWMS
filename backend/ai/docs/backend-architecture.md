@@ -4,19 +4,22 @@ DaChongWMS uses Django and Django REST Framework (DRF) to deliver a modular, dom
 
 ## High-Level Layers
 
-1. **Entry + Configuration**: `dachong_wms.settings`, `asgi.py`, and `wsgi.py`. Responsible for bootstrapping the project, registering apps, and configuring middleware.
-2. **Django Apps**: Each domain (inventory, inbound, outbound, users, etc.) lives in its own Django app inside `backend/`. Apps should isolate models, serializers, services, and API modules.
-3. **Service Layer**: When request logic grows beyond CRUD, move it to plain Python modules (e.g., `inventory/services/adjustments.py`) so reuse across views, signals, and tasks stays easy.
-4. **API Layer**: DRF viewsets/routers per app. Shared pagination, filtering, and schema generation stay centralized via project-level DRF settings.
-5. **Infra Integrations**: Database (Postgres), Redis cache, background queue (to be defined). All configuration lives in settings with environment-driven overrides.
-6. **Utility Layer**: Shared helpers imported from `backend/dachong_wms/utils/` (validators, authentication, throttling, websocket relays, fbmsg catalog). These provide compatibility with GreaterWMS modules and keep multi-tenant concerns centralized.
-7. **Onboarding Services**: `userregister` exposes `/api/register/` for developer sign-up. It writes to `userprofile.Users` and seeds demo data when optional apps (company, warehouse, staff) are installed.
+1. **Entry + Configuration**: `dachong_wms.settings`, `asgi.py`, and `wsgi.py`.
+2. **Django Apps**: Each domain lives in its own app inside `backend/`. Shared domain groupings such as `catalog.*` and `operations.*` are preferred when several apps belong to the same bounded context.
+3. **Service Layer**: Multi-model workflow stays in service modules, not serializers.
+4. **API Layer**: DRF viewsets and explicit URL maps per app.
+5. **Automation Layer**: `automation` owns queued work, recurring schedules, retry state, worker heartbeats, alerting, and the worker command for async execution.
+6. **Utility Layer**: shared helpers under `backend/utils/` for auth, operator resolution, pagination, validation, and scan-code resolution.
+7. **Bootstrap Services**: `test_system` seeds a usable tenant for smoke tests.
+8. **Operational Domains**: `operations.inbound`, `operations.outbound`, `operations.counting`, `operations.transfers`, and `operations.returns` own warehouse execution.
+9. **Integration + Commercial Domains**: `integrations` owns ERP/carrier/webhook control flow. `reporting` owns KPIs, storage accruals, finance review/export, rate contracts, invoices, and billing charge events.
+10. **Scan Primitives**: `scanner` holds barcode aliases, scan rules, and LPN state used by the operational apps.
 
 ## Current State
 
-- Only the core project scaffolding exists (`backend/dachong_wms`). New domain apps should be added to `LOCAL_APPS` in settings.
-- DRF Spectacular is wired for schema and docs under `/api/schema/` and `/api/docs/`.
-- CORS, CSRF, WhiteNoise, and DRF defaults are preconfigured for typical deployments.
+- DRF Spectacular is wired under `/api/schema/` and `/api/docs/`.
+- `automation` is now installed and exposed under `/api/automation/`.
+- Scan-first execution now includes ASN/LPN-aware inbound receive/putaway and dock-verified outbound shipping.
 
 ## App Layout Template
 
@@ -25,28 +28,28 @@ backend/
   <app_name>/
     __init__.py
     apps.py
-    models.py (split into modules when large)
-    serializers/
-    services/
-    views.py or views/
-    urls.py (registered via project router)
+    models.py
+    serializers.py
+    services.py
+    views.py
+    urls.py
     permissions.py
-    tests/
+    tests.py
 ```
 
 - Keep migrations inside each app.
-- Prefer `routers.DefaultRouter` for registering viewsets.
-- Store fixtures or seeds per app under `fixtures/`.
+- Keep domain orchestration in services.
+- Keep APIs thin and tenant-safe.
 
 ## Cross-Cutting Concerns
 
-- **Authentication**: Base on Django auth; extend with custom user model early if required.
-- **Auditing**: Track user + timestamp for inventory mutations.
-- **Validation**: Centralize advanced checks in services or validators; keep serializers slim.
-- **Transactions**: Wrap mutating flows with `transaction.atomic()` especially when touching stock.
+- **Authentication**: Django auth + token auth.
+- **Auditing**: stamp resolved operator names into workflow records.
+- **Transactions**: wrap stock-changing flows and background handlers with `transaction.atomic()`.
+- **Async Boundaries**: long-running integrations and scheduled commercial/reporting jobs belong in `automation`, not HTTP requests.
 
 ## Future Enhancements
 
-- Introduce a shared “core” app for reusable mixins (timestamp models, base viewsets, querysets).
-- Add health and metrics endpoints under an `ops` app.
-- Extract environment variable parsing helpers to `settings_utils.py` if the module grows too large.
+- broker-backed workers for horizontal scale
+- metrics/health endpoints for worker backlog and failure rate
+- shared core mixins if repeated model/view scaffolding grows further

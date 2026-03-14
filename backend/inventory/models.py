@@ -44,6 +44,12 @@ class MovementType(models.TextChoices):
     RELEASE_HOLD = "RELEASE_HOLD", "Release Hold"
 
 
+class AdjustmentDirection(models.TextChoices):
+    INCREASE = "INCREASE", "Increase"
+    DECREASE = "DECREASE", "Decrease"
+    BOTH = "BOTH", "Both"
+
+
 class InventoryBalance(TenantAuditModel):
     warehouse = models.ForeignKey(
         Warehouse,
@@ -244,3 +250,77 @@ class InventoryHold(TenantAuditModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.inventory_balance.goods.goods_code} hold {self.quantity}"
+
+
+class InventoryAdjustmentReason(TenantAuditModel):
+    code = models.CharField(max_length=64, verbose_name="Reason Code")
+    name = models.CharField(max_length=255, verbose_name="Reason Name")
+    description = models.TextField(blank=True, default="", verbose_name="Description")
+    direction = models.CharField(
+        max_length=32,
+        choices=AdjustmentDirection.choices,
+        default=AdjustmentDirection.BOTH,
+        verbose_name="Allowed Direction",
+    )
+    requires_approval = models.BooleanField(default=False, verbose_name="Requires Approval")
+    is_active = models.BooleanField(default=True, verbose_name="Is Active")
+
+    class Meta:
+        db_table = "inventory_adjustment_reason"
+        verbose_name = "Inventory Adjustment Reason"
+        verbose_name_plural = "Inventory Adjustment Reasons"
+        ordering = ["code"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "code"],
+                condition=Q(is_delete=False),
+                name="inv_adjust_reason_code_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.code
+
+
+class InventoryAdjustmentApprovalRule(TenantAuditModel):
+    adjustment_reason = models.ForeignKey(
+        InventoryAdjustmentReason,
+        on_delete=models.PROTECT,
+        related_name="approval_rules",
+        verbose_name="Adjustment Reason",
+    )
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.PROTECT,
+        related_name="inventory_adjustment_approval_rules",
+        blank=True,
+        null=True,
+        verbose_name="Warehouse",
+    )
+    minimum_variance_qty = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Minimum Variance Qty",
+    )
+    approver_role = models.CharField(max_length=255, verbose_name="Approver Role")
+    is_active = models.BooleanField(default=True, verbose_name="Is Active")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+
+    class Meta:
+        db_table = "inventory_adjustment_approval_rule"
+        verbose_name = "Inventory Adjustment Approval Rule"
+        verbose_name_plural = "Inventory Adjustment Approval Rules"
+        ordering = ["adjustment_reason_id", "-minimum_variance_qty", "approver_role"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "adjustment_reason", "warehouse", "minimum_variance_qty", "approver_role"],
+                condition=Q(is_delete=False),
+                name="inv_adjust_rule_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        warehouse_name = self.warehouse.warehouse_name if self.warehouse_id else "Any Warehouse"
+        return f"{self.adjustment_reason.code} >= {self.minimum_variance_qty} ({warehouse_name})"

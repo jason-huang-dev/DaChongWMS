@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from django.contrib import admin
 
-from .models import InventoryBalance, InventoryHold, InventoryMovement
+from .models import (
+    InventoryAdjustmentApprovalRule,
+    InventoryAdjustmentReason,
+    InventoryBalance,
+    InventoryHold,
+    InventoryMovement,
+)
 
 
 @admin.register(InventoryBalance)
@@ -24,3 +30,17 @@ class InventoryHoldAdmin(admin.ModelAdmin):
     list_display = ("inventory_balance", "quantity", "reason", "held_by", "released_by", "is_active")
     list_filter = ("is_active", "is_delete")
     search_fields = ("inventory_balance__goods__goods_code", "reason", "reference_code", "held_by", "openid")
+
+
+@admin.register(InventoryAdjustmentReason)
+class InventoryAdjustmentReasonAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "direction", "requires_approval", "is_active", "openid")
+    list_filter = ("direction", "requires_approval", "is_active", "is_delete")
+    search_fields = ("code", "name", "description", "openid")
+
+
+@admin.register(InventoryAdjustmentApprovalRule)
+class InventoryAdjustmentApprovalRuleAdmin(admin.ModelAdmin):
+    list_display = ("adjustment_reason", "warehouse", "minimum_variance_qty", "approver_role", "is_active")
+    list_filter = ("approver_role", "is_active", "is_delete")
+    search_fields = ("adjustment_reason__code", "approver_role", "openid")

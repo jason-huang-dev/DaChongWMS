@@ -15,8 +15,23 @@ from staff.models import ListModel as Staff
 from userprofile.models import Users
 from warehouse.models import Warehouse
 
-from .models import InventoryBalance, InventoryHold, InventoryMovement, InventoryStatus, MovementType
-from .views import InventoryBalanceViewSet, InventoryHoldViewSet, InventoryMovementViewSet
+from .models import (
+    AdjustmentDirection,
+    InventoryAdjustmentApprovalRule,
+    InventoryAdjustmentReason,
+    InventoryBalance,
+    InventoryHold,
+    InventoryMovement,
+    InventoryStatus,
+    MovementType,
+)
+from .views import (
+    InventoryAdjustmentApprovalRuleViewSet,
+    InventoryAdjustmentReasonViewSet,
+    InventoryBalanceViewSet,
+    InventoryHoldViewSet,
+    InventoryMovementViewSet,
+)
 
 
 def create_user_profile(**overrides: Any) -> Users:
@@ -184,6 +199,21 @@ def create_balance(**overrides: Any) -> InventoryBalance:
     return InventoryBalance.objects.create(**defaults)
 
 
+def create_adjustment_reason(**overrides: Any) -> InventoryAdjustmentReason:
+    defaults = {
+        "code": "COUNT_VAR",
+        "name": "Count Variance",
+        "description": "Cycle count variance adjustment",
+        "direction": AdjustmentDirection.BOTH,
+        "requires_approval": False,
+        "is_active": True,
+        "creator": "creator",
+        "openid": "inventory-openid",
+    }
+    defaults.update(overrides)
+    return InventoryAdjustmentReason.objects.create(**defaults)
+
+
 class InventoryBalanceTests(TestCase):
     def test_available_qty_property(self) -> None:
         balance = create_balance()
@@ -329,9 +359,71 @@ class InventoryApiTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["count"], 1)
 
+    def test_adjustment_reason_and_rule_create(self) -> None:
+        warehouse = create_warehouse()
+        reason_view = InventoryAdjustmentReasonViewSet.as_view({"post": "create"})
+        reason_request = self.factory.post(
+            "/api/inventory/adjustment-reasons/",
+            {
+                "code": "VAR-01",
+                "name": "Variance Review",
+                "direction": AdjustmentDirection.BOTH,
+                "requires_approval": True,
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(reason_request, user=self.user, token=self.auth)
+        reason_response = reason_view(reason_request)
+        self.assertEqual(reason_response.status_code, 201)
+
+        reason = InventoryAdjustmentReason.objects.get(code="VAR-01")
+        rule_view = InventoryAdjustmentApprovalRuleViewSet.as_view({"post": "create"})
+        rule_request = self.factory.post(
+            "/api/inventory/adjustment-rules/",
+            {
+                "adjustment_reason": reason.pk,
+                "warehouse": warehouse.pk,
+                "minimum_variance_qty": "3.0000",
+                "approver_role": "StockControl",
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(rule_request, user=self.user, token=self.auth)
+        rule_response = rule_view(rule_request)
+        self.assertEqual(rule_response.status_code, 201)
+        self.assertTrue(
+            InventoryAdjustmentApprovalRule.objects.filter(
+                adjustment_reason=reason,
+                warehouse=warehouse,
+                approver_role="StockControl",
+            ).exists()
+        )
+
+    def test_inventory_config_requires_stricter_role(self) -> None:
+        inbound_operator = create_staff(staff_name="Inbound Worker", staff_type="Inbound")
+        view = InventoryAdjustmentReasonViewSet.as_view({"post": "create"})
+        request = self.factory.post(
+            "/api/inventory/adjustment-reasons/",
+            {
+                "code": "VAR-02",
+                "name": "Variance Review",
+                "direction": AdjustmentDirection.BOTH,
+                "requires_approval": True,
+            },
+            format="json",
+            HTTP_OPERATOR=str(inbound_operator.id),
+        )
+        force_authenticate(request, user=self.user, token=self.auth)
+        response = view(request)
+        self.assertEqual(response.status_code, 403)
+
 
 class InventoryUrlsTests(TestCase):
     def test_routes_match_expected_paths(self) -> None:
         self.assertEqual(reverse("inventory:balance-list"), "/api/inventory/balances/")
         self.assertEqual(reverse("inventory:movement-detail", kwargs={"pk": 1}), "/api/inventory/movements/1/")
+        self.assertEqual(reverse("inventory:adjustment-reason-list"), "/api/inventory/adjustment-reasons/")
+        self.assertEqual(reverse("inventory:adjustment-rule-list"), "/api/inventory/adjustment-rules/")
         self.assertEqual(resolve("/api/inventory/holds/").url_name, "hold-list")

@@ -10,8 +10,8 @@ from rest_framework.request import Request
 from utils.operator import get_request_operator
 
 
-class CanManageInventoryRecords(BasePermission):
-    allowed_roles: ClassVar[set[str]] = {"Manager", "Supervisor", "Inbound", "Outbound", "StockControl"}
+class StaffRolePermission(BasePermission):
+    allowed_roles: ClassVar[set[str]] = set()
 
     def has_permission(self, request: Request, view: Any) -> bool:
         if request.method in SAFE_METHODS:
@@ -32,3 +32,11 @@ class CanManageInventoryRecords(BasePermission):
     def _message(actual_role: str, allowed_roles: Iterable[str]) -> str:
         allowed = ", ".join(sorted(allowed_roles))
         return f"Role `{actual_role}` cannot perform this action. Allowed roles: {allowed}"
+
+
+class CanManageInventoryRecords(StaffRolePermission):
+    allowed_roles = {"Manager", "Supervisor", "Inbound", "Outbound", "StockControl"}
+
+
+class CanManageInventoryConfiguration(StaffRolePermission):
+    allowed_roles = {"Manager", "Supervisor", "StockControl"}

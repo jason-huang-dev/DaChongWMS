@@ -1,23 +1,32 @@
 # Scanner Module
 
-`scanner.ListModel` mirrors the GreaterWMS barcode registry and backs handheld scans.
+`scanner` now owns the barcode registry plus the Y2 scan primitives used by inbound and outbound workflows.
 
 ## Model Overview
 
 | Field | Purpose |
 | --- | --- |
-| `mode` | Logical workflow (e.g., `GOODS`, `ASN`, `DN`). |
-| `code` | Human-readable identifier (SKU, ASN number, etc.). |
-| `bar_code` | Encrypted/hashed barcode rendered on labels. |
-| `openid`/`create_time` | Tenant scoping and audit fields. |
+| `mode` | Logical workflow or entity class (for example `GOODS`, `ASN`, `DN`). |
+| `code` | Human-readable identifier. |
+| `bar_code` | Barcode rendered on labels or provided to scanners. |
+| `openid` | Tenant scope. |
 
-## Workflows
+Additional scanner models:
 
-- Bulk inserts occur when goods are uploaded; each SKU spawns a scanner row with the hashed barcode computed from the goods code.
-- Future workflows (receiving, picking) should append additional scanner rows for documents (ASN, DN, wave) so handheld devices can resolve barcodes without hitting complex joins.
+- `BarcodeAlias`: alternate scan codes for goods and locations.
+- `GoodsScanRule`: per-SKU requirements for lot and serial capture plus regex validation.
+- `LicensePlate`: pallet/carton/LPN tracking for scan-first receive, putaway, pick, and ship flows.
 
-## API & Validation
+## Current Role In The Stack
 
-- Expose read-only endpoints for handheld devices with filters on `mode` and `code`.
-- When generating barcodes, prefer deterministic hashes (see `utils.md5.Md5`) to keep physical labels stable across reprints.
-- Enforce `request.auth.openid` on every query to avoid cross-tenant leakage of barcode data.
+- Catalog uploads can still seed legacy barcode rows through `scanner.ListModel`.
+- `backend/utils/scanning.py` resolves direct codes plus `BarcodeAlias` rows for goods and locations.
+- Inbound receipt scans can create or update `LicensePlate` rows on receipt and transition them to `STORED` on putaway.
+- Outbound pick and ship scans can transition `LicensePlate` rows to `STAGED` and `LOADED`.
+- `GoodsScanRule` is enforced when scan payloads provide lot/serial data or attribute barcode content.
+
+## Near-Term Direction
+
+- keep `scanner` as the home for barcode registry, aliasing, LPN state, and future device/session depth
+- avoid duplicating barcode lookup rules across apps; shared scan-code resolution lives in `backend/utils/scanning.py`
+- dedicated scanner APIs are still intentionally thin; current handheld flows are exposed through inbound/outbound operational endpoints

@@ -15,9 +15,16 @@ from utils.operator import get_request_operator
 from utils.page import MyPageNumberPagination
 
 from .filter import InventoryBalanceFilter, InventoryHoldFilter, InventoryMovementFilter
-from .models import InventoryBalance, InventoryHold, InventoryMovement
-from .permissions import CanManageInventoryRecords
-from .serializers import InventoryBalanceSerializer, InventoryHoldSerializer, InventoryMovementSerializer
+from .filter import InventoryAdjustmentApprovalRuleFilter, InventoryAdjustmentReasonFilter
+from .models import InventoryAdjustmentApprovalRule, InventoryAdjustmentReason, InventoryBalance, InventoryHold, InventoryMovement
+from .permissions import CanManageInventoryConfiguration, CanManageInventoryRecords
+from .serializers import (
+    InventoryAdjustmentApprovalRuleSerializer,
+    InventoryAdjustmentReasonSerializer,
+    InventoryBalanceSerializer,
+    InventoryHoldSerializer,
+    InventoryMovementSerializer,
+)
 from .services import create_inventory_hold, ensure_tenant_match, record_inventory_movement, release_inventory_hold
 
 
@@ -43,6 +50,48 @@ class TenantScopedReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not isinstance(openid, str) or not openid:
             raise APIException({"detail": "Authentication token missing openid"})
         return openid
+
+
+class TenantScopedModelViewSet(viewsets.ModelViewSet):
+    pagination_class = MyPageNumberPagination
+    filter_backends: Sequence[type[Any]] = [DjangoFilterBackend, OrderingFilter, SearchFilter]
+    ordering_fields = ["id", "create_time", "update_time"]
+    search_fields: Sequence[str] = []
+    permission_classes = [CanManageInventoryConfiguration]
+    queryset = None
+
+    def get_queryset(self):  # type: ignore[override]
+        assert self.queryset is not None
+        openid = getattr(self.request.auth, "openid", None)
+        queryset = self.queryset.filter(openid=openid, is_delete=False)
+        pk = self.kwargs.get("pk")
+        if pk is not None:
+            return queryset.filter(pk=pk)
+        return queryset
+
+    def _current_openid(self) -> str:
+        openid = getattr(self.request.auth, "openid", None)
+        if not isinstance(openid, str) or not openid:
+            raise APIException({"detail": "Authentication token missing openid"})
+        return openid
+
+    def perform_create(self, serializer) -> None:
+        operator = get_request_operator(self.request)
+        serializer.save(creator=operator.staff_name, openid=self._current_openid())
+
+    def perform_update(self, serializer) -> None:
+        serializer.save(creator=serializer.instance.creator)
+
+    def destroy(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        instance = self.get_object()
+        instance.is_delete = True
+        if hasattr(instance, "is_active"):
+            instance.is_active = False
+            instance.save(update_fields=["is_delete", "is_active", "update_time"])
+        else:
+            instance.save(update_fields=["is_delete", "update_time"])
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
 
 
 class InventoryBalanceViewSet(TenantScopedReadOnlyViewSet):
@@ -177,3 +226,17 @@ class InventoryHoldViewSet(viewsets.ModelViewSet):
         instance.save(update_fields=["is_delete", "update_time"])
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
+
+
+class InventoryAdjustmentReasonViewSet(TenantScopedModelViewSet):
+    queryset = InventoryAdjustmentReason.objects.all()
+    serializer_class = InventoryAdjustmentReasonSerializer
+    filterset_class = InventoryAdjustmentReasonFilter
+    search_fields = ["code", "name", "description"]
+
+
+class InventoryAdjustmentApprovalRuleViewSet(TenantScopedModelViewSet):
+    queryset = InventoryAdjustmentApprovalRule.objects.select_related("adjustment_reason", "warehouse")
+    serializer_class = InventoryAdjustmentApprovalRuleSerializer
+    filterset_class = InventoryAdjustmentApprovalRuleFilter
+    search_fields = ["adjustment_reason__code", "approver_role", "notes"]

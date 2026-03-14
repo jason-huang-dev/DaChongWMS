@@ -5,18 +5,29 @@ from __future__ import annotations
 from decimal import Decimal
 
 from django.db import transaction
+from django.db.models import Case, IntegerField, Q, When
 from django.utils import timezone
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, PermissionDenied
 
 from catalog.goods.models import ListModel as Goods
 from locations.models import Location, LocationStatus
 from warehouse.models import Warehouse
 
-from .models import InventoryBalance, InventoryHold, InventoryMovement, InventoryStatus, MovementType
+from .models import (
+    AdjustmentDirection,
+    InventoryAdjustmentApprovalRule,
+    InventoryAdjustmentReason,
+    InventoryBalance,
+    InventoryHold,
+    InventoryMovement,
+    InventoryStatus,
+    MovementType,
+)
 
 ZERO = Decimal("0.0000")
-INBOUND_MOVEMENTS = {MovementType.OPENING, MovementType.RECEIPT, MovementType.PUTAWAY, MovementType.ADJUSTMENT_IN}
-OUTBOUND_MOVEMENTS = {MovementType.PICK, MovementType.SHIP, MovementType.ADJUSTMENT_OUT}
+DESTINATION_ONLY_MOVEMENTS = {MovementType.OPENING, MovementType.RECEIPT, MovementType.ADJUSTMENT_IN}
+SOURCE_ONLY_MOVEMENTS = {MovementType.SHIP, MovementType.ADJUSTMENT_OUT}
+DUAL_LOCATION_MOVEMENTS = {MovementType.TRANSFER, MovementType.PUTAWAY, MovementType.PICK}
 
 
 def ensure_tenant_match(obj: object, openid: str, label: str) -> None:
@@ -82,22 +93,23 @@ def record_inventory_movement(
     to_location: Location | None = None,
     reference_code: str = "",
     reason: str = "",
+    allow_locked_locations: bool = False,
 ) -> InventoryMovement:
     ensure_tenant_match(warehouse, openid, "Warehouse")
     ensure_tenant_match(goods, openid, "Goods")
 
-    if movement_type in INBOUND_MOVEMENTS and to_location is None:
+    if movement_type in DESTINATION_ONLY_MOVEMENTS and to_location is None:
         raise APIException({"detail": "Inbound movements require a destination location"})
-    if movement_type in INBOUND_MOVEMENTS and from_location is not None:
+    if movement_type in DESTINATION_ONLY_MOVEMENTS and from_location is not None:
         raise APIException({"detail": "Inbound movements cannot include a source location"})
-    if movement_type in OUTBOUND_MOVEMENTS and from_location is None:
+    if movement_type in SOURCE_ONLY_MOVEMENTS and from_location is None:
         raise APIException({"detail": "Outbound movements require a source location"})
-    if movement_type in OUTBOUND_MOVEMENTS and to_location is not None:
+    if movement_type in SOURCE_ONLY_MOVEMENTS and to_location is not None:
         raise APIException({"detail": "Outbound movements cannot include a destination location"})
-    if movement_type == MovementType.TRANSFER and (from_location is None or to_location is None):
-        raise APIException({"detail": "Transfers require both source and destination locations"})
-    if from_location is not None and to_location is not None and from_location.pk == to_location.pk and movement_type == MovementType.TRANSFER:
-        raise APIException({"detail": "Transfer source and destination cannot be the same"})
+    if movement_type in DUAL_LOCATION_MOVEMENTS and (from_location is None or to_location is None):
+        raise APIException({"detail": f"{movement_type.title()} movements require both source and destination locations"})
+    if from_location is not None and to_location is not None and from_location.pk == to_location.pk and movement_type in DUAL_LOCATION_MOVEMENTS:
+        raise APIException({"detail": f"{movement_type.title()} source and destination cannot be the same"})
 
     source_balance: InventoryBalance | None = None
     destination_balance: InventoryBalance | None = None
@@ -105,7 +117,7 @@ def record_inventory_movement(
 
     if from_location is not None:
         ensure_tenant_match(from_location, openid, "Source location")
-        ensure_location_usable(from_location)
+        ensure_location_usable(from_location, allow_locked=allow_locked_locations)
         if from_location.warehouse_id != warehouse.id:
             raise APIException({"detail": "Source location must belong to the selected warehouse"})
         source_balance = InventoryBalance.objects.select_for_update().filter(
@@ -129,7 +141,7 @@ def record_inventory_movement(
 
     if to_location is not None:
         ensure_tenant_match(to_location, openid, "Destination location")
-        ensure_location_usable(to_location)
+        ensure_location_usable(to_location, allow_locked=allow_locked_locations)
         if to_location.warehouse_id != warehouse.id:
             raise APIException({"detail": "Destination location must belong to the selected warehouse"})
         destination_balance = get_or_create_balance(
@@ -171,6 +183,126 @@ def record_inventory_movement(
         openid=openid,
     )
     return movement
+
+
+def ensure_adjustment_reason_usable(
+    *,
+    openid: str,
+    adjustment_reason: InventoryAdjustmentReason,
+    variance_qty: Decimal,
+) -> None:
+    ensure_tenant_match(adjustment_reason, openid, "Adjustment reason")
+    if not adjustment_reason.is_active:
+        raise APIException({"detail": "Adjustment reason is inactive"})
+    if variance_qty > ZERO and adjustment_reason.direction == AdjustmentDirection.DECREASE:
+        raise APIException({"detail": "Adjustment reason only allows negative variances"})
+    if variance_qty < ZERO and adjustment_reason.direction == AdjustmentDirection.INCREASE:
+        raise APIException({"detail": "Adjustment reason only allows positive variances"})
+
+
+def find_adjustment_approval_rule(
+    *,
+    openid: str,
+    warehouse: Warehouse,
+    adjustment_reason: InventoryAdjustmentReason,
+    variance_qty: Decimal,
+) -> InventoryAdjustmentApprovalRule | None:
+    ensure_tenant_match(warehouse, openid, "Warehouse")
+    ensure_adjustment_reason_usable(
+        openid=openid,
+        adjustment_reason=adjustment_reason,
+        variance_qty=variance_qty,
+    )
+    threshold = abs(variance_qty)
+    rules = (
+        InventoryAdjustmentApprovalRule.objects.filter(
+            openid=openid,
+            adjustment_reason=adjustment_reason,
+            is_delete=False,
+            is_active=True,
+        )
+        .filter(Q(warehouse=warehouse) | Q(warehouse__isnull=True))
+        .order_by(
+            Case(
+                When(warehouse=warehouse, then=0),
+                default=1,
+                output_field=IntegerField(),
+            ),
+            "-minimum_variance_qty",
+            "id",
+        )
+    )
+    for rule in rules:
+        if threshold >= rule.minimum_variance_qty:
+            return rule
+    return None
+
+
+def operator_can_approve_adjustment(*, operator_role: str, required_role: str) -> bool:
+    return operator_role == required_role or operator_role in {"Manager", "Supervisor"}
+
+
+@transaction.atomic
+def apply_inventory_adjustment(
+    *,
+    openid: str,
+    operator_name: str,
+    inventory_balance: InventoryBalance,
+    variance_qty: Decimal,
+    adjustment_reason: InventoryAdjustmentReason,
+    reference_code: str = "",
+    notes: str = "",
+) -> InventoryMovement:
+    ensure_tenant_match(inventory_balance, openid, "Inventory balance")
+    ensure_adjustment_reason_usable(
+        openid=openid,
+        adjustment_reason=adjustment_reason,
+        variance_qty=variance_qty,
+    )
+    if variance_qty == ZERO:
+        raise APIException({"detail": "Inventory adjustments require a non-zero variance"})
+
+    inventory_balance = (
+        InventoryBalance.objects.select_for_update()
+        .select_related("warehouse", "location", "goods")
+        .get(pk=inventory_balance.pk)
+    )
+    movement_type = MovementType.ADJUSTMENT_IN if variance_qty > ZERO else MovementType.ADJUSTMENT_OUT
+    quantity = abs(variance_qty)
+    reason_text = adjustment_reason.code if not notes else f"{adjustment_reason.code}: {notes}"
+    if movement_type == MovementType.ADJUSTMENT_IN:
+        return record_inventory_movement(
+            openid=openid,
+            operator_name=operator_name,
+            warehouse=inventory_balance.warehouse,
+            goods=inventory_balance.goods,
+            movement_type=movement_type,
+            quantity=quantity,
+            stock_status=inventory_balance.stock_status,
+            lot_number=inventory_balance.lot_number,
+            serial_number=inventory_balance.serial_number,
+            unit_cost=inventory_balance.unit_cost,
+            to_location=inventory_balance.location,
+            reference_code=reference_code,
+            reason=reason_text[:255],
+            allow_locked_locations=True,
+        )
+    return record_inventory_movement(
+        openid=openid,
+        operator_name=operator_name,
+        warehouse=inventory_balance.warehouse,
+        goods=inventory_balance.goods,
+        movement_type=movement_type,
+        quantity=quantity,
+        stock_status=inventory_balance.stock_status,
+        lot_number=inventory_balance.lot_number,
+        serial_number=inventory_balance.serial_number,
+        unit_cost=inventory_balance.unit_cost,
+        from_location=inventory_balance.location,
+        reference_code=reference_code,
+        reason=reason_text[:255],
+        allow_locked_locations=True,
+    )
 
 
 @transaction.atomic

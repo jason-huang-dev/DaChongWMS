@@ -80,8 +80,17 @@ LOCAL_APPS: List[str] = [
     "warehouse",
     "locations.apps.LocationsConfig",
     "inventory.apps.InventoryConfig",
+    "automation.apps.AutomationConfig",
+    "integrations.apps.IntegrationsConfig",
+    "operations.inbound.apps.InboundConfig",
+    "operations.outbound.apps.OutboundConfig",
+    "operations.counting.apps.CountingConfig",
+    "operations.transfers.apps.TransfersConfig",
+    "operations.returns.apps.ReturnsConfig",
+    "reporting.apps.ReportingConfig",
     "staff",
     "userlogin",
+    "test_system.apps.TestSystemConfig",
     "uploadfile",
     "supplier",
     "customer",
@@ -221,6 +230,7 @@ POST_THROTTLE = int(os.getenv("DJANGO_THROTTLE_POST", 500))
 PUT_THROTTLE = int(os.getenv("DJANGO_THROTTLE_PUT", 500))
 PATCH_THROTTLE = int(os.getenv("DJANGO_THROTTLE_PATCH", 500))
 DELETE_THROTTLE = int(os.getenv("DJANGO_THROTTLE_DELETE", 500))
+TEST_SYSTEM_ENABLED = _env_bool("DJANGO_TEST_SYSTEM_ENABLED", default=DEBUG)
 
 # Logging --------------------------------------------------------------------
 LoggingConfig = Dict[str, Any]
