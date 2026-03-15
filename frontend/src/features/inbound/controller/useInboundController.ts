@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useTenantScope } from "@/app/scope-context";
 import { runPurchaseOrderCancel, runPurchaseOrderUpdate, runReceiptCreate, runScanPutaway, runScanReceive } from "@/features/inbound/controller/actions";
 import { defaultPurchaseOrderEditValues, defaultReceiptCreateValues, mapPurchaseOrderToEditValues } from "@/features/inbound/model/mappers";
 import type { PurchaseOrderEditValues, PurchaseOrderRecord, PutawayTaskRecord, ReceiptCreateValues, ReceiptRecord, ScanPutawayValues, ScanReceiveValues } from "@/features/inbound/model/types";
 import { inboundApi } from "@/features/inbound/model/api";
+import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
@@ -24,8 +26,33 @@ async function invalidateInboundQueries(
 
 export function useInboundController() {
   const queryClient = useQueryClient();
+  const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const [receiptSuccessMessage, setReceiptSuccessMessage] = useState<string | null>(null);
   const [receiptErrorMessage, setReceiptErrorMessage] = useState<string | null>(null);
+  const purchaseOrdersView = useDataView({
+    viewKey: `inbound.purchase-orders.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      po_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const receiptsView = useDataView({
+    viewKey: `inbound.receipts.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      receipt_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const putawayTasksView = useDataView({
+    viewKey: `inbound.putaway-tasks.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      task_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
 
   const createReceiptMutation = useMutation({
     mutationFn: (values: ReceiptCreateValues) => runReceiptCreate(values),
@@ -41,11 +68,52 @@ export function useInboundController() {
   });
 
   return {
+    activeWarehouse,
     createReceiptMutation,
     defaultReceiptCreateValues,
-    purchaseOrdersQuery: usePaginatedResource<PurchaseOrderRecord>(["inbound", "purchase-orders"], inboundApi.purchaseOrders, 1, 8),
-    receiptsQuery: usePaginatedResource<ReceiptRecord>(["inbound", "receipts"], inboundApi.receipts, 1, 8),
-    putawayTasksQuery: usePaginatedResource<PutawayTaskRecord>(["inbound", "putaway-tasks"], inboundApi.putawayTasks, 1, 8),
+    overduePurchaseOrdersQuery: usePaginatedResource<PurchaseOrderRecord>(
+      ["inbound", "purchase-orders", "overdue"],
+      inboundApi.purchaseOrders,
+      1,
+      25,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        expected_arrival_date__lte: new Date().toISOString().slice(0, 10),
+      },
+    ),
+    purchaseOrdersView,
+    purchaseOrdersQuery: usePaginatedResource<PurchaseOrderRecord>(
+      ["inbound", "purchase-orders"],
+      inboundApi.purchaseOrders,
+      purchaseOrdersView.page,
+      purchaseOrdersView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...purchaseOrdersView.queryFilters,
+      },
+    ),
+    receiptsView,
+    receiptsQuery: usePaginatedResource<ReceiptRecord>(
+      ["inbound", "receipts"],
+      inboundApi.receipts,
+      receiptsView.page,
+      receiptsView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...receiptsView.queryFilters,
+      },
+    ),
+    putawayTasksView,
+    putawayTasksQuery: usePaginatedResource<PutawayTaskRecord>(
+      ["inbound", "putaway-tasks"],
+      inboundApi.putawayTasks,
+      putawayTasksView.page,
+      putawayTasksView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...putawayTasksView.queryFilters,
+      },
+    ),
     receiptErrorMessage,
     receiptSuccessMessage,
   };

@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 
+import { TenantScopeProvider } from "@/app/scope-context";
 import { appTheme } from "@/app/theme";
 import { appRoutes } from "@/app/routes";
 import { AuthProvider } from "@/features/auth/controller/useAuthController";
@@ -24,7 +25,11 @@ function createTestQueryClient() {
 }
 
 function BaseProviders({ children, includeAuth = false }: PropsWithChildren<{ includeAuth?: boolean }>) {
-  const content = includeAuth ? <AuthProvider>{children}</AuthProvider> : children;
+  const content = includeAuth ? (
+    <AuthProvider>
+      <TenantScopeProvider>{children}</TenantScopeProvider>
+    </AuthProvider>
+  ) : children;
   return (
     <ThemeProvider theme={appTheme}>
       <CssBaseline />

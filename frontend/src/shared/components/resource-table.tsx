@@ -41,6 +41,7 @@ interface ResourceTableProps<TRow> {
   error?: string | null;
   pagination?: PaginationState;
   emptyMessage?: string;
+  toolbar?: ReactNode;
 }
 
 export function ResourceTable<TRow>({
@@ -53,6 +54,7 @@ export function ResourceTable<TRow>({
   error,
   pagination,
   emptyMessage = "No records found.",
+  toolbar,
 }: ResourceTableProps<TRow>) {
   return (
     <Card>
@@ -66,6 +68,7 @@ export function ResourceTable<TRow>({
               </Typography>
             ) : null}
           </Box>
+          {toolbar}
           {error ? <Alert severity="error">{error}</Alert> : null}
           <TableContainer>
             <Table size="small">

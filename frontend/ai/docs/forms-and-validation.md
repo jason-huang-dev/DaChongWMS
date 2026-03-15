@@ -13,6 +13,7 @@ The first frontend form layer is now in place and follows the documented RHF + Z
 - `frontend/src/shared/components/form-autocomplete.tsx`, `frontend/src/shared/components/reference-autocomplete-field.tsx`, and `frontend/src/shared/components/form-switch-field.tsx` now cover repeated selector and boolean inputs.
 - Scan-first mutation forms now exist for receive, putaway, pick, ship, and assigned count completion, each using feature-local validators and controller actions.
 - Detail/action forms now exist for purchase-order edits, sales-order edits, transfer-order edits, return-order edits, count-approval decisions, invoice finance actions, and selector-driven create flows for receipts, shipments, transfer orders, return orders, return receipts, and return dispositions through `view/*Form.tsx` or route-local view components.
+- Access-management forms now exist for tenant staff directory maintenance, role assignment, verification-code control, and lock-state management.
 - Repeated header-field layouts are shared through `frontend/src/shared/components/document-header-fields.tsx` instead of duplicating the same date/reference/notes markup in each detail screen.
 
 ## MVC Rule
@@ -34,6 +35,7 @@ The first frontend form layer is now in place and follows the documented RHF + Z
 - Signup collects email now so MFA enrollment and account recovery can be added without replacing the current account model.
 - MFA recovery codes are rendered once after successful TOTP verification and should be copied before leaving the screen.
 - Detail views only expose fields the backend already allows operators to patch directly; reference-data changes stay server-owned until selector flows are added.
+- Security forms must surface backend gaps explicitly. The current backend can manage staff directory records, but admin-created browser login accounts still need a dedicated provisioning API.
 
 ## UX Baseline
 

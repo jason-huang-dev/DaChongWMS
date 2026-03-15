@@ -19,8 +19,11 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function AutomationPage() {
   const {
+    activeWarehouse,
     alertsQuery,
+    alertsView,
     backgroundTasksQuery,
+    backgroundTasksView,
     createScheduledTaskMutation,
     dashboardQuery,
     defaultScheduledTaskCreateValues,
@@ -29,8 +32,10 @@ export function AutomationPage() {
     retryTaskMutation,
     runNowMutation,
     scheduledTasksQuery,
+    scheduledTasksView,
     successMessage,
     workerHeartbeatsQuery,
+    workerHeartbeatsView,
   } = useAutomationController();
   const warehouses = useWarehouseReferenceOptions();
   const customers = useCustomerReferenceOptions();
@@ -103,14 +108,19 @@ export function AutomationPage() {
         </Grid>
       </Grid>
       <AutomationTable
+        activeWarehouseName={activeWarehouse?.warehouse_name ?? null}
         alertsQuery={alertsQuery}
+        alertsView={alertsView}
         backgroundTasksQuery={backgroundTasksQuery}
+        backgroundTasksView={backgroundTasksView}
         isRetryingTask={retryTaskMutation.isPending}
         isRunningNow={runNowMutation.isPending}
         onRetryTask={(backgroundTaskId) => retryTaskMutation.mutate(backgroundTaskId)}
         onRunNow={(scheduledTaskId) => runNowMutation.mutate(scheduledTaskId)}
         scheduledTasksQuery={scheduledTasksQuery}
+        scheduledTasksView={scheduledTasksView}
         workerHeartbeatsQuery={workerHeartbeatsQuery}
+        workerHeartbeatsView={workerHeartbeatsView}
       />
     </Stack>
   );

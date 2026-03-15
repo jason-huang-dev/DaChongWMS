@@ -6,6 +6,13 @@ export interface AuthSession {
   operatorRole: string;
 }
 
+export interface CompanyContextRecord {
+  id: string;
+  openid: string;
+  label: string;
+  description: string;
+}
+
 export interface PendingMfaChallenge {
   username: string;
   challengeId: string;

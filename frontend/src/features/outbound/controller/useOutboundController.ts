@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useTenantScope } from "@/app/scope-context";
 import { runSalesOrderAllocate, runSalesOrderCancel, runSalesOrderUpdate, runScanPick, runScanShip, runShipmentCreate } from "@/features/outbound/controller/actions";
 import { outboundApi } from "@/features/outbound/model/api";
 import { defaultSalesOrderEditValues, defaultShipmentCreateValues, mapSalesOrderToEditValues } from "@/features/outbound/model/mappers";
 import type { PickTaskRecord, SalesOrderEditValues, SalesOrderRecord, ScanPickValues, ScanShipValues, ShipmentCreateValues, ShipmentRecord } from "@/features/outbound/model/types";
+import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
@@ -26,8 +28,33 @@ async function invalidateOutboundQueries(
 
 export function useOutboundController() {
   const queryClient = useQueryClient();
+  const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const [shipmentSuccessMessage, setShipmentSuccessMessage] = useState<string | null>(null);
   const [shipmentErrorMessage, setShipmentErrorMessage] = useState<string | null>(null);
+  const salesOrdersView = useDataView({
+    viewKey: `outbound.sales-orders.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      order_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const pickTasksView = useDataView({
+    viewKey: `outbound.pick-tasks.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      task_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const shipmentsView = useDataView({
+    viewKey: `outbound.shipments.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      shipment_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
 
   const createShipmentMutation = useMutation({
     mutationFn: (values: ShipmentCreateValues) => runShipmentCreate(values),
@@ -43,11 +70,52 @@ export function useOutboundController() {
   });
 
   return {
+    activeWarehouse,
     createShipmentMutation,
     defaultShipmentCreateValues,
-    salesOrdersQuery: usePaginatedResource<SalesOrderRecord>(["outbound", "sales-orders"], outboundApi.salesOrders, 1, 8),
-    pickTasksQuery: usePaginatedResource<PickTaskRecord>(["outbound", "pick-tasks"], outboundApi.pickTasks, 1, 8),
-    shipmentsQuery: usePaginatedResource<ShipmentRecord>(["outbound", "shipments"], outboundApi.shipments, 1, 8),
+    shortPickProxyQuery: usePaginatedResource<SalesOrderRecord>(
+      ["outbound", "sales-orders", "ship-risk"],
+      outboundApi.salesOrders,
+      1,
+      25,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        requested_ship_date__lte: new Date().toISOString().slice(0, 10),
+      },
+    ),
+    salesOrdersView,
+    salesOrdersQuery: usePaginatedResource<SalesOrderRecord>(
+      ["outbound", "sales-orders"],
+      outboundApi.salesOrders,
+      salesOrdersView.page,
+      salesOrdersView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...salesOrdersView.queryFilters,
+      },
+    ),
+    pickTasksView,
+    pickTasksQuery: usePaginatedResource<PickTaskRecord>(
+      ["outbound", "pick-tasks"],
+      outboundApi.pickTasks,
+      pickTasksView.page,
+      pickTasksView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...pickTasksView.queryFilters,
+      },
+    ),
+    shipmentsView,
+    shipmentsQuery: usePaginatedResource<ShipmentRecord>(
+      ["outbound", "shipments"],
+      outboundApi.shipments,
+      shipmentsView.page,
+      shipmentsView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...shipmentsView.queryFilters,
+      },
+    ),
     shipmentErrorMessage,
     shipmentSuccessMessage,
   };

@@ -1,18 +1,77 @@
 import type { InventoryBalanceRecord } from "@/features/inventory/model/types";
+import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { ResourceTable } from "@/shared/components/resource-table";
 import { StatusChip } from "@/shared/components/status-chip";
+import type { DataViewFilters } from "@/shared/hooks/use-data-view";
+import type { SavedDataView } from "@/shared/storage/data-view-storage";
 import type { PaginatedQueryState } from "@/shared/types/query";
 import { formatDateTime, formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
+
+interface InventoryFilters extends DataViewFilters {
+  stock_status: string;
+  lot_number__icontains: string;
+  serial_number__icontains: string;
+}
 
 interface InventoryTableProps {
   balancesQuery: PaginatedQueryState<InventoryBalanceRecord>;
   page: number;
   pageSize: number;
   setPage: (page: number) => void;
+  filters: InventoryFilters;
+  activeFilterCount: number;
+  updateFilter: (key: keyof InventoryFilters & string, value: string) => void;
+  resetFilters: () => void;
+  savedViews: SavedDataView<InventoryFilters>[];
+  selectedSavedViewId: string | null;
+  applySavedView: (viewId: string) => void;
+  saveCurrentView: (name: string) => void;
+  deleteSavedView: (viewId: string) => void;
+  contextLabel?: string;
 }
 
-export function InventoryTable({ balancesQuery, page, pageSize, setPage }: InventoryTableProps) {
+const inventoryFilterFields: DataViewFieldConfig<InventoryFilters>[] = [
+  {
+    key: "stock_status",
+    label: "Stock status",
+    type: "select",
+    options: [
+      { label: "Available", value: "AVAILABLE" },
+      { label: "Allocated", value: "ALLOCATED" },
+      { label: "Held", value: "HOLD" },
+      { label: "Damaged", value: "DAMAGED" },
+      { label: "Quarantine", value: "QUARANTINE" },
+    ],
+  },
+  {
+    key: "lot_number__icontains",
+    label: "Lot",
+    placeholder: "LOT-2026",
+  },
+  {
+    key: "serial_number__icontains",
+    label: "Serial",
+    placeholder: "Serial number",
+  },
+];
+
+export function InventoryTable({
+  balancesQuery,
+  page,
+  pageSize,
+  setPage,
+  filters,
+  activeFilterCount,
+  updateFilter,
+  resetFilters,
+  savedViews,
+  selectedSavedViewId,
+  applySavedView,
+  saveCurrentView,
+  deleteSavedView,
+  contextLabel,
+}: InventoryTableProps) {
   return (
     <ResourceTable
       columns={[
@@ -38,6 +97,24 @@ export function InventoryTable({ balancesQuery, page, pageSize, setPage }: Inven
       rows={balancesQuery.data?.results ?? []}
       subtitle="Backed by `/api/inventory/balances/`"
       title="Inventory positions"
+      toolbar={
+        <DataViewToolbar
+          activeFilterCount={activeFilterCount}
+          contextLabel={contextLabel}
+          fields={inventoryFilterFields}
+          filters={filters}
+          onChange={updateFilter}
+          onReset={resetFilters}
+          resultCount={balancesQuery.data?.count}
+          savedViews={{
+            items: savedViews,
+            selectedId: selectedSavedViewId,
+            onApply: applySavedView,
+            onDelete: deleteSavedView,
+            onSave: saveCurrentView,
+          }}
+        />
+      }
     />
   );
 }

@@ -82,7 +82,7 @@ export const navigationItems: NavigationItem[] = [
   },
   {
     label: "Security",
-    path: "/mfa/enroll",
+    path: "/security",
     icon: SecurityOutlinedIcon,
   },
 ];

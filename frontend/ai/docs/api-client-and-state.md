@@ -57,6 +57,14 @@ Selector-backed creation flows now depend on shared reference hooks in `frontend
 
 Views should not import `useResource(...)` or `usePaginatedResource(...)` directly. That is part of controller ownership.
 
+## Workspace and Warehouse Context
+
+- `frontend/src/app/scope-context.tsx` owns the current tenant/company and warehouse selection.
+- Today the backend only exposes tenant scope implicitly through `openid`, so the frontend synthesizes company/workspace context from the authenticated session until a dedicated company API exists.
+- Warehouse lists come from `/api/warehouse/`, and the active warehouse is persisted per tenant in local storage.
+- Controllers should read the active warehouse from the scope context and add `warehouse=<id>` to backend queries whenever the endpoint supports it.
+- Where the backend does not yet expose company or admin user-provisioning APIs, controllers must surface that limitation explicitly in UX copy instead of inventing unsupported local state.
+
 ## Searchable Reference Inputs
 
 Large selector flows now use the shared remote reference pattern:
@@ -66,6 +74,21 @@ Large selector flows now use the shared remote reference pattern:
 - search terms are debounced before hitting the backend
 - the autocomplete loads additional pages on list scroll instead of assuming the first page is enough
 - warehouses use explicit filter params; domains with DRF search support use `search=...`
+
+## Reusable Queue Filters and Saved Views
+
+- `useDataView(...)` owns:
+  - page state
+  - filter state
+  - local saved views
+- `DataViewToolbar` renders consistent queue controls:
+  - filter inputs
+  - active-filter counts
+  - result counts
+  - save/apply/delete view controls
+- `ResourceTable` accepts the toolbar as a slot, so pages keep a stable structure while queue-specific filters change.
+- `ExceptionLane` reuses the same table shell for watchlists such as overdue receipts, blocked counts, and failed integrations.
+- Saved views are currently local-browser only. Cross-device saved views require backend persistence later.
 
 ## API Base URL Strategy
 
@@ -97,3 +120,4 @@ The auth provider currently owns:
 - Invalidate related queries after create/update flows.
 - Add download helpers for finance/counting export endpoints and settlement/remittance artifacts.
 - Add optimistic state only where operator workflows need it.
+- Replace the synthetic company scope and staff-only user management once dedicated backend company and user-provisioning APIs exist.

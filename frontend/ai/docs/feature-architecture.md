@@ -87,4 +87,4 @@ Views may import controller hooks, shared presentational components, and model t
 
 ## Current Application
 
-This structure is now applied across `auth`, `dashboard`, `inventory`, `inbound`, `outbound`, `transfers`, `returns`, `counting`, and `reporting`.
+This structure is now applied across `auth`, `dashboard`, `inventory`, `inbound`, `outbound`, `transfers`, `returns`, `counting`, `automation`, `integrations`, `reporting`, and `security`.

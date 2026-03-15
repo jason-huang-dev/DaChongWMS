@@ -7,15 +7,82 @@ import type {
   IntegrationLogRecord,
   WebhookEventRecord,
 } from "@/features/integrations/model/types";
+import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
 import { ResourceTable } from "@/shared/components/resource-table";
 import { StatusChip } from "@/shared/components/status-chip";
+import type { UseDataViewResult } from "@/shared/hooks/use-data-view";
 import type { PaginatedQueryState } from "@/shared/types/query";
 import { formatDateTime } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
+const jobFields: DataViewFieldConfig<{ integration_name__icontains: string; job_type: string; status: string }>[] = [
+  { key: "integration_name__icontains", label: "Integration", placeholder: "carrier" },
+  { key: "job_type", label: "Job type", placeholder: "EXPORT" },
+  {
+    key: "status",
+    label: "Status",
+    type: "select",
+    options: [
+      { label: "Queued", value: "QUEUED" },
+      { label: "Running", value: "RUNNING" },
+      { label: "Succeeded", value: "SUCCEEDED" },
+      { label: "Failed", value: "FAILED" },
+      { label: "Cancelled", value: "CANCELLED" },
+    ],
+  },
+];
+
+const webhookFields: DataViewFieldConfig<{ event_key__icontains: string; status: string }>[] = [
+  { key: "event_key__icontains", label: "Event key", placeholder: "asn.updated" },
+  {
+    key: "status",
+    label: "Status",
+    type: "select",
+    options: [
+      { label: "Received", value: "RECEIVED" },
+      { label: "Queued", value: "QUEUED" },
+      { label: "Processed", value: "PROCESSED" },
+      { label: "Failed", value: "FAILED" },
+      { label: "Ignored", value: "IGNORED" },
+    ],
+  },
+];
+
+const carrierBookingFields: DataViewFieldConfig<{ carrier_code__icontains: string; tracking_number__icontains: string; status: string }>[] = [
+  { key: "carrier_code__icontains", label: "Carrier", placeholder: "UPS" },
+  { key: "tracking_number__icontains", label: "Tracking", placeholder: "1Z..." },
+  {
+    key: "status",
+    label: "Status",
+    type: "select",
+    options: [
+      { label: "Open", value: "OPEN" },
+      { label: "Booked", value: "BOOKED" },
+      { label: "Labeled", value: "LABELED" },
+      { label: "Failed", value: "FAILED" },
+      { label: "Cancelled", value: "CANCELLED" },
+    ],
+  },
+];
+
+const logFields: DataViewFieldConfig<{ level: string }>[] = [
+  {
+    key: "level",
+    label: "Level",
+    type: "select",
+    options: [
+      { label: "Info", value: "INFO" },
+      { label: "Warning", value: "WARNING" },
+      { label: "Error", value: "ERROR" },
+    ],
+  },
+];
+
 interface IntegrationTableProps {
+  activeWarehouseName?: string | null;
   carrierBookingsQuery: PaginatedQueryState<CarrierBookingRecord>;
+  carrierBookingsView: UseDataViewResult<{ carrier_code__icontains: string; tracking_number__icontains: string; status: string }>;
   completeJob: (jobId: number) => void;
   failJob: (jobId: number) => void;
   generateLabel: (bookingId: number) => void;
@@ -25,14 +92,19 @@ interface IntegrationTableProps {
   isProcessingWebhook: boolean;
   isStartingJob: boolean;
   jobsQuery: PaginatedQueryState<IntegrationJobRecord>;
+  jobsView: UseDataViewResult<{ integration_name__icontains: string; job_type: string; status: string }>;
   logsQuery: PaginatedQueryState<IntegrationLogRecord>;
+  logsView: UseDataViewResult<{ level: string }>;
   processWebhook: (webhookId: number) => void;
   startJob: (jobId: number) => void;
   webhooksQuery: PaginatedQueryState<WebhookEventRecord>;
+  webhooksView: UseDataViewResult<{ event_key__icontains: string; status: string }>;
 }
 
 export function IntegrationTable({
+  activeWarehouseName,
   carrierBookingsQuery,
+  carrierBookingsView,
   completeJob,
   failJob,
   generateLabel,
@@ -42,10 +114,13 @@ export function IntegrationTable({
   isProcessingWebhook,
   isStartingJob,
   jobsQuery,
+  jobsView,
   logsQuery,
+  logsView,
   processWebhook,
   startJob,
   webhooksQuery,
+  webhooksView,
 }: IntegrationTableProps) {
   return (
     <Grid container spacing={2.5}>
@@ -85,9 +160,33 @@ export function IntegrationTable({
           error={jobsQuery.error ? parseApiError(jobsQuery.error) : null}
           getRowId={(row) => row.id}
           isLoading={jobsQuery.isLoading}
+          pagination={{
+            page: jobsView.page,
+            pageSize: jobsView.pageSize,
+            total: jobsQuery.data?.count ?? 0,
+            onPageChange: jobsView.setPage,
+          }}
           rows={jobsQuery.data?.results ?? []}
           subtitle="Manual ERP and carrier sync jobs that operators or admins can trigger from the console."
           title="Integration jobs"
+          toolbar={
+            <DataViewToolbar
+              activeFilterCount={jobsView.activeFilterCount}
+              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+              fields={jobFields}
+              filters={jobsView.filters}
+              onChange={jobsView.updateFilter}
+              onReset={jobsView.resetFilters}
+              resultCount={jobsQuery.data?.count}
+              savedViews={{
+                items: jobsView.savedViews,
+                selectedId: jobsView.selectedSavedViewId,
+                onApply: jobsView.applySavedView,
+                onDelete: jobsView.deleteSavedView,
+                onSave: jobsView.saveCurrentView,
+              }}
+            />
+          }
         />
       </Grid>
       <Grid size={{ xs: 12, xl: 6 }}>
@@ -119,9 +218,33 @@ export function IntegrationTable({
           error={webhooksQuery.error ? parseApiError(webhooksQuery.error) : null}
           getRowId={(row) => row.id}
           isLoading={webhooksQuery.isLoading}
+          pagination={{
+            page: webhooksView.page,
+            pageSize: webhooksView.pageSize,
+            total: webhooksQuery.data?.count ?? 0,
+            onPageChange: webhooksView.setPage,
+          }}
           rows={webhooksQuery.data?.results ?? []}
           subtitle="Inbound webhooks waiting for processing or requiring retry."
           title="Webhook events"
+          toolbar={
+            <DataViewToolbar
+              activeFilterCount={webhooksView.activeFilterCount}
+              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+              fields={webhookFields}
+              filters={webhooksView.filters}
+              onChange={webhooksView.updateFilter}
+              onReset={webhooksView.resetFilters}
+              resultCount={webhooksQuery.data?.count}
+              savedViews={{
+                items: webhooksView.savedViews,
+                selectedId: webhooksView.selectedSavedViewId,
+                onApply: webhooksView.applySavedView,
+                onDelete: webhooksView.deleteSavedView,
+                onSave: webhooksView.saveCurrentView,
+              }}
+            />
+          }
         />
       </Grid>
       <Grid size={{ xs: 12, xl: 6 }}>
@@ -153,9 +276,33 @@ export function IntegrationTable({
           error={carrierBookingsQuery.error ? parseApiError(carrierBookingsQuery.error) : null}
           getRowId={(row) => row.id}
           isLoading={carrierBookingsQuery.isLoading}
+          pagination={{
+            page: carrierBookingsView.page,
+            pageSize: carrierBookingsView.pageSize,
+            total: carrierBookingsQuery.data?.count ?? 0,
+            onPageChange: carrierBookingsView.setPage,
+          }}
           rows={carrierBookingsQuery.data?.results ?? []}
           subtitle="Carrier bookings and label lifecycle state."
           title="Carrier bookings"
+          toolbar={
+            <DataViewToolbar
+              activeFilterCount={carrierBookingsView.activeFilterCount}
+              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+              fields={carrierBookingFields}
+              filters={carrierBookingsView.filters}
+              onChange={carrierBookingsView.updateFilter}
+              onReset={carrierBookingsView.resetFilters}
+              resultCount={carrierBookingsQuery.data?.count}
+              savedViews={{
+                items: carrierBookingsView.savedViews,
+                selectedId: carrierBookingsView.selectedSavedViewId,
+                onApply: carrierBookingsView.applySavedView,
+                onDelete: carrierBookingsView.deleteSavedView,
+                onSave: carrierBookingsView.saveCurrentView,
+              }}
+            />
+          }
         />
       </Grid>
       <Grid size={{ xs: 12 }}>
@@ -184,9 +331,32 @@ export function IntegrationTable({
           error={logsQuery.error ? parseApiError(logsQuery.error) : null}
           getRowId={(row) => row.id}
           isLoading={logsQuery.isLoading}
+          pagination={{
+            page: logsView.page,
+            pageSize: logsView.pageSize,
+            total: logsQuery.data?.count ?? 0,
+            onPageChange: logsView.setPage,
+          }}
           rows={logsQuery.data?.results ?? []}
           subtitle="Execution logs emitted by integration jobs, webhooks, and carrier actions."
           title="Integration logs"
+          toolbar={
+            <DataViewToolbar
+              activeFilterCount={logsView.activeFilterCount}
+              fields={logFields}
+              filters={logsView.filters}
+              onChange={logsView.updateFilter}
+              onReset={logsView.resetFilters}
+              resultCount={logsQuery.data?.count}
+              savedViews={{
+                items: logsView.savedViews,
+                selectedId: logsView.selectedSavedViewId,
+                onApply: logsView.applySavedView,
+                onDelete: logsView.deleteSavedView,
+                onSave: logsView.saveCurrentView,
+              }}
+            />
+          }
         />
       </Grid>
     </Grid>

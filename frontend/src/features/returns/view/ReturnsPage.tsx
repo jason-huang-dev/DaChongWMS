@@ -10,6 +10,7 @@ import { PageHeader } from "@/shared/components/page-header";
 
 export function ReturnsPage() {
   const {
+    activeWarehouse,
     returnOrderErrorMessage,
     returnOrderMutation,
     returnOrderSuccessMessage,
@@ -17,11 +18,14 @@ export function ReturnsPage() {
     dispositionMutation,
     dispositionSuccessMessage,
     dispositionsQuery,
+    dispositionsView,
     receiptErrorMessage,
     receiptMutation,
     receiptSuccessMessage,
     receiptsQuery,
+    receiptsView,
     returnOrdersQuery,
+    returnOrdersView,
   } = useReturnsController();
 
   return (
@@ -57,9 +61,13 @@ export function ReturnsPage() {
         </Grid>
         <Grid size={{ xs: 12 }}>
           <ReturnsTable
+            activeWarehouseName={activeWarehouse?.warehouse_name ?? null}
             dispositionsQuery={dispositionsQuery}
+            dispositionsView={dispositionsView}
             receiptsQuery={receiptsQuery}
+            receiptsView={receiptsView}
             returnOrdersQuery={returnOrdersQuery}
+            returnOrdersView={returnOrdersView}
           />
         </Grid>
       </Grid>

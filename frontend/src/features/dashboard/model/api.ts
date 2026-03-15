@@ -1,5 +1,4 @@
 export const dashboardApi = {
-  warehouses: "/api/warehouse/",
   balances: "/api/inventory/balances/",
   purchaseOrders: "/api/inbound/purchase-orders/",
   salesOrders: "/api/outbound/sales-orders/",

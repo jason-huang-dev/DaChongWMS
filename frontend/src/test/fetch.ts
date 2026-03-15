@@ -1,5 +1,7 @@
 import { vi } from "vitest";
 
+import { buildPaginatedResponse } from "@/test/factories";
+
 export type FetchHandler = (url: URL, init?: RequestInit) => Response | Promise<Response> | undefined;
 
 export function jsonResponse(body: unknown, init: ResponseInit = {}) {
@@ -22,6 +24,9 @@ export function installFetchMock(...handlers: FetchHandler[]) {
       if (result !== undefined) {
         return result;
       }
+    }
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(buildPaginatedResponse([]));
     }
     throw new Error(`Unhandled fetch request: ${url.toString()}`);
   });

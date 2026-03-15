@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useTenantScope } from "@/app/scope-context";
 import {
   runReplenishmentTaskComplete,
   runReplenishmentTaskGenerate,
@@ -21,12 +22,11 @@ import type {
   TransferOrderEditValues,
   TransferOrderRecord,
 } from "@/features/transfers/model/types";
+import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
-
-const pageSize = 8;
 
 async function invalidateTransfersQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await invalidateQueryGroups(queryClient, [
@@ -38,10 +38,43 @@ async function invalidateTransfersQueries(queryClient: ReturnType<typeof useQuer
 
 export function useTransfersController() {
   const queryClient = useQueryClient();
+  const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const [createSuccessMessage, setCreateSuccessMessage] = useState<string | null>(null);
   const [createErrorMessage, setCreateErrorMessage] = useState<string | null>(null);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
+  const transferOrdersView = useDataView({
+    viewKey: `transfers.transfer-orders.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      transfer_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const transferLinesView = useDataView({
+    viewKey: `transfers.transfer-lines.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      status: "",
+      assigned_to__isnull: "",
+    },
+    pageSize: 8,
+  });
+  const replenishmentRulesView = useDataView({
+    viewKey: `transfers.replenishment-rules.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      stock_status: "",
+      is_active: "",
+    },
+    pageSize: 8,
+  });
+  const replenishmentTasksView = useDataView({
+    viewKey: `transfers.replenishment-tasks.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      status: "",
+      assigned_to__isnull: "",
+    },
+    pageSize: 8,
+  });
 
   const createTransferOrderMutation = useMutation({
     mutationFn: ({
@@ -65,26 +98,41 @@ export function useTransfersController() {
   const transferOrdersQuery = usePaginatedResource<TransferOrderRecord>(
     ["transfers", "transfer-orders"],
     transfersApi.transferOrders,
-    1,
-    pageSize,
+    transferOrdersView.page,
+    transferOrdersView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...transferOrdersView.queryFilters,
+    },
   );
   const transferLinesQuery = usePaginatedResource<TransferLineRecord>(
     ["transfers", "transfer-lines"],
     transfersApi.transferLines,
-    1,
-    pageSize,
+    transferLinesView.page,
+    transferLinesView.pageSize,
+    {
+      ...transferLinesView.queryFilters,
+    },
   );
   const replenishmentRulesQuery = usePaginatedResource<ReplenishmentRuleRecord>(
     ["transfers", "replenishment-rules"],
     transfersApi.replenishmentRules,
-    1,
-    pageSize,
+    replenishmentRulesView.page,
+    replenishmentRulesView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...replenishmentRulesView.queryFilters,
+    },
   );
   const replenishmentTasksQuery = usePaginatedResource<ReplenishmentTaskRecord>(
     ["transfers", "replenishment-tasks"],
     transfersApi.replenishmentTasks,
-    1,
-    pageSize,
+    replenishmentTasksView.page,
+    replenishmentTasksView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...replenishmentTasksView.queryFilters,
+    },
   );
 
   const generateTaskMutation = useMutation({
@@ -120,6 +168,7 @@ export function useTransfersController() {
   });
 
   return {
+    activeWarehouse,
     actionErrorMessage,
     actionSuccessMessage,
     completeTaskMutation,
@@ -129,9 +178,13 @@ export function useTransfersController() {
     defaultTransferOrderCreateValues,
     generateTaskMutation,
     replenishmentRulesQuery,
+    replenishmentRulesView,
     replenishmentTasksQuery,
+    replenishmentTasksView,
     transferLinesQuery,
+    transferLinesView,
     transferOrdersQuery,
+    transferOrdersView,
   };
 }
 

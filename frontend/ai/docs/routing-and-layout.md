@@ -7,6 +7,7 @@ The frontend now uses a guarded application shell that separates login from auth
 - `/login`
 - `/signup`
 - `/mfa/challenge`
+- `/security`
 - `/dashboard`
 - `/mfa/enroll`
 - `/inventory/balances`
@@ -52,6 +53,7 @@ Route configuration lives in `frontend/src/app/routes.tsx`.
 
 - persistent left navigation
 - top bar with breadcrumbs
+- workspace/company and warehouse context switcher
 - operator identity menu and sign-out action
 - responsive drawer behavior for smaller screens
 
@@ -74,15 +76,18 @@ Scan-first action panels and selector-driven create panels are packaged as route
 ## Current Domain Detail Routes
 
 - Inbound purchase-order detail exposes editable header fields and a cancel action.
+- Inbound queue now exposes an overdue-receipts exception lane ahead of the broader purchase-order queue.
 - Outbound sales-order detail exposes editable header fields plus allocation/cancel actions.
+- Outbound queue now exposes a short-pick follow-up proxy lane based on overdue ship-risk orders until the backend emits explicit short-pick records.
 - Transfers expose transfer-order detail plus replenishment task actions.
 - Returns expose return-order detail plus receipt/disposition posting panels.
-- Counting approval detail exposes approve/reject actions with count-line context.
+- Counting approval detail exposes approve/reject actions with count-line context, and the parent counting route surfaces blocked-count exception lanes.
 - Automation exposes schedule creation, queue monitoring, worker heartbeats, and alert review.
 - Automation detail routes expose object-level inspection for scheduled tasks and background tasks.
-- Integrations expose job/webhook/carrier booking creation plus execution actions from the same route.
+- Integrations expose job/webhook/carrier booking creation plus execution actions from the same route, along with failed-integration exception lanes.
 - Integration detail routes expose object-level inspection for jobs, webhooks, and carrier bookings.
 - Finance invoice detail exposes finalize and finance-review actions with invoice-line detail.
+- Security exposes staff directory management, role assignment, lock-state control, and a direct path to personal MFA management.
 
 ## Next Routing Work
 

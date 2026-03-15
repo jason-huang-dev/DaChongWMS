@@ -1,24 +1,29 @@
+import { useTenantScope } from "@/app/scope-context";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { dashboardApi } from "@/features/dashboard/model/api";
 import { getDashboardAccess, sumVisibleOnHand } from "@/features/dashboard/model/mappers";
-import type { CountApprovalSummary, CountingDashboardSummary, InventoryBalanceRecord, InvoiceRecord, PurchaseOrderRecord, SalesOrderRecord, WarehouseRecord } from "@/features/dashboard/model/types";
+import type { CountApprovalSummary, CountingDashboardSummary, InventoryBalanceRecord, InvoiceRecord, PurchaseOrderRecord, SalesOrderRecord } from "@/features/dashboard/model/types";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 
 export function useDashboardController() {
   const { session } = useAuth();
+  const { company, activeWarehouse, activeWarehouseId, warehousesQuery } = useTenantScope();
   const { canViewOps, canViewFinance } = getDashboardAccess(session);
 
-  const warehouseQuery = usePaginatedResource<WarehouseRecord>(["dashboard", "warehouses"], dashboardApi.warehouses, 1, 5, undefined, {
+  const balancesQuery = usePaginatedResource<InventoryBalanceRecord>(["dashboard", "balances"], dashboardApi.balances, 1, 10, {
+    warehouse: activeWarehouseId ?? undefined,
+  }, {
     enabled: Boolean(session && canViewOps),
   });
-  const balancesQuery = usePaginatedResource<InventoryBalanceRecord>(["dashboard", "balances"], dashboardApi.balances, 1, 10, undefined, {
+  const purchaseOrdersQuery = usePaginatedResource<PurchaseOrderRecord>(["dashboard", "purchase-orders"], dashboardApi.purchaseOrders, 1, 5, {
+    warehouse: activeWarehouseId ?? undefined,
+  }, {
     enabled: Boolean(session && canViewOps),
   });
-  const purchaseOrdersQuery = usePaginatedResource<PurchaseOrderRecord>(["dashboard", "purchase-orders"], dashboardApi.purchaseOrders, 1, 5, undefined, {
-    enabled: Boolean(session && canViewOps),
-  });
-  const salesOrdersQuery = usePaginatedResource<SalesOrderRecord>(["dashboard", "sales-orders"], dashboardApi.salesOrders, 1, 5, undefined, {
+  const salesOrdersQuery = usePaginatedResource<SalesOrderRecord>(["dashboard", "sales-orders"], dashboardApi.salesOrders, 1, 5, {
+    warehouse: activeWarehouseId ?? undefined,
+  }, {
     enabled: Boolean(session && canViewOps),
   });
   const approvalsSummaryQuery = useResource<CountApprovalSummary>(["dashboard", "approval-summary"], dashboardApi.approvalSummary, undefined, {
@@ -33,16 +38,18 @@ export function useDashboardController() {
 
   return {
     session,
+    company,
     canViewOps,
     canViewFinance,
-    warehouseQuery,
+    warehousesQuery,
     balancesQuery,
     purchaseOrdersQuery,
     salesOrdersQuery,
     approvalsSummaryQuery,
     countingDashboardQuery,
     invoicesQuery,
-    firstWarehouse: warehouseQuery.data?.results[0],
+    activeWarehouse,
+    firstWarehouse: activeWarehouse ?? warehousesQuery.data?.results[0],
     visibleOnHand: sumVisibleOnHand(balancesQuery.data?.results ?? []),
   };
 }

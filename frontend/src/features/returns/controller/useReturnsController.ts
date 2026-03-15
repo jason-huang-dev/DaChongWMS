@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useTenantScope } from "@/app/scope-context";
 import {
   runReturnDispositionCreate,
   runReturnOrderCreate,
@@ -27,12 +28,11 @@ import type {
   ReturnReceiptRecord,
   SalesOrderRecord,
 } from "@/features/returns/model/types";
+import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
-
-const pageSize = 8;
 
 async function invalidateReturnsQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await invalidateQueryGroups(queryClient, [
@@ -45,30 +45,67 @@ async function invalidateReturnsQueries(queryClient: ReturnType<typeof useQueryC
 
 export function useReturnsController() {
   const queryClient = useQueryClient();
+  const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const [returnOrderSuccessMessage, setReturnOrderSuccessMessage] = useState<string | null>(null);
   const [returnOrderErrorMessage, setReturnOrderErrorMessage] = useState<string | null>(null);
   const [receiptSuccessMessage, setReceiptSuccessMessage] = useState<string | null>(null);
   const [receiptErrorMessage, setReceiptErrorMessage] = useState<string | null>(null);
   const [dispositionSuccessMessage, setDispositionSuccessMessage] = useState<string | null>(null);
   const [dispositionErrorMessage, setDispositionErrorMessage] = useState<string | null>(null);
+  const returnOrdersView = useDataView({
+    viewKey: `returns.return-orders.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      return_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const receiptsView = useDataView({
+    viewKey: `returns.receipts.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      receipt_number__icontains: "",
+      stock_status: "",
+    },
+    pageSize: 8,
+  });
+  const dispositionsView = useDataView({
+    viewKey: `returns.dispositions.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      disposition_number__icontains: "",
+      disposition_type: "",
+    },
+    pageSize: 8,
+  });
 
   const returnOrdersQuery = usePaginatedResource<ReturnOrderRecord>(
     ["returns", "return-orders"],
     returnsApi.returnOrders,
-    1,
-    pageSize,
+    returnOrdersView.page,
+    returnOrdersView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...returnOrdersView.queryFilters,
+    },
   );
   const receiptsQuery = usePaginatedResource<ReturnReceiptRecord>(
     ["returns", "receipts"],
     returnsApi.receipts,
-    1,
-    pageSize,
+    receiptsView.page,
+    receiptsView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...receiptsView.queryFilters,
+    },
   );
   const dispositionsQuery = usePaginatedResource<ReturnDispositionRecord>(
     ["returns", "dispositions"],
     returnsApi.dispositions,
-    1,
-    pageSize,
+    dispositionsView.page,
+    dispositionsView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...dispositionsView.queryFilters,
+    },
   );
 
   const returnOrderMutation = useMutation({
@@ -117,6 +154,7 @@ export function useReturnsController() {
   });
 
   return {
+    activeWarehouse,
     defaultReturnOrderCreateValues,
     defaultDispositionValues: defaultReturnDispositionValues,
     defaultReceiptValues: defaultReturnReceiptValues,
@@ -124,6 +162,7 @@ export function useReturnsController() {
     dispositionMutation,
     dispositionSuccessMessage,
     dispositionsQuery,
+    dispositionsView,
     returnOrderErrorMessage,
     returnOrderMutation,
     returnOrderSuccessMessage,
@@ -131,7 +170,9 @@ export function useReturnsController() {
     receiptMutation,
     receiptSuccessMessage,
     receiptsQuery,
+    receiptsView,
     returnOrdersQuery,
+    returnOrdersView,
   };
 }
 

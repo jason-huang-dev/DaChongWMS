@@ -23,9 +23,11 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { brandColors, brandGradients, brandShadows } from "@/app/brand";
 import { navigationItems } from "@/app/layout/navigation-items";
+import { useTenantScope } from "@/app/scope-context";
 import { RouteBreadcrumbs } from "@/app/layout/route-breadcrumbs";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { BrandLogo } from "@/shared/components/brand-logo";
+import { WorkspaceContextSwitcher } from "@/shared/components/workspace-context-switcher";
 import { hasAnyRole } from "@/shared/utils/permissions";
 
 const drawerWidth = 264;
@@ -34,6 +36,7 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, logout } = useAuth();
+  const { company, warehouses, activeWarehouseId, setActiveWarehouseId } = useTenantScope();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
@@ -119,6 +122,14 @@ export function AppShell() {
           <Box sx={{ flexGrow: 1 }}>
             <RouteBreadcrumbs />
           </Box>
+          <Box sx={{ display: { xs: "none", xl: "block" } }}>
+            <WorkspaceContextSwitcher
+              activeWarehouseId={activeWarehouseId}
+              company={company}
+              onWarehouseChange={setActiveWarehouseId}
+              warehouses={warehouses}
+            />
+          </Box>
           <Stack alignItems="center" direction="row" onClick={(event) => setMenuAnchor(event.currentTarget)} spacing={1.5} sx={{ cursor: "pointer" }}>
             <Avatar
               sx={{
@@ -181,6 +192,14 @@ export function AppShell() {
         {drawerContent}
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, ml: { md: `${drawerWidth}px` }, p: 3, pt: { xs: 11, md: 12 } }}>
+        <Box sx={{ display: { xs: "block", xl: "none" }, mb: 2 }}>
+          <WorkspaceContextSwitcher
+            activeWarehouseId={activeWarehouseId}
+            company={company}
+            onWarehouseChange={setActiveWarehouseId}
+            warehouses={warehouses}
+          />
+        </Box>
         <Outlet />
       </Box>
     </Box>

@@ -146,6 +146,70 @@ test("renders the MFA enrollment page for authenticated operators", async () => 
   expect(screen.getByText("Create authenticator setup")).toBeInTheDocument();
 });
 
+test("renders security access management for managers", async () => {
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/staff/") {
+      return jsonResponse(buildPaginatedResponse([buildStaffRecord("Inbound", { id: 12, staff_name: "Dock User" })]));
+    }
+    if (url.pathname === "/api/staff/type/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            staff_type: "Manager",
+            creator: "Seeder",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+          {
+            id: 2,
+            staff_type: "Inbound",
+            creator: "Seeder",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/mfa/status/") {
+      return jsonResponse({
+        has_verified_enrollment: true,
+        enrollment_required: false,
+        primary_enrollment: {
+          id: 1,
+          label: "Primary authenticator",
+          method: "totp",
+          is_verified: true,
+          is_primary: true,
+          verified_at: "2026-03-14T09:00:00Z",
+          create_time: "2026-03-14T09:00:00Z",
+        },
+        recovery_codes_remaining: 8,
+        verified_methods: ["totp"],
+      });
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/security"]);
+
+  expect(await screen.findByText("Security and access")).toBeInTheDocument();
+  expect(await screen.findByText("Staff access directory")).toBeInTheDocument();
+  expect(screen.getByText("Dock User")).toBeInTheDocument();
+  expect(screen.getByText("Manage my MFA")).toBeInTheDocument();
+});
+
 test("renders inbound scan panels and inbound records for authorized operators", async () => {
   saveStoredSession({
     username: "inbound",
@@ -236,10 +300,10 @@ test("renders inbound scan panels and inbound records for authorized operators",
   renderWithRouter(["/inbound"]);
 
   expect(await screen.findByText("Inbound operations", undefined, { timeout: 5000 })).toBeInTheDocument();
-  expect(await screen.findByText("PO-1001", undefined, { timeout: 5000 })).toBeInTheDocument();
+  expect((await screen.findAllByText("PO-1001", undefined, { timeout: 5000 })).length).toBeGreaterThan(0);
   expect(screen.getByText("Scan receive")).toBeInTheDocument();
   expect(screen.getByText("Scan putaway")).toBeInTheDocument();
-  expect(screen.getByText("Supplier A")).toBeInTheDocument();
+  expect(screen.getAllByText("Supplier A").length).toBeGreaterThan(0);
 });
 
 test("renders transfers and replenishment for authorized operators", async () => {

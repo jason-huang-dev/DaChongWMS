@@ -26,6 +26,7 @@ const SignupPage = lazyNamedPage(() => import("@/features/auth/view/SignupPage")
 const MfaChallengePage = lazyNamedPage(() => import("@/features/mfa/view/MfaChallengePage"), "MfaChallengePage");
 const MfaEnrollmentPage = lazyNamedPage(() => import("@/features/mfa/view/MfaEnrollmentPage"), "MfaEnrollmentPage");
 const NotAuthorizedPage = lazyNamedPage(() => import("@/features/auth/view/NotAuthorizedPage"), "NotAuthorizedPage");
+const SecurityPage = lazyNamedPage(() => import("@/features/security/view/SecurityPage"), "SecurityPage");
 const DashboardPage = lazyNamedPage(() => import("@/features/dashboard/view/DashboardPage"), "DashboardPage");
 const InventoryBalancesPage = lazyNamedPage(
   () => import("@/features/inventory/view/InventoryBalancesPage"),
@@ -122,6 +123,11 @@ export const appRoutes: RouteObject[] = [
           {
             path: "/mfa/enroll",
             element: withSuspense(<MfaEnrollmentPage />),
+            handle: { crumb: "MFA" },
+          },
+          {
+            path: "/security",
+            element: withSuspense(<SecurityPage />),
             handle: { crumb: "Security" },
           },
           {

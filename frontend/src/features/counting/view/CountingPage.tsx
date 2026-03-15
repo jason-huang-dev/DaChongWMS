@@ -4,6 +4,8 @@ import { Stack } from "@mui/material";
 import { useCountingController } from "@/features/counting/controller/useCountingController";
 import { CountingTable } from "@/features/counting/view/CountingTable";
 import { ScannerTaskPanel } from "@/features/counting/view/components/ScannerTaskPanel";
+import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
+import { ExceptionLane } from "@/shared/components/exception-lane";
 import { MetricCard } from "@/shared/components/metric-card";
 import { PageHeader } from "@/shared/components/page-header";
 import { RecordLink } from "@/shared/components/record-link";
@@ -12,8 +14,31 @@ import { StatusChip } from "@/shared/components/status-chip";
 import { formatDateTime, formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
+const assignmentFields: DataViewFieldConfig<{ scanner_task_type: string; scanner_task_status: string }>[] = [
+  {
+    key: "scanner_task_type",
+    label: "Task type",
+    type: "select",
+    options: [
+      { label: "Count", value: "COUNT" },
+      { label: "Recount", value: "RECOUNT" },
+    ],
+  },
+  {
+    key: "scanner_task_status",
+    label: "Scanner state",
+    type: "select",
+    options: [
+      { label: "Pending", value: "PENDING" },
+      { label: "Acknowledged", value: "ACKNOWLEDGED" },
+      { label: "In progress", value: "IN_PROGRESS" },
+      { label: "Completed", value: "COMPLETED" },
+    ],
+  },
+];
+
 export function CountingPage() {
-  const { assignmentsQuery, dashboardQuery, nextTaskQuery, pageSize, queuePage, queueQuery, setQueuePage } =
+  const { activeWarehouse, assignmentsQuery, assignmentsView, dashboardQuery, nextTaskQuery, queueQuery, queueView } =
     useCountingController();
 
   return (
@@ -61,13 +86,36 @@ export function CountingPage() {
             error={assignmentsQuery.error ? parseApiError(assignmentsQuery.error) : null}
             getRowId={(row) => row.id}
             isLoading={assignmentsQuery.isLoading}
+            pagination={{
+              page: assignmentsView.page,
+              pageSize: assignmentsView.pageSize,
+              total: assignmentsQuery.data?.count ?? 0,
+              onPageChange: assignmentsView.setPage,
+            }}
             rows={assignmentsQuery.data?.results ?? []}
             subtitle="Current counter assignments for the logged-in operator"
             title="My assignments"
+            toolbar={
+              <DataViewToolbar
+                activeFilterCount={assignmentsView.activeFilterCount}
+                fields={assignmentFields}
+                filters={assignmentsView.filters}
+                onChange={assignmentsView.updateFilter}
+                onReset={assignmentsView.resetFilters}
+                resultCount={assignmentsQuery.data?.count}
+                savedViews={{
+                  items: assignmentsView.savedViews,
+                  selectedId: assignmentsView.selectedSavedViewId,
+                  onApply: assignmentsView.applySavedView,
+                  onDelete: assignmentsView.deleteSavedView,
+                  onSave: assignmentsView.saveCurrentView,
+                }}
+              />
+            }
           />
         </Grid>
         <Grid size={{ xs: 12, xl: 6 }}>
-          <ResourceTable
+          <ExceptionLane
             columns={[
               {
                 header: "Count",
@@ -85,17 +133,42 @@ export function CountingPage() {
             getRowId={(row) => row.approval_id}
             isLoading={dashboardQuery.isLoading}
             rows={dashboardQuery.data?.pending_oldest_items ?? []}
-            subtitle="Oldest pending approvals from the supervisor dashboard"
-            title="Pending approvals at risk"
+            severity="warning"
+            subtitle="Oldest pending approvals from the supervisor dashboard."
+            title="Blocked counts: approval breaches"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, xl: 6 }}>
+          <ExceptionLane
+            columns={[
+              {
+                header: "Count",
+                key: "count",
+                render: (row) => <RecordLink to={`/counting/approvals/${row.approval_id}`}>{row.count_number}</RecordLink>,
+              },
+              { header: "Warehouse", key: "warehouse", render: (row) => row.warehouse_name },
+              { header: "Location", key: "location", render: (row) => row.location_code },
+              { header: "SKU", key: "sku", render: (row) => row.goods_code },
+              { header: "Variance", key: "variance", align: "right", render: (row) => formatNumber(row.variance_qty) },
+              { header: "Assigned recount", key: "assigned", render: (row) => row.recount_assigned_to || "--" },
+              { header: "Age", key: "age", align: "right", render: (row) => `${row.age_hours.toFixed(1)}h` },
+            ]}
+            emptyMessage="No recount SLA breaches."
+            error={dashboardQuery.error ? parseApiError(dashboardQuery.error) : null}
+            getRowId={(row) => `${row.approval_id}-${row.count_number}`}
+            isLoading={dashboardQuery.isLoading}
+            rows={dashboardQuery.data?.recount_items ?? []}
+            severity="error"
+            subtitle="Rejected or reassigned counts that are already beyond the recount SLA."
+            title="Blocked counts: recount breaches"
           />
         </Grid>
         <Grid size={{ xs: 12 }}>
           <CountingTable
             error={queueQuery.error ? parseApiError(queueQuery.error) : null}
             isLoading={queueQuery.isLoading}
-            onPageChange={setQueuePage}
-            page={queuePage}
-            pageSize={pageSize}
+            activeWarehouseName={activeWarehouse?.warehouse_name ?? null}
+            dataView={queueView}
             rows={queueQuery.data?.results ?? []}
             total={queueQuery.data?.count ?? 0}
           />

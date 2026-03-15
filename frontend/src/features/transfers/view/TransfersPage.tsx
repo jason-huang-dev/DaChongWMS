@@ -8,6 +8,7 @@ import { QueryAlert } from "@/shared/components/query-alert";
 
 export function TransfersPage() {
   const {
+    activeWarehouse,
     actionErrorMessage,
     actionSuccessMessage,
     completeTaskMutation,
@@ -16,9 +17,13 @@ export function TransfersPage() {
     createTransferOrderMutation,
     generateTaskMutation,
     replenishmentRulesQuery,
+    replenishmentRulesView,
     replenishmentTasksQuery,
+    replenishmentTasksView,
     transferLinesQuery,
+    transferLinesView,
     transferOrdersQuery,
+    transferOrdersView,
   } = useTransfersController();
 
   return (
@@ -36,14 +41,19 @@ export function TransfersPage() {
       <QueryAlert message={actionErrorMessage} />
       {actionSuccessMessage ? <Alert severity="success">{actionSuccessMessage}</Alert> : null}
       <TransfersTable
+        activeWarehouseName={activeWarehouse?.warehouse_name ?? null}
         isCompletingTask={completeTaskMutation.isPending}
         isGeneratingTask={generateTaskMutation.isPending}
         onCompleteTask={(replenishmentTaskId) => completeTaskMutation.mutate(replenishmentTaskId)}
         onGenerateTask={(replenishmentRuleId) => generateTaskMutation.mutate(replenishmentRuleId)}
         replenishmentRulesQuery={replenishmentRulesQuery}
+        replenishmentRulesView={replenishmentRulesView}
         replenishmentTasksQuery={replenishmentTasksQuery}
+        replenishmentTasksView={replenishmentTasksView}
         transferLinesQuery={transferLinesQuery}
+        transferLinesView={transferLinesView}
         transferOrdersQuery={transferOrdersQuery}
+        transferOrdersView={transferOrdersView}
       />
     </Stack>
   );

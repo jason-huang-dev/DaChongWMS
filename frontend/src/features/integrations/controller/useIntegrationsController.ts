@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useTenantScope } from "@/app/scope-context";
 import {
   runCarrierBookingCreate,
   runCarrierLabelGenerate,
@@ -27,6 +28,7 @@ import type {
   WebhookEventCreateValues,
   WebhookEventRecord,
 } from "@/features/integrations/model/types";
+import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
@@ -38,18 +40,112 @@ async function invalidateIntegrationQueries(queryClient: ReturnType<typeof useQu
 
 export function useIntegrationsController() {
   const queryClient = useQueryClient();
+  const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const jobsView = useDataView({
+    viewKey: `integrations.jobs.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      integration_name__icontains: "",
+      job_type: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const webhooksView = useDataView({
+    viewKey: `integrations.webhooks.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      event_key__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const carrierBookingsView = useDataView({
+    viewKey: `integrations.carrier-bookings.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      carrier_code__icontains: "",
+      tracking_number__icontains: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
+  const logsView = useDataView({
+    viewKey: `integrations.logs.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      level: "",
+    },
+    pageSize: 8,
+  });
 
-  const jobsQuery = usePaginatedResource<IntegrationJobRecord>(["integrations", "jobs"], integrationsApi.jobs, 1, 8);
-  const webhooksQuery = usePaginatedResource<WebhookEventRecord>(["integrations", "webhooks"], integrationsApi.webhooks, 1, 8);
+  const jobsQuery = usePaginatedResource<IntegrationJobRecord>(
+    ["integrations", "jobs"],
+    integrationsApi.jobs,
+    jobsView.page,
+    jobsView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...jobsView.queryFilters,
+    },
+  );
+  const webhooksQuery = usePaginatedResource<WebhookEventRecord>(
+    ["integrations", "webhooks"],
+    integrationsApi.webhooks,
+    webhooksView.page,
+    webhooksView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...webhooksView.queryFilters,
+    },
+  );
   const carrierBookingsQuery = usePaginatedResource<CarrierBookingRecord>(
     ["integrations", "carrier-bookings"],
     integrationsApi.carrierBookings,
-    1,
-    8,
+    carrierBookingsView.page,
+    carrierBookingsView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...carrierBookingsView.queryFilters,
+    },
   );
-  const logsQuery = usePaginatedResource<IntegrationLogRecord>(["integrations", "logs"], integrationsApi.logs, 1, 8);
+  const logsQuery = usePaginatedResource<IntegrationLogRecord>(
+    ["integrations", "logs"],
+    integrationsApi.logs,
+    logsView.page,
+    logsView.pageSize,
+    {
+      ...logsView.queryFilters,
+    },
+  );
+  const failedJobsQuery = usePaginatedResource<IntegrationJobRecord>(
+    ["integrations", "jobs", "failed"],
+    integrationsApi.jobs,
+    1,
+    5,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      status: "FAILED",
+    },
+  );
+  const failedWebhooksQuery = usePaginatedResource<WebhookEventRecord>(
+    ["integrations", "webhooks", "failed"],
+    integrationsApi.webhooks,
+    1,
+    5,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      status: "FAILED",
+    },
+  );
+  const failedCarrierBookingsQuery = usePaginatedResource<CarrierBookingRecord>(
+    ["integrations", "carrier-bookings", "failed"],
+    integrationsApi.carrierBookings,
+    1,
+    5,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      status: "FAILED",
+    },
+  );
 
   const createJobMutation = useMutation({
     mutationFn: (values: IntegrationJobCreateValues) => runIntegrationJobCreate(values),
@@ -156,7 +252,9 @@ export function useIntegrationsController() {
   });
 
   return {
+    activeWarehouse,
     carrierBookingsQuery,
+    carrierBookingsView,
     completeJobMutation,
     createCarrierBookingMutation,
     createJobMutation,
@@ -166,13 +264,19 @@ export function useIntegrationsController() {
     defaultWebhookEventCreateValues,
     errorMessage,
     failJobMutation,
+    failedCarrierBookingsQuery,
+    failedJobsQuery,
+    failedWebhooksQuery,
     generateLabelMutation,
     jobsQuery,
+    jobsView,
     logsQuery,
+    logsView,
     processWebhookMutation,
     startJobMutation,
     successMessage,
     webhooksQuery,
+    webhooksView,
   };
 }
 

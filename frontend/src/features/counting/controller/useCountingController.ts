@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useTenantScope } from "@/app/scope-context";
 import {
   runApprovalDecision,
   runScannerAck,
@@ -20,41 +21,65 @@ import type {
   ScannerCompleteValues,
 } from "@/features/counting/model/types";
 import { defaultApprovalDecisionValues } from "@/features/counting/model/mappers";
+import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
-const pageSize = 10;
-
 async function invalidateCountingQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await invalidateQueryGroups(queryClient, [["counting"], ["dashboard"], ["inventory"]]);
 }
 
 export function useCountingController() {
-  const [queuePage, setQueuePage] = useState(1);
+  const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
+  const assignmentsView = useDataView({
+    viewKey: `counting.assignments.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      scanner_task_type: "",
+      scanner_task_status: "",
+    },
+    pageSize: 10,
+  });
+  const queueView = useDataView({
+    viewKey: `counting.approvals.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      status: "",
+      requested_by__icontains: "",
+    },
+    pageSize: 10,
+  });
 
   return {
-    queuePage,
-    setQueuePage,
-    pageSize,
+    activeWarehouse,
+    assignmentsView,
     assignmentsQuery: usePaginatedResource<CycleCountLineRecord>(
       ["counting", "my-assignments"],
       countingApi.myAssignments,
-      1,
-      pageSize,
+      assignmentsView.page,
+      assignmentsView.pageSize,
+      {
+        ...assignmentsView.queryFilters,
+      },
     ),
     nextTaskQuery: useResource<NextCountTaskRecord>(["counting", "next-task"], countingApi.nextTask),
     dashboardQuery: useResource<CountingDashboardSummary>(
       ["counting", "dashboard"],
       countingApi.approvalsDashboard,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+      },
     ),
+    queueView,
     queueQuery: usePaginatedResource<CountApprovalQueueRecord>(
       ["counting", "approval-queue"],
       countingApi.approvalsQueue,
-      queuePage,
-      pageSize,
+      queueView.page,
+      queueView.pageSize,
+      {
+        ...queueView.queryFilters,
+      },
     ),
   };
 }

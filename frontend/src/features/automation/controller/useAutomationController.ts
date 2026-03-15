@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useTenantScope } from "@/app/scope-context";
 import {
   runAutomationAlertEvaluation,
   runBackgroundTaskRetry,
@@ -18,6 +19,7 @@ import type {
   ScheduledTaskRecord,
   WorkerHeartbeatRecord,
 } from "@/features/automation/model/types";
+import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
@@ -29,36 +31,88 @@ async function invalidateAutomationQueries(queryClient: ReturnType<typeof useQue
 
 export function useAutomationController() {
   const queryClient = useQueryClient();
+  const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const scheduledTasksView = useDataView({
+    viewKey: `automation.scheduled-tasks.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      task_type: "",
+      is_active: "",
+    },
+    pageSize: 8,
+  });
+  const backgroundTasksView = useDataView({
+    viewKey: `automation.background-tasks.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      task_type: "",
+      status: "",
+      reference_code__icontains: "",
+    },
+    pageSize: 8,
+  });
+  const workerHeartbeatsView = useDataView({
+    viewKey: `automation.worker-heartbeats.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      worker_name__icontains: "",
+    },
+    pageSize: 8,
+  });
+  const alertsView = useDataView({
+    viewKey: `automation.alerts.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      status: "",
+      severity: "",
+      alert_type: "",
+    },
+    pageSize: 8,
+  });
 
   const scheduledTasksQuery = usePaginatedResource<ScheduledTaskRecord>(
     ["automation", "scheduled-tasks"],
     automationApi.scheduledTasks,
-    1,
-    8,
+    scheduledTasksView.page,
+    scheduledTasksView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...scheduledTasksView.queryFilters,
+    },
   );
   const backgroundTasksQuery = usePaginatedResource<BackgroundTaskRecord>(
     ["automation", "background-tasks"],
     automationApi.backgroundTasks,
-    1,
-    8,
+    backgroundTasksView.page,
+    backgroundTasksView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...backgroundTasksView.queryFilters,
+    },
   );
   const workerHeartbeatsQuery = usePaginatedResource<WorkerHeartbeatRecord>(
     ["automation", "worker-heartbeats"],
     automationApi.workerHeartbeats,
-    1,
-    8,
+    workerHeartbeatsView.page,
+    workerHeartbeatsView.pageSize,
+    {
+      ...workerHeartbeatsView.queryFilters,
+    },
   );
   const alertsQuery = usePaginatedResource<AutomationAlertRecord>(
     ["automation", "alerts"],
     automationApi.alerts,
-    1,
-    8,
+    alertsView.page,
+    alertsView.pageSize,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+      ...alertsView.queryFilters,
+    },
   );
   const dashboardQuery = useResource<AutomationDashboardRecord>(
     ["automation", "dashboard"],
     automationApi.backgroundTaskDashboard,
+    {
+      warehouse: activeWarehouseId ?? undefined,
+    },
   );
 
   const createScheduledTaskMutation = useMutation({
@@ -116,8 +170,11 @@ export function useAutomationController() {
   });
 
   return {
+    activeWarehouse,
     alertsQuery,
+    alertsView,
     backgroundTasksQuery,
+    backgroundTasksView,
     createScheduledTaskMutation,
     dashboardQuery,
     defaultScheduledTaskCreateValues,
@@ -126,8 +183,10 @@ export function useAutomationController() {
     retryTaskMutation,
     runNowMutation,
     scheduledTasksQuery,
+    scheduledTasksView,
     successMessage,
     workerHeartbeatsQuery,
+    workerHeartbeatsView,
   };
 }
 
