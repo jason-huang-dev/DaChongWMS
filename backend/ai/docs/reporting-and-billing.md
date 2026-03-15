@@ -1,6 +1,6 @@
 # Reporting and Billing
 
-`reporting` packages warehouse KPIs, operational CSV exports, storage accruals, contract rating, invoice generation, finance review, and the billing-event ledger.
+`reporting` packages warehouse KPIs, operational CSV exports, storage accruals, contract rating, invoice generation, finance review, settlement/remittance, disputes, credit notes, external remittance ingestion, and the billing-event ledger.
 
 ## Scope
 
@@ -11,6 +11,11 @@
 - `Invoice` / `InvoiceLine`: rated billing documents generated from open charge events.
 - `StorageAccrualRun`: daily on-hand snapshot used to create storage billing events.
 - `InvoiceFinanceApproval`: finance review state for finalized invoices.
+- `InvoiceSettlement`: approved collection target and remaining remit balance for a finance-approved invoice.
+- `InvoiceRemittance`: posted payment/remittance records against a settlement.
+- `InvoiceDispute`: finance dispute workflow for invoice- or line-level issues.
+- `CreditNote`: finance-issued credit document tied to a dispute or manual adjustment.
+- `ExternalRemittanceBatch` / `ExternalRemittanceItem`: idempotent ingestion log for ERP or bank remittance payloads.
 - `FinanceExport`: finance-facing CSV extract of approved invoices.
 
 ## Billing Flow
@@ -21,7 +26,12 @@
 4. Invoice generation resolves the applicable contract, rates each open event, marks it invoiced, and creates invoice lines.
 5. Finalization closes the invoice header for downstream finance handling.
 6. Finance review submits, approves, or rejects finalized invoices.
-7. Finance export produces CSV extracts from finance-approved invoices only.
+7. Settlement submission and approval convert finance-approved invoices into collectible balances.
+8. Remittances post against approved settlements and drive partial vs full settlement status.
+9. Disputes can hold or reduce collectible balance through review and resolution.
+10. Credit notes document approved credits and feed collectible-balance calculations.
+11. External remittance ingestion can apply ERP or bank remittances onto approved settlements with conflict logging.
+12. Finance export produces CSV extracts from finance-approved invoices with settlement, remittance, credit-note, and dispute totals.
 
 ## Scheduled Billing
 
@@ -56,6 +66,22 @@
 - `POST /api/reporting/invoices/{id}/submit-finance-review/`
 - `POST /api/reporting/invoices/{id}/approve-finance-review/`
 - `POST /api/reporting/invoices/{id}/reject-finance-review/`
+- `GET/POST /api/reporting/invoice-settlements/`
+- `GET /api/reporting/invoice-settlements/{id}/`
+- `POST /api/reporting/invoice-settlements/{id}/approve/`
+- `POST /api/reporting/invoice-settlements/{id}/reject/`
+- `GET/POST /api/reporting/invoice-remittances/`
+- `GET /api/reporting/invoice-remittances/{id}/`
+- `GET/POST /api/reporting/invoice-disputes/`
+- `GET /api/reporting/invoice-disputes/{id}/`
+- `POST /api/reporting/invoice-disputes/{id}/review/`
+- `POST /api/reporting/invoice-disputes/{id}/resolve/`
+- `POST /api/reporting/invoice-disputes/{id}/reject/`
+- `GET/POST /api/reporting/credit-notes/`
+- `GET /api/reporting/credit-notes/{id}/`
+- `POST /api/reporting/credit-notes/{id}/apply/`
+- `GET/POST /api/reporting/external-remittance-batches/`
+- `GET /api/reporting/external-remittance-batches/{id}/`
 - `GET/POST /api/reporting/finance-exports/`
 - `GET /api/reporting/finance-exports/{id}/`
 - `GET /api/reporting/finance-exports/{id}/download/`

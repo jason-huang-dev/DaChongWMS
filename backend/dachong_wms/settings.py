@@ -35,6 +35,15 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return value.lower() in {"1", "true", "yes", "on"}
 
 
+def _build_allowed_hosts() -> List[str]:
+    hosts = _split_env("DJANGO_ALLOWED_HOSTS") or ["localhost", "127.0.0.1"]
+    if DEBUG:
+        for host in ("0.0.0.0", "backend", "frontend", "host.docker.internal"):
+            if host not in hosts:
+                hosts.append(host)
+    return hosts
+
+
 # Core settings --------------------------------------------------------------
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
@@ -43,7 +52,7 @@ SECRET_KEY = os.getenv(
 
 DEBUG = _env_bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = _split_env("DJANGO_ALLOWED_HOSTS") or ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = _build_allowed_hosts()
 
 # Applications ---------------------------------------------------------------
 DJANGO_APPS = [
@@ -77,6 +86,7 @@ CATALOG_APPS: List[str] = [
 
 LOCAL_APPS: List[str] = [
     "userprofile",
+    "mfa.apps.MfaConfig",
     "warehouse",
     "locations.apps.LocationsConfig",
     "inventory.apps.InventoryConfig",
@@ -231,6 +241,10 @@ PUT_THROTTLE = int(os.getenv("DJANGO_THROTTLE_PUT", 500))
 PATCH_THROTTLE = int(os.getenv("DJANGO_THROTTLE_PATCH", 500))
 DELETE_THROTTLE = int(os.getenv("DJANGO_THROTTLE_DELETE", 500))
 TEST_SYSTEM_ENABLED = _env_bool("DJANGO_TEST_SYSTEM_ENABLED", default=DEBUG)
+MFA_ISSUER = os.getenv("DJANGO_MFA_ISSUER", "DaChongWMS")
+MFA_CHALLENGE_TTL_SECONDS = int(os.getenv("DJANGO_MFA_CHALLENGE_TTL_SECONDS", 300))
+MFA_RECOVERY_CODE_COUNT = int(os.getenv("DJANGO_MFA_RECOVERY_CODE_COUNT", 8))
+MFA_ENCRYPTION_KEY = os.getenv("DJANGO_MFA_ENCRYPTION_KEY", SECRET_KEY)
 
 # Logging --------------------------------------------------------------------
 LoggingConfig = Dict[str, Any]

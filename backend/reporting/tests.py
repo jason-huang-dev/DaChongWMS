@@ -23,8 +23,35 @@ from supplier.models import ListModel as Supplier
 from userprofile.models import Users
 from warehouse.models import Warehouse
 
-from .models import BillingChargeEvent, BillingChargeStatus, BillingChargeType, FinanceApprovalStatus, Invoice, InvoiceFinanceApproval, InvoiceStatus, OperationalReportType
-from .views import BillingChargeEventViewSet, BillingRateContractViewSet, FinanceExportViewSet, InvoiceViewSet, OperationalReportExportViewSet, StorageAccrualRunViewSet, WarehouseKpiSnapshotViewSet
+from .models import (
+    BillingChargeEvent,
+    BillingChargeStatus,
+    BillingChargeType,
+    CreditNoteStatus,
+    ExternalRemittanceBatchStatus,
+    FinanceApprovalStatus,
+    Invoice,
+    InvoiceDisputeStatus,
+    InvoiceFinanceApproval,
+    InvoiceRemittanceSource,
+    InvoiceSettlementStatus,
+    InvoiceStatus,
+    OperationalReportType,
+)
+from .views import (
+    BillingChargeEventViewSet,
+    BillingRateContractViewSet,
+    CreditNoteViewSet,
+    ExternalRemittanceBatchViewSet,
+    FinanceExportViewSet,
+    InvoiceDisputeViewSet,
+    InvoiceRemittanceViewSet,
+    InvoiceSettlementViewSet,
+    InvoiceViewSet,
+    OperationalReportExportViewSet,
+    StorageAccrualRunViewSet,
+    WarehouseKpiSnapshotViewSet,
+)
 
 
 def create_user_profile(**overrides: Any) -> Users:
@@ -373,6 +400,100 @@ class ReportingApiTests(TestCase):
         request.META["HTTP_OPERATOR"] = str(operator.id)
         force_authenticate(request, user=self.user, token=self.auth)
 
+    def _create_finance_ready_invoice(self, invoice_number: str = "INV-SET-001") -> Invoice:
+        charge_event = BillingChargeEvent.objects.create(
+            warehouse=self.warehouse,
+            customer=self.customer,
+            charge_type=BillingChargeType.SHIPMENT_HANDLING,
+            event_date=date.today(),
+            quantity=Decimal("1.0000"),
+            unit_rate=Decimal("10.0000"),
+            amount=Decimal("10.0000"),
+            currency="USD",
+            status=BillingChargeStatus.OPEN,
+            source_module="operations.outbound",
+            source_record_type="Shipment",
+            source_record_id=None,
+            reference_code=invoice_number,
+            notes="Settlement workflow seed",
+            creator=self.operator.staff_name,
+            openid=self.warehouse.openid,
+        )
+        invoice_view = InvoiceViewSet.as_view({"post": "create"})
+        invoice_request = self.factory.post(
+            "/api/reporting/invoices/",
+            {
+                "warehouse": self.warehouse.pk,
+                "customer": self.customer.pk,
+                "invoice_number": invoice_number,
+                "period_start": date.today().isoformat(),
+                "period_end": date.today().isoformat(),
+            },
+            format="json",
+        )
+        self._auth_request(invoice_request, self.operator)
+        invoice_response = invoice_view(invoice_request)
+        self.assertEqual(invoice_response.status_code, 201)
+        charge_event.refresh_from_db()
+        self.assertEqual(charge_event.status, BillingChargeStatus.INVOICED)
+
+        invoice = Invoice.objects.get(pk=invoice_response.data["id"])
+        finalize_view = InvoiceViewSet.as_view({"post": "finalize"})
+        finalize_request = self.factory.post(
+            f"/api/reporting/invoices/{invoice.id}/finalize/",
+            {"notes": "Ready for settlement"},
+            format="json",
+        )
+        self._auth_request(finalize_request, self.operator)
+        self.assertEqual(finalize_view(finalize_request, pk=invoice.id).status_code, 200)
+
+        submit_view = InvoiceViewSet.as_view({"post": "submit_finance_review"})
+        submit_request = self.factory.post(
+            f"/api/reporting/invoices/{invoice.id}/submit-finance-review/",
+            {"notes": "Finance review"},
+            format="json",
+        )
+        self._auth_request(submit_request, self.finance_operator)
+        self.assertEqual(submit_view(submit_request, pk=invoice.id).status_code, 200)
+
+        approve_view = InvoiceViewSet.as_view({"post": "approve_finance_review"})
+        approve_request = self.factory.post(
+            f"/api/reporting/invoices/{invoice.id}/approve-finance-review/",
+            {"notes": "Approved"},
+            format="json",
+        )
+        self._auth_request(approve_request, self.finance_operator)
+        self.assertEqual(approve_view(approve_request, pk=invoice.id).status_code, 200)
+        invoice.refresh_from_db()
+        return invoice
+
+    def _create_approved_settlement(self, invoice_number: str = "INV-SET-APPROVED") -> Invoice:
+        invoice = self._create_finance_ready_invoice(invoice_number)
+        settlement_view = InvoiceSettlementViewSet.as_view({"post": "create"})
+        settlement_request = self.factory.post(
+            "/api/reporting/invoice-settlements/",
+            {
+                "invoice": invoice.pk,
+                "requested_amount": "10.0000",
+                "settlement_reference": f"SET-{invoice_number}",
+            },
+            format="json",
+        )
+        self._auth_request(settlement_request, self.finance_operator)
+        settlement_response = settlement_view(settlement_request)
+        self.assertEqual(settlement_response.status_code, 201)
+
+        approve_view = InvoiceSettlementViewSet.as_view({"post": "approve"})
+        approve_request = self.factory.post(
+            f"/api/reporting/invoice-settlements/{settlement_response.data['id']}/approve/",
+            {"approved_amount": "10.0000"},
+            format="json",
+        )
+        self._auth_request(approve_request, self.finance_operator)
+        self.assertEqual(approve_view(approve_request, pk=settlement_response.data["id"]).status_code, 200)
+        invoice.refresh_from_db()
+        return invoice
+
     def test_kpi_snapshot_summarizes_current_operational_state(self) -> None:
         view = WarehouseKpiSnapshotViewSet.as_view({"post": "create"})
         request = self.factory.post(
@@ -649,6 +770,262 @@ class ReportingApiTests(TestCase):
         finance_export_response = finance_export_view(finance_export_request)
         self.assertEqual(finance_export_response.status_code, 201)
         self.assertEqual(finance_export_response.data["row_count"], 1)
+
+    def test_invoice_settlement_remittance_and_dispute_workflow(self) -> None:
+        invoice = self._create_finance_ready_invoice("INV-SET-100")
+
+        settlement_view = InvoiceSettlementViewSet.as_view({"post": "create"})
+        settlement_request = self.factory.post(
+            "/api/reporting/invoice-settlements/",
+            {
+                "invoice": invoice.pk,
+                "requested_amount": "10.0000",
+                "settlement_reference": "SET-100",
+                "notes": "Submit settlement",
+            },
+            format="json",
+        )
+        self._auth_request(settlement_request, self.finance_operator)
+        settlement_response = settlement_view(settlement_request)
+        self.assertEqual(settlement_response.status_code, 201)
+        self.assertEqual(settlement_response.data["status"], InvoiceSettlementStatus.PENDING_APPROVAL)
+
+        approve_view = InvoiceSettlementViewSet.as_view({"post": "approve"})
+        approve_request = self.factory.post(
+            f"/api/reporting/invoice-settlements/{settlement_response.data['id']}/approve/",
+            {"approved_amount": "10.0000", "notes": "Approve settlement"},
+            format="json",
+        )
+        self._auth_request(approve_request, self.finance_operator)
+        approve_response = approve_view(approve_request, pk=settlement_response.data["id"])
+        self.assertEqual(approve_response.status_code, 200)
+        self.assertEqual(approve_response.data["status"], InvoiceSettlementStatus.APPROVED)
+
+        remittance_view = InvoiceRemittanceViewSet.as_view({"post": "create"})
+        remittance_request = self.factory.post(
+            "/api/reporting/invoice-remittances/",
+            {
+                "settlement": settlement_response.data["id"],
+                "amount": "6.0000",
+                "remittance_reference": "REM-100",
+                "notes": "Partial payment",
+            },
+            format="json",
+        )
+        self._auth_request(remittance_request, self.finance_operator)
+        remittance_response = remittance_view(remittance_request)
+        self.assertEqual(remittance_response.status_code, 201)
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.settlement.status, InvoiceSettlementStatus.PARTIALLY_REMITTED)
+        self.assertEqual(invoice.settlement.remitted_amount, Decimal("6.0000"))
+
+        dispute_view = InvoiceDisputeViewSet.as_view({"post": "create"})
+        dispute_request = self.factory.post(
+            "/api/reporting/invoice-disputes/",
+            {
+                "invoice": invoice.pk,
+                "reason_code": "RATE",
+                "disputed_amount": "2.0000",
+                "reference_code": "DSP-100",
+                "notes": "Rate mismatch",
+            },
+            format="json",
+        )
+        self._auth_request(dispute_request, self.finance_operator)
+        dispute_response = dispute_view(dispute_request)
+        self.assertEqual(dispute_response.status_code, 201)
+        self.assertEqual(dispute_response.data["status"], InvoiceDisputeStatus.OPEN)
+
+        review_dispute_view = InvoiceDisputeViewSet.as_view({"post": "review"})
+        review_dispute_request = self.factory.post(
+            f"/api/reporting/invoice-disputes/{dispute_response.data['id']}/review/",
+            {"notes": "Review started"},
+            format="json",
+        )
+        self._auth_request(review_dispute_request, self.finance_operator)
+        review_dispute_response = review_dispute_view(review_dispute_request, pk=dispute_response.data["id"])
+        self.assertEqual(review_dispute_response.status_code, 200)
+        self.assertEqual(review_dispute_response.data["status"], InvoiceDisputeStatus.UNDER_REVIEW)
+
+        resolve_dispute_view = InvoiceDisputeViewSet.as_view({"post": "resolve"})
+        resolve_dispute_request = self.factory.post(
+            f"/api/reporting/invoice-disputes/{dispute_response.data['id']}/resolve/",
+            {"approved_credit_amount": "2.0000", "notes": "Credit approved"},
+            format="json",
+        )
+        self._auth_request(resolve_dispute_request, self.finance_operator)
+        resolve_dispute_response = resolve_dispute_view(resolve_dispute_request, pk=dispute_response.data["id"])
+        self.assertEqual(resolve_dispute_response.status_code, 200)
+        self.assertEqual(resolve_dispute_response.data["status"], InvoiceDisputeStatus.RESOLVED)
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.settlement.approved_amount, Decimal("8.0000"))
+
+        final_remittance_request = self.factory.post(
+            "/api/reporting/invoice-remittances/",
+            {
+                "settlement": invoice.settlement.id,
+                "amount": "2.0000",
+                "remittance_reference": "REM-101",
+                "notes": "Final payment after dispute",
+            },
+            format="json",
+        )
+        self._auth_request(final_remittance_request, self.finance_operator)
+        final_remittance_response = remittance_view(final_remittance_request)
+        self.assertEqual(final_remittance_response.status_code, 201)
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.settlement.status, InvoiceSettlementStatus.REMITTED)
+        self.assertEqual(invoice.settlement.remitted_amount, Decimal("8.0000"))
+
+    def test_finance_export_includes_settlement_and_dispute_columns(self) -> None:
+        invoice = self._create_approved_settlement("INV-SET-200")
+
+        finance_export_view = FinanceExportViewSet.as_view({"post": "create"})
+        finance_export_request = self.factory.post(
+            "/api/reporting/finance-exports/",
+            {
+                "warehouse": self.warehouse.pk,
+                "customer": self.customer.pk,
+                "period_start": date.today().isoformat(),
+                "period_end": date.today().isoformat(),
+            },
+            format="json",
+        )
+        self._auth_request(finance_export_request, self.finance_operator)
+        finance_export_response = finance_export_view(finance_export_request)
+        self.assertEqual(finance_export_response.status_code, 201)
+        self.assertIn("settlement_status", finance_export_response.data["content"])
+        self.assertIn("approved_settlement_amount", finance_export_response.data["content"])
+        self.assertIn("external_remitted_amount", finance_export_response.data["content"])
+        self.assertIn("credit_note_total", finance_export_response.data["content"])
+        self.assertIn("outstanding_amount", finance_export_response.data["content"])
+
+    def test_credit_note_issue_and_apply_for_resolved_dispute(self) -> None:
+        invoice = self._create_approved_settlement("INV-CN-100")
+
+        dispute_view = InvoiceDisputeViewSet.as_view({"post": "create"})
+        dispute_request = self.factory.post(
+            "/api/reporting/invoice-disputes/",
+            {
+                "invoice": invoice.pk,
+                "reason_code": "RATE",
+                "disputed_amount": "2.0000",
+                "reference_code": "DSP-CN-100",
+                "notes": "Rate dispute",
+            },
+            format="json",
+        )
+        self._auth_request(dispute_request, self.finance_operator)
+        dispute_response = dispute_view(dispute_request)
+        self.assertEqual(dispute_response.status_code, 201)
+
+        review_view = InvoiceDisputeViewSet.as_view({"post": "review"})
+        review_request = self.factory.post(
+            f"/api/reporting/invoice-disputes/{dispute_response.data['id']}/review/",
+            {"notes": "Reviewed"},
+            format="json",
+        )
+        self._auth_request(review_request, self.finance_operator)
+        self.assertEqual(review_view(review_request, pk=dispute_response.data["id"]).status_code, 200)
+
+        resolve_view = InvoiceDisputeViewSet.as_view({"post": "resolve"})
+        resolve_request = self.factory.post(
+            f"/api/reporting/invoice-disputes/{dispute_response.data['id']}/resolve/",
+            {"approved_credit_amount": "2.0000", "notes": "Approved"},
+            format="json",
+        )
+        self._auth_request(resolve_request, self.finance_operator)
+        self.assertEqual(resolve_view(resolve_request, pk=dispute_response.data["id"]).status_code, 200)
+
+        credit_note_view = CreditNoteViewSet.as_view({"post": "create"})
+        credit_note_request = self.factory.post(
+            "/api/reporting/credit-notes/",
+            {
+                "invoice": invoice.pk,
+                "dispute": dispute_response.data["id"],
+                "credit_note_number": "CN-100",
+                "reference_code": "CR-100",
+                "notes": "Issue credit note",
+            },
+            format="json",
+        )
+        self._auth_request(credit_note_request, self.finance_operator)
+        credit_note_response = credit_note_view(credit_note_request)
+        self.assertEqual(credit_note_response.status_code, 201)
+        self.assertEqual(credit_note_response.data["status"], CreditNoteStatus.ISSUED)
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.settlement.approved_amount, Decimal("8.0000"))
+
+        apply_view = CreditNoteViewSet.as_view({"post": "apply"})
+        apply_request = self.factory.post(
+            f"/api/reporting/credit-notes/{credit_note_response.data['id']}/apply/",
+            {"notes": "Applied to customer account"},
+            format="json",
+        )
+        self._auth_request(apply_request, self.finance_operator)
+        apply_response = apply_view(apply_request, pk=credit_note_response.data["id"])
+        self.assertEqual(apply_response.status_code, 200)
+        self.assertEqual(apply_response.data["status"], CreditNoteStatus.APPLIED)
+
+    def test_external_remittance_batch_ingests_records_and_conflicts(self) -> None:
+        invoice = self._create_approved_settlement("INV-EXT-100")
+        batch_view = ExternalRemittanceBatchViewSet.as_view({"post": "create"})
+
+        applied_request = self.factory.post(
+            "/api/reporting/external-remittance-batches/",
+            {
+                "source_system": "erp",
+                "external_batch_id": "ERP-BATCH-001",
+                "items": [
+                    {
+                        "external_reference": "ERP-PMT-001",
+                        "invoice_number": invoice.invoice_number,
+                        "amount": "6.0000",
+                        "currency": "USD",
+                        "notes": "ERP remittance",
+                    }
+                ],
+            },
+            format="json",
+        )
+        self._auth_request(applied_request, self.finance_operator)
+        applied_response = batch_view(applied_request)
+        self.assertEqual(applied_response.status_code, 201)
+        self.assertEqual(applied_response.data["status"], ExternalRemittanceBatchStatus.COMPLETED)
+        self.assertEqual(applied_response.data["applied_count"], 1)
+        self.assertEqual(applied_response.data["items"][0]["status"], "APPLIED")
+
+        invoice.refresh_from_db()
+        self.assertEqual(invoice.settlement.remitted_amount, Decimal("6.0000"))
+        self.assertEqual(invoice.settlement.remittances.get().source, InvoiceRemittanceSource.EXTERNAL)
+
+        conflict_request = self.factory.post(
+            "/api/reporting/external-remittance-batches/",
+            {
+                "source_system": "erp",
+                "external_batch_id": "ERP-BATCH-002",
+                "items": [
+                    {
+                        "external_reference": "ERP-PMT-002",
+                        "invoice_number": invoice.invoice_number,
+                        "amount": "5.0000",
+                        "currency": "USD",
+                        "notes": "Overpayment",
+                    }
+                ],
+            },
+            format="json",
+        )
+        self._auth_request(conflict_request, self.finance_operator)
+        conflict_response = batch_view(conflict_request)
+        self.assertEqual(conflict_response.status_code, 201)
+        self.assertEqual(conflict_response.data["status"], ExternalRemittanceBatchStatus.PARTIAL)
+        self.assertEqual(conflict_response.data["conflict_count"], 1)
+        self.assertEqual(conflict_response.data["items"][0]["status"], "CONFLICT")
 
     def test_unauthorized_role_cannot_approve_finance_review(self) -> None:
         invoice = Invoice.objects.create(

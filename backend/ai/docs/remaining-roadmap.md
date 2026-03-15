@@ -9,6 +9,7 @@ Core master data, topology, inventory, operational flows, integration control, r
 - horizontal scale-out from the DB-backed worker to a broker-backed worker model if throughput demands it
 - integration credential management, secret rotation, and webhook signature hardening
 - audit/event streaming for sensitive operational and commercial actions
+- MFA policy enforcement beyond the current optional TOTP + recovery-code flow
 
 ### ERP and Carrier Depth
 
@@ -19,8 +20,8 @@ Core master data, topology, inventory, operational flows, integration control, r
 
 ### Billing and Finance Depth
 
-- settlement exports beyond CSV, remittance integration, and payment-status ingestion
-- dispute management, credit-note workflows, and finance-facing adjustments
+- bank/ERP settlement-status reconciliation after external remittance ingestion
+- customer chargeback handling, finance-facing adjustment posting, and credit-note reversal flows
 - contract models for more complex pricing dimensions such as pallet/day, carton, weight, and service-level tiers
 
 ### Warehouse Execution Depth
@@ -54,10 +55,9 @@ The Y2 stream has started, but only with the first scan-first receive and ship s
 
 ### Still Needed For Handheld and Scanner Depth
 
-- device sessions, offline queueing, replay, and conflict handling
 - barcode alias tables for supplier, customer, and internal product identifiers beyond current goods/location coverage
 - product-level scan validation rules such as quantity-per-scan and serial uniqueness
-- scanner telemetry, productivity metrics, and exception analytics
+- productivity analytics, device fleet dashboards, and richer exception reporting on top of current telemetry samples
 
 ### Still Needed For Shipping Control Tower Depth
 
@@ -69,6 +69,6 @@ The Y2 stream has started, but only with the first scan-first receive and ship s
 
 The next practical steps are:
 
-1. add handheld/device session depth and offline replay on top of the current Y2 scan flow
-2. extend finance to remittance, dispute, and multi-dimension rating workflows
-3. decide on broker-backed execution based on the new automation heartbeat/alert metrics
+1. add fleet-level analytics and richer conflict dashboards on top of the current scanner session/replay layer
+2. extend finance into remittance reconciliation, credit-note reversal, and richer multi-dimension rating workflows
+3. decide on broker-backed execution based on the current automation heartbeat/alert metrics

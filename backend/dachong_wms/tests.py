@@ -20,6 +20,19 @@ class SettingsHelpersTests(SimpleTestCase):
         with mock.patch.dict(os.environ, {}, clear=True):
             self.assertFalse(settings._env_bool("UNSET_FLAG", default=False))
 
+    def test_build_allowed_hosts_adds_container_hosts_in_debug(self) -> None:
+        with mock.patch.dict(os.environ, {"DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1"}, clear=True):
+            with mock.patch.object(settings, "DEBUG", True):
+                self.assertEqual(
+                    settings._build_allowed_hosts(),
+                    ["localhost", "127.0.0.1", "0.0.0.0", "backend", "frontend", "host.docker.internal"],
+                )
+
+    def test_build_allowed_hosts_does_not_mutate_production_hosts(self) -> None:
+        with mock.patch.dict(os.environ, {"DJANGO_ALLOWED_HOSTS": "api.example.com"}, clear=True):
+            with mock.patch.object(settings, "DEBUG", False):
+                self.assertEqual(settings._build_allowed_hosts(), ["api.example.com"])
+
 
 class RootUrlsTests(SimpleTestCase):
     def test_schema_and_docs_routes_are_registered(self) -> None:

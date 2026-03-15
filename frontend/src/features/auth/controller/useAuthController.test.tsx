@@ -1,0 +1,208 @@
+import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, test } from "vitest";
+
+import { useAuth } from "@/features/auth/controller/useAuthController";
+import { saveStoredSession } from "@/shared/storage/auth-storage";
+import { installFetchMock, jsonResponse } from "@/test/fetch";
+import { renderWithProviders } from "@/test/render";
+
+function AuthProbe() {
+  const { session, status } = useAuth();
+  return (
+    <div>
+      <span>{status}</span>
+      <span>{session?.operatorName ?? "--"}</span>
+      <span>{session?.operatorRole ?? "--"}</span>
+    </div>
+  );
+}
+
+function SignupProbe() {
+  const { session, signup, status } = useAuth();
+
+  return (
+    <div>
+      <button
+        onClick={() =>
+          signup({
+            name: "new-manager",
+            email: "new-manager@example.com",
+            password1: "StrongPassword123!",
+            password2: "StrongPassword123!",
+          })
+        }
+        type="button"
+      >
+        Sign up
+      </button>
+      <span>{status}</span>
+      <span>{session?.username ?? "--"}</span>
+      <span>{session?.operatorName ?? "--"}</span>
+    </div>
+  );
+}
+
+function LoginChallengeProbe() {
+  const { completeMfaChallenge, login, pendingChallenge, session, status } = useAuth();
+
+  return (
+    <div>
+      <button onClick={() => login("mfa-user", "StrongPassword123!")} type="button">
+        Sign in
+      </button>
+      <button onClick={() => completeMfaChallenge("123456")} type="button">
+        Complete challenge
+      </button>
+      <span>{status}</span>
+      <span>{pendingChallenge?.challengeId ?? "--"}</span>
+      <span>{session?.operatorName ?? "--"}</span>
+    </div>
+  );
+}
+
+test("restores a stored session and hydrates the operator profile", async () => {
+  saveStoredSession({
+    username: "worker",
+    openid: "tenant-openid",
+    operatorId: 7,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url, init) => {
+    if (url.pathname === "/api/staff/7/") {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("TOKEN")).toBe("tenant-openid");
+      expect(headers.get("OPERATOR")).toBe("7");
+      return jsonResponse({
+        id: 7,
+        staff_name: "Warehouse Worker",
+        staff_type: "Manager",
+        check_code: 8888,
+        create_time: "2026-03-14 09:00:00",
+        update_time: "2026-03-14 09:00:00",
+        error_check_code_counter: 0,
+        is_lock: false,
+      });
+    }
+    return undefined;
+  });
+
+  renderWithProviders(<AuthProbe />, { includeAuth: true });
+
+  expect(await screen.findByText("authenticated")).toBeInTheDocument();
+  expect(screen.getByText("Warehouse Worker")).toBeInTheDocument();
+  expect(screen.getByText("Manager")).toBeInTheDocument();
+});
+
+test("signs up a new workspace user and hydrates the operator profile", async () => {
+  const user = userEvent.setup();
+
+  installFetchMock((url, init) => {
+    if (url.pathname === "/api/signup/") {
+      expect(init?.method).toBe("POST");
+      return jsonResponse({
+        code: "200",
+        data: {
+          name: "new-manager",
+          openid: "tenant-openid",
+          user_id: 42,
+          email: "new-manager@example.com",
+          mfa_enrollment_required: true,
+        },
+        msg: "success",
+      });
+    }
+
+    if (url.pathname === "/api/staff/42/") {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("TOKEN")).toBe("tenant-openid");
+      expect(headers.get("OPERATOR")).toBe("42");
+      return jsonResponse({
+        id: 42,
+        staff_name: "New Manager",
+        staff_type: "Manager",
+        check_code: 8888,
+        create_time: "2026-03-15 09:00:00",
+        update_time: "2026-03-15 09:00:00",
+        error_check_code_counter: 0,
+        is_lock: false,
+      });
+    }
+
+    return undefined;
+  });
+
+  renderWithProviders(<SignupProbe />, { includeAuth: true });
+  await user.click(screen.getByRole("button", { name: "Sign up" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("authenticated")).toBeInTheDocument();
+  });
+  expect(screen.getByText("new-manager")).toBeInTheDocument();
+  expect(screen.getByText("New Manager")).toBeInTheDocument();
+});
+
+test("stores a pending MFA challenge and completes it into an authenticated session", async () => {
+  const user = userEvent.setup();
+
+  installFetchMock((url, init) => {
+    if (url.pathname === "/api/login/") {
+      expect(init?.method).toBe("POST");
+      return jsonResponse({
+        code: "200",
+        data: {
+          name: "mfa-user",
+          mfa_required: true,
+          challenge_id: "challenge-123",
+          available_methods: ["totp", "recovery_code"],
+          expires_at: "2026-03-15T10:30:00Z",
+        },
+        msg: "MFA challenge required",
+      });
+    }
+
+    if (url.pathname === "/api/mfa/challenges/verify/") {
+      expect(init?.method).toBe("POST");
+      return jsonResponse({
+        code: "200",
+        data: {
+          name: "mfa-user",
+          openid: "tenant-openid",
+          user_id: 9,
+          mfa_verified: true,
+          mfa_method: "TOTP",
+          mfa_enrollment_required: false,
+        },
+        msg: "success",
+      });
+    }
+
+    if (url.pathname === "/api/staff/9/") {
+      return jsonResponse({
+        id: 9,
+        staff_name: "MFA Manager",
+        staff_type: "Manager",
+        check_code: 8888,
+        create_time: "2026-03-15 09:00:00",
+        update_time: "2026-03-15 09:00:00",
+        error_check_code_counter: 0,
+        is_lock: false,
+      });
+    }
+
+    return undefined;
+  });
+
+  renderWithProviders(<LoginChallengeProbe />, { includeAuth: true });
+
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+  expect(await screen.findByText("challenge-123")).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Complete challenge" }));
+  await waitFor(() => {
+    expect(screen.getByText("authenticated")).toBeInTheDocument();
+  });
+  expect(screen.getByText("MFA Manager")).toBeInTheDocument();
+});

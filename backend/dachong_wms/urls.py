@@ -11,6 +11,7 @@ from drf_spectacular.views import (
     SpectacularAPIView,
     SpectacularSwaggerView,
 )
+from userlogin import views as auth_views
 
 
 urlpatterns = [
@@ -32,8 +33,11 @@ urlpatterns = [
     path("api/transfers/", include("operations.transfers.urls")),
     path("api/returns/", include("operations.returns.urls")),
     path("api/reporting/", include("reporting.urls")),
+    path("api/scanner/", include("scanner.urls")),
     path("api/staff/", include("staff.urls")),
+    path("api/mfa/", include("mfa.urls")),
     path("api/login/", include("userlogin.urls")),
+    path("api/signup/", auth_views.register, name="signup"),
     path("api/test-system/", include("test_system.urls")),
     path("api/upload/", include("uploadfile.urls")),
     # Placeholder for future API apps – keep includes near docs for visibility.

@@ -22,14 +22,19 @@ from operations.outbound.models import PickTask, PickTaskStatus, SalesOrder, Sal
 from operations.returns.models import ReturnOrder, ReturnOrderStatus
 from warehouse.models import Warehouse
 
+from .settlement_services import collectible_amount as invoice_collectible_amount
 from .models import (
     BillingChargeStatus,
     BillingChargeType,
+    CreditNoteStatus,
     FinanceApprovalStatus,
     FinanceExport,
     FinanceExportStatus,
+    InvoiceDisputeStatus,
+    InvoiceRemittanceSource,
     Invoice,
     InvoiceStatus,
+    InvoiceSettlementStatus,
     OperationalReportExport,
     OperationalReportStatus,
     OperationalReportType,
@@ -350,7 +355,8 @@ def generate_finance_export(*, openid: str, operator_name: str, payload: Finance
         ensure_tenant_match(payload.customer, openid, "Customer")
 
     queryset = (
-        Invoice.objects.select_related("warehouse", "customer", "finance_approval")
+        Invoice.objects.select_related("warehouse", "customer", "finance_approval", "settlement")
+        .prefetch_related("disputes", "credit_notes", "settlement__remittances")
         .filter(
             openid=openid,
             is_delete=False,
@@ -369,6 +375,42 @@ def generate_finance_export(*, openid: str, operator_name: str, payload: Finance
     rows: list[dict[str, object]] = []
     for invoice in queryset:
         approval = invoice.finance_approval
+        settlement = getattr(invoice, "settlement", None)
+        credit_note_total = sum(
+            (
+                credit_note.amount
+                for credit_note in invoice.credit_notes.filter(
+                    is_delete=False,
+                    status__in=[CreditNoteStatus.ISSUED, CreditNoteStatus.APPLIED],
+                )
+            ),
+            ZERO,
+        )
+        resolved_dispute_amount = sum(
+            (
+                dispute.approved_credit_amount
+                for dispute in invoice.disputes.filter(is_delete=False, status=InvoiceDisputeStatus.RESOLVED)
+            ),
+            ZERO,
+        )
+        open_dispute_count = invoice.disputes.filter(
+            is_delete=False,
+            status__in=[InvoiceDisputeStatus.OPEN, InvoiceDisputeStatus.UNDER_REVIEW],
+        ).count()
+        collectible_amount = invoice_collectible_amount(invoice=invoice)
+        remitted_amount = settlement.remitted_amount if settlement is not None else ZERO
+        external_remitted_amount = sum(
+            (
+                remittance.amount
+                for remittance in (
+                    settlement.remittances.filter(is_delete=False, source=InvoiceRemittanceSource.EXTERNAL)
+                    if settlement is not None
+                    else []
+                )
+            ),
+            ZERO,
+        )
+        outstanding_amount = max(collectible_amount - remitted_amount, ZERO)
         rows.append(
             {
                 "invoice_number": invoice.invoice_number,
@@ -383,6 +425,14 @@ def generate_finance_export(*, openid: str, operator_name: str, payload: Finance
                 "finalized_at": invoice.finalized_at.isoformat() if invoice.finalized_at else "",
                 "approved_at": approval.reviewed_at.isoformat() if approval.reviewed_at else "",
                 "approved_by": approval.reviewed_by,
+                "settlement_status": settlement.status if settlement is not None else InvoiceSettlementStatus.PENDING_APPROVAL,
+                "approved_settlement_amount": str(settlement.approved_amount if settlement is not None else ZERO),
+                "remitted_amount": str(remitted_amount),
+                "external_remitted_amount": str(external_remitted_amount),
+                "credit_note_total": str(credit_note_total),
+                "resolved_dispute_amount": str(resolved_dispute_amount),
+                "open_dispute_count": open_dispute_count,
+                "outstanding_amount": str(outstanding_amount),
             }
         )
     headers = [
@@ -398,6 +448,14 @@ def generate_finance_export(*, openid: str, operator_name: str, payload: Finance
         "finalized_at",
         "approved_at",
         "approved_by",
+        "settlement_status",
+        "approved_settlement_amount",
+        "remitted_amount",
+        "external_remitted_amount",
+        "credit_note_total",
+        "resolved_dispute_amount",
+        "open_dispute_count",
+        "outstanding_amount",
     ]
     scope = payload.customer.customer_name if payload.customer is not None else payload.warehouse.warehouse_name if payload.warehouse is not None else "tenant"
     file_name = f"finance-export-{scope.replace(' ', '-').lower()}-{payload.period_start.isoformat()}-{payload.period_end.isoformat()}.csv"

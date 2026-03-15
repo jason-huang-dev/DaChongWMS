@@ -1,30 +1,51 @@
 # Forms and Validation
 
-Warehouse workflows rely on accurate data entry; form UX must be predictable and forgiving.
+The first frontend form layer is now in place and follows the documented RHF + Zod pattern.
 
-## Form Library
+## Current Implementation
 
-- Use React Hook Form for performant, flexible form state.
-- Provide custom input wrappers (`RHFTextField`, `RHFSelect`) that connect MUI components to RHF controllers.
+- Feature validators now live under `features/<domain>/model/validators.ts`.
+- Routed forms now live under `features/<domain>/view/` and consume controller hooks instead of owning HTTP calls directly.
+- `frontend/src/features/auth/view/LoginPage.tsx` uses React Hook Form and Zod for login validation.
+- `frontend/src/features/auth/view/SignupPage.tsx` uses React Hook Form and Zod for manager-account signup validation.
+- `frontend/src/features/mfa/view/MfaChallengePage.tsx` and `frontend/src/features/mfa/view/MfaEnrollmentPage.tsx` use React Hook Form and Zod for MFA verification and enrollment.
+- `frontend/src/shared/components/form-text-field.tsx` wraps MUI `TextField` with RHF `Controller` integration.
+- `frontend/src/shared/components/form-autocomplete.tsx`, `frontend/src/shared/components/reference-autocomplete-field.tsx`, and `frontend/src/shared/components/form-switch-field.tsx` now cover repeated selector and boolean inputs.
+- Scan-first mutation forms now exist for receive, putaway, pick, ship, and assigned count completion, each using feature-local validators and controller actions.
+- Detail/action forms now exist for purchase-order edits, sales-order edits, transfer-order edits, return-order edits, count-approval decisions, invoice finance actions, and selector-driven create flows for receipts, shipments, transfer orders, return orders, return receipts, and return dispositions through `view/*Form.tsx` or route-local view components.
+- Repeated header-field layouts are shared through `frontend/src/shared/components/document-header-fields.tsx` instead of duplicating the same date/reference/notes markup in each detail screen.
 
-## Validation Strategy
+## MVC Rule
 
-- Prefer Zod or Yup schemas for declarative validation. Keep schemas near form definitions but export them for reuse in API typings.
-- Mirror backend validation rules to minimize round-trips. When backend constraints are complex, surface summarized rules in helper text.
+- validation schemas belong in `model/validators.ts`
+- submit and mutation orchestration belong in `controller/`
+- MUI field layout belongs in `view/`
+- views must not call backend APIs directly
 
-## UX Guidelines
+## Current Rules
 
-- Group related fields (e.g., item details, location info) with visual dividers.
-- Surface inline errors beneath inputs; include action-oriented copy (“Quantity must be greater than zero”).
-- Provide keyboard-friendly navigation for high-volume data entry (tab order, enter-to-submit, scanner shortcuts).
+- Login requires both `name` and `password`.
+- Signup currently requires `name`, `email`, `password1`, and `password2`.
+- MFA challenge currently requires a TOTP code or recovery code string.
+- MFA enrollment currently requires a label for the authenticator entry plus a valid TOTP code to verify the generated secret.
+- Backend errors are surfaced through the shared API error parser.
+- Submit buttons are disabled while requests are in flight.
+- The developer bootstrap path is isolated behind `VITE_ENABLE_TEST_SYSTEM`.
+- Signup collects email now so MFA enrollment and account recovery can be added without replacing the current account model.
+- MFA recovery codes are rendered once after successful TOTP verification and should be copied before leaving the screen.
+- Detail views only expose fields the backend already allows operators to patch directly; reference-data changes stay server-owned until selector flows are added.
 
-## Submission Flow
+## UX Baseline
 
-- Disable submit buttons while mutations are in flight; show progress indicators on long operations.
-- On success, toast and reset/redirect depending on workflow (e.g., remain on page for repetitive receiving tasks).
-- On failure, log structured error data and map backend field errors onto the relevant inputs.
+- Forms use stacked fields with inline helper/error text.
+- Submit actions show a spinner while the mutation is running.
+- Backend failure messages are displayed in a single alert near the top of the form.
+- Success messages are shown inline after scan or detail-page actions complete.
+- JSON-backed backend fields are edited as validated text areas and parsed centrally through `frontend/src/shared/utils/json.ts`.
+- Large lookup fields are debounced and page forward through shared reference hooks instead of assuming the first response page contains every valid option.
 
-## Testing
+## Next Form Work
 
-- Write component tests for critical forms to ensure validation + submission flows do not regress.
-- Cover edge cases like blank scans, duplicate SKUs, and concurrency conflicts by mocking backend responses.
+- Add field-level mapping for DRF validation objects on create/update flows.
+- Add richer handheld affordances such as barcode-focused autofocus, hotkey submit, and scanner-specific validation copy.
+- Add richer create/edit flows for finance, counting, and remaining admin domains using the same selector-based form pattern.

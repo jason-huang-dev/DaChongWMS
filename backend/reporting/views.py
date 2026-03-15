@@ -19,8 +19,13 @@ from .billing_services import BillingChargePayload, record_charge_event, update_
 from .filter import (
     BillingChargeEventFilter,
     BillingRateContractFilter,
+    CreditNoteFilter,
+    ExternalRemittanceBatchFilter,
     FinanceExportFilter,
+    InvoiceDisputeFilter,
     InvoiceFilter,
+    InvoiceRemittanceFilter,
+    InvoiceSettlementFilter,
     OperationalReportExportFilter,
     StorageAccrualRunFilter,
     WarehouseKpiSnapshotFilter,
@@ -33,18 +38,51 @@ from .invoicing_services import (
     review_invoice_for_finance,
     submit_invoice_for_finance_review,
 )
-from .models import BillingChargeEvent, BillingRateContract, FinanceExport, Invoice, OperationalReportExport, StorageAccrualRun, WarehouseKpiSnapshot
+from .models import BillingChargeEvent, BillingRateContract, CreditNote, ExternalRemittanceBatch, FinanceExport, Invoice, OperationalReportExport, StorageAccrualRun, WarehouseKpiSnapshot
+from .models import InvoiceDispute, InvoiceRemittance, InvoiceSettlement
 from .permissions import CanManageFinanceRecords, CanManageReportingRecords
 from .serializers import (
     BillingChargeEventSerializer,
     BillingRateContractSerializer,
+    CreditNoteApplyActionSerializer,
+    CreditNoteSerializer,
+    ExternalRemittanceBatchCreateSerializer,
+    ExternalRemittanceBatchSerializer,
     FinanceExportSerializer,
+    InvoiceDisputeResolveActionSerializer,
+    InvoiceDisputeReviewActionSerializer,
+    InvoiceDisputeSerializer,
     InvoiceFinalizeSerializer,
     InvoiceFinanceReviewActionSerializer,
+    InvoiceRemittanceCreateSerializer,
+    InvoiceRemittanceSerializer,
     InvoiceSerializer,
+    InvoiceSettlementReviewActionSerializer,
+    InvoiceSettlementSerializer,
     OperationalReportExportSerializer,
     StorageAccrualRunSerializer,
     WarehouseKpiSnapshotSerializer,
+)
+from .settlement_services import (
+    CreditNoteApplyPayload,
+    CreditNotePayload,
+    DisputeResolutionPayload,
+    DisputeReviewPayload,
+    DisputeSubmissionPayload,
+    ExternalRemittanceBatchPayload,
+    ExternalRemittanceItemPayload,
+    RemittancePayload,
+    SettlementReviewPayload,
+    SettlementSubmissionPayload,
+    apply_credit_note,
+    ingest_external_remittance_batch,
+    issue_credit_note,
+    record_invoice_remittance,
+    resolve_invoice_dispute,
+    review_invoice_dispute,
+    review_invoice_settlement,
+    submit_invoice_dispute,
+    submit_invoice_settlement,
 )
 from .services import (
     FinanceExportPayload,
@@ -244,7 +282,12 @@ class InvoiceViewSet(
     mixins.RetrieveModelMixin,
     TenantScopedViewSet,
 ):
-    queryset = Invoice.objects.select_related("warehouse", "customer", "finance_approval").prefetch_related("lines", "lines__charge_event")
+    queryset = Invoice.objects.select_related("warehouse", "customer", "finance_approval", "settlement").prefetch_related(
+        "lines",
+        "lines__charge_event",
+        "disputes",
+        "credit_notes",
+    )
     serializer_class = InvoiceSerializer
     filterset_class = InvoiceFilter
     ordering_fields = ["id", "generated_at", "period_start", "period_end", "create_time"]
@@ -370,3 +413,270 @@ class FinanceExportViewSet(
         response = HttpResponse(export.content, content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="{export.file_name}"'
         return response
+
+
+class InvoiceSettlementViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    TenantScopedViewSet,
+):
+    queryset = InvoiceSettlement.objects.select_related("invoice", "invoice__warehouse", "invoice__customer").prefetch_related("remittances")
+    serializer_class = InvoiceSettlementSerializer
+    filterset_class = InvoiceSettlementFilter
+    ordering_fields = ["id", "submitted_at", "due_date", "create_time"]
+    search_fields = ["invoice__invoice_number", "settlement_reference", "notes", "submitted_by", "reviewed_by"]
+    permission_classes = [CanManageFinanceRecords]
+
+    def perform_create(self, serializer: InvoiceSettlementSerializer) -> None:
+        operator = get_request_operator(self.request)
+        settlement = submit_invoice_settlement(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            invoice=serializer.validated_data["invoice"],
+            payload=SettlementSubmissionPayload(
+                requested_amount=serializer.validated_data["requested_amount"],
+                due_date=serializer.validated_data.get("due_date"),
+                settlement_reference=serializer.validated_data.get("settlement_reference", ""),
+                notes=serializer.validated_data.get("notes", ""),
+            ),
+        )
+        serializer.instance = settlement
+
+    def approve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        settlement = self.get_object()
+        self.check_object_permissions(request, settlement)
+        serializer = InvoiceSettlementReviewActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        settlement = review_invoice_settlement(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            invoice=settlement.invoice,
+            approve=True,
+            payload=SettlementReviewPayload(
+                approved_amount=serializer.validated_data.get("approved_amount"),
+                notes=serializer.validated_data.get("notes", ""),
+            ),
+        )
+        return Response(self.get_serializer(settlement).data, status=status.HTTP_200_OK)
+
+    def reject(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        settlement = self.get_object()
+        self.check_object_permissions(request, settlement)
+        serializer = InvoiceSettlementReviewActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        settlement = review_invoice_settlement(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            invoice=settlement.invoice,
+            approve=False,
+            payload=SettlementReviewPayload(notes=serializer.validated_data.get("notes", "")),
+        )
+        return Response(self.get_serializer(settlement).data, status=status.HTTP_200_OK)
+
+
+class InvoiceRemittanceViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    TenantScopedViewSet,
+):
+    queryset = InvoiceRemittance.objects.select_related("settlement", "settlement__invoice")
+    serializer_class = InvoiceRemittanceSerializer
+    filterset_class = InvoiceRemittanceFilter
+    ordering_fields = ["id", "remitted_at", "create_time"]
+    search_fields = ["remittance_reference", "settlement__invoice__invoice_number", "notes", "remitted_by"]
+    permission_classes = [CanManageFinanceRecords]
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        serializer = InvoiceRemittanceCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        remittance = record_invoice_remittance(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            settlement=serializer.validated_data["settlement"],
+            payload=RemittancePayload(
+                amount=serializer.validated_data["amount"],
+                remittance_reference=serializer.validated_data["remittance_reference"],
+                remitted_at=serializer.validated_data.get("remitted_at"),
+                notes=serializer.validated_data.get("notes", ""),
+            ),
+        )
+        response_serializer = self.get_serializer(remittance)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class InvoiceDisputeViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    TenantScopedViewSet,
+):
+    queryset = InvoiceDispute.objects.select_related("invoice", "invoice_line", "invoice__warehouse", "invoice__customer")
+    serializer_class = InvoiceDisputeSerializer
+    filterset_class = InvoiceDisputeFilter
+    ordering_fields = ["id", "opened_at", "resolved_at", "create_time"]
+    search_fields = ["invoice__invoice_number", "reference_code", "notes", "resolution_notes", "opened_by"]
+    permission_classes = [CanManageFinanceRecords]
+
+    def perform_create(self, serializer: InvoiceDisputeSerializer) -> None:
+        operator = get_request_operator(self.request)
+        dispute = submit_invoice_dispute(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            invoice=serializer.validated_data["invoice"],
+            payload=DisputeSubmissionPayload(
+                invoice_line=serializer.validated_data.get("invoice_line"),
+                reason_code=serializer.validated_data["reason_code"],
+                disputed_amount=serializer.validated_data["disputed_amount"],
+                reference_code=serializer.validated_data.get("reference_code", ""),
+                notes=serializer.validated_data.get("notes", ""),
+            ),
+        )
+        serializer.instance = dispute
+
+    def review(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        dispute = self.get_object()
+        self.check_object_permissions(request, dispute)
+        serializer = InvoiceDisputeReviewActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        dispute = review_invoice_dispute(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            dispute=dispute,
+            payload=DisputeReviewPayload(notes=serializer.validated_data.get("notes", "")),
+        )
+        return Response(self.get_serializer(dispute).data, status=status.HTTP_200_OK)
+
+    def resolve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        dispute = self.get_object()
+        self.check_object_permissions(request, dispute)
+        serializer = InvoiceDisputeResolveActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        dispute = resolve_invoice_dispute(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            dispute=dispute,
+            approve=True,
+            payload=DisputeResolutionPayload(
+                approved_credit_amount=serializer.validated_data.get("approved_credit_amount", 0),
+                notes=serializer.validated_data.get("notes", ""),
+            ),
+        )
+        return Response(self.get_serializer(dispute).data, status=status.HTTP_200_OK)
+
+    def reject(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        dispute = self.get_object()
+        self.check_object_permissions(request, dispute)
+        serializer = InvoiceDisputeResolveActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        dispute = resolve_invoice_dispute(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            dispute=dispute,
+            approve=False,
+            payload=DisputeResolutionPayload(notes=serializer.validated_data.get("notes", "")),
+        )
+        return Response(self.get_serializer(dispute).data, status=status.HTTP_200_OK)
+
+
+class CreditNoteViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    TenantScopedViewSet,
+):
+    queryset = CreditNote.objects.select_related("invoice", "dispute", "invoice__warehouse", "invoice__customer")
+    serializer_class = CreditNoteSerializer
+    filterset_class = CreditNoteFilter
+    ordering_fields = ["id", "issued_at", "applied_at", "create_time"]
+    search_fields = ["credit_note_number", "reference_code", "notes", "invoice__invoice_number"]
+    permission_classes = [CanManageFinanceRecords]
+
+    def perform_create(self, serializer: CreditNoteSerializer) -> None:
+        operator = get_request_operator(self.request)
+        credit_note = issue_credit_note(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            invoice=serializer.validated_data["invoice"],
+            payload=CreditNotePayload(
+                credit_note_number=serializer.validated_data["credit_note_number"],
+                amount=serializer.validated_data.get("amount"),
+                dispute=serializer.validated_data.get("dispute"),
+                reason_code=serializer.validated_data.get("reason_code", "OTHER"),
+                reference_code=serializer.validated_data.get("reference_code", ""),
+                notes=serializer.validated_data.get("notes", ""),
+            ),
+        )
+        serializer.instance = credit_note
+
+    def apply(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        credit_note = self.get_object()
+        self.check_object_permissions(request, credit_note)
+        serializer = CreditNoteApplyActionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        credit_note = apply_credit_note(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            credit_note=credit_note,
+            payload=CreditNoteApplyPayload(notes=serializer.validated_data.get("notes", "")),
+        )
+        return Response(self.get_serializer(credit_note).data, status=status.HTTP_200_OK)
+
+
+class ExternalRemittanceBatchViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    TenantScopedViewSet,
+):
+    queryset = ExternalRemittanceBatch.objects.prefetch_related("items", "items__remittance").all()
+    serializer_class = ExternalRemittanceBatchSerializer
+    filterset_class = ExternalRemittanceBatchFilter
+    ordering_fields = ["id", "submitted_at", "processed_at", "create_time"]
+    search_fields = ["source_system", "external_batch_id", "last_error", "notes"]
+    permission_classes = [CanManageFinanceRecords]
+
+    def create(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        serializer = ExternalRemittanceBatchCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        existing_batch = ExternalRemittanceBatch.objects.filter(
+            openid=self._current_openid(),
+            source_system=serializer.validated_data["source_system"],
+            external_batch_id=serializer.validated_data["external_batch_id"],
+            is_delete=False,
+        ).first()
+        batch = ingest_external_remittance_batch(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            payload=ExternalRemittanceBatchPayload(
+                source_system=serializer.validated_data["source_system"],
+                external_batch_id=serializer.validated_data["external_batch_id"],
+                notes=serializer.validated_data.get("notes", ""),
+                payload=serializer.validated_data.get("payload", {}),
+                items=[
+                    ExternalRemittanceItemPayload(
+                        external_reference=item["external_reference"],
+                        amount=item["amount"],
+                        currency=item.get("currency", "USD"),
+                        invoice_number=item.get("invoice_number", ""),
+                        settlement_reference=item.get("settlement_reference", ""),
+                        remitted_at=item.get("remitted_at"),
+                        notes=item.get("notes", ""),
+                        payload=item.get("payload", {}),
+                    )
+                    for item in serializer.validated_data["items"]
+                ],
+            ),
+        )
+        response_serializer = self.get_serializer(batch)
+        status_code = status.HTTP_200_OK if existing_batch is not None else status.HTTP_201_CREATED
+        return Response(response_serializer.data, status=status_code)

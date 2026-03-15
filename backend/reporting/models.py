@@ -69,6 +69,59 @@ class FinanceExportStatus(models.TextChoices):
     EXPIRED = "EXPIRED", "Expired"
 
 
+class InvoiceSettlementStatus(models.TextChoices):
+    PENDING_APPROVAL = "PENDING_APPROVAL", "Pending Approval"
+    APPROVED = "APPROVED", "Approved"
+    PARTIALLY_REMITTED = "PARTIALLY_REMITTED", "Partially Remitted"
+    REMITTED = "REMITTED", "Remitted"
+    REJECTED = "REJECTED", "Rejected"
+
+
+class InvoiceRemittanceStatus(models.TextChoices):
+    POSTED = "POSTED", "Posted"
+    VOID = "VOID", "Void"
+
+
+class InvoiceRemittanceSource(models.TextChoices):
+    MANUAL = "MANUAL", "Manual"
+    EXTERNAL = "EXTERNAL", "External"
+
+
+class InvoiceDisputeStatus(models.TextChoices):
+    OPEN = "OPEN", "Open"
+    UNDER_REVIEW = "UNDER_REVIEW", "Under Review"
+    RESOLVED = "RESOLVED", "Resolved"
+    REJECTED = "REJECTED", "Rejected"
+
+
+class InvoiceDisputeReason(models.TextChoices):
+    RATE = "RATE", "Rate"
+    QUANTITY = "QUANTITY", "Quantity"
+    SERVICE = "SERVICE", "Service"
+    DAMAGE = "DAMAGE", "Damage"
+    OTHER = "OTHER", "Other"
+
+
+class CreditNoteStatus(models.TextChoices):
+    ISSUED = "ISSUED", "Issued"
+    APPLIED = "APPLIED", "Applied"
+    VOID = "VOID", "Void"
+
+
+class ExternalRemittanceBatchStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    COMPLETED = "COMPLETED", "Completed"
+    PARTIAL = "PARTIAL", "Partial"
+    FAILED = "FAILED", "Failed"
+
+
+class ExternalRemittanceItemStatus(models.TextChoices):
+    APPLIED = "APPLIED", "Applied"
+    SKIPPED = "SKIPPED", "Skipped"
+    CONFLICT = "CONFLICT", "Conflict"
+    FAILED = "FAILED", "Failed"
+
+
 class WarehouseKpiSnapshot(TenantAuditModel):
     warehouse = models.ForeignKey(
         "warehouse.Warehouse",
@@ -485,3 +538,280 @@ class FinanceExport(TenantAuditModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return self.file_name
+
+
+class InvoiceSettlement(TenantAuditModel):
+    invoice = models.OneToOneField(
+        Invoice,
+        on_delete=models.PROTECT,
+        related_name="settlement",
+        verbose_name="Invoice",
+    )
+    status = models.CharField(
+        max_length=24,
+        choices=InvoiceSettlementStatus.choices,
+        default=InvoiceSettlementStatus.PENDING_APPROVAL,
+        verbose_name="Status",
+    )
+    requested_amount = models.DecimalField(max_digits=18, decimal_places=4, verbose_name="Requested Amount")
+    approved_amount = models.DecimalField(max_digits=18, decimal_places=4, default=Decimal("0.0000"), verbose_name="Approved Amount")
+    remitted_amount = models.DecimalField(max_digits=18, decimal_places=4, default=Decimal("0.0000"), verbose_name="Remitted Amount")
+    currency = models.CharField(max_length=8, default="USD", verbose_name="Currency")
+    due_date = models.DateField(blank=True, null=True, verbose_name="Due Date")
+    settlement_reference = models.CharField(max_length=64, blank=True, default="", verbose_name="Settlement Reference")
+    submitted_at = models.DateTimeField(default=timezone.now, verbose_name="Submitted At")
+    submitted_by = models.CharField(max_length=255, verbose_name="Submitted By")
+    reviewed_at = models.DateTimeField(blank=True, null=True, verbose_name="Reviewed At")
+    reviewed_by = models.CharField(max_length=255, blank=True, default="", verbose_name="Reviewed By")
+    completed_at = models.DateTimeField(blank=True, null=True, verbose_name="Completed At")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+
+    class Meta:
+        db_table = "reporting_invoice_settlement"
+        verbose_name = "Invoice Settlement"
+        verbose_name_plural = "Invoice Settlements"
+        ordering = ["-submitted_at", "-id"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.invoice.invoice_number}:{self.status}"
+
+
+class InvoiceRemittance(TenantAuditModel):
+    settlement = models.ForeignKey(
+        InvoiceSettlement,
+        on_delete=models.PROTECT,
+        related_name="remittances",
+        verbose_name="Settlement",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=InvoiceRemittanceStatus.choices,
+        default=InvoiceRemittanceStatus.POSTED,
+        verbose_name="Status",
+    )
+    source = models.CharField(
+        max_length=16,
+        choices=InvoiceRemittanceSource.choices,
+        default=InvoiceRemittanceSource.MANUAL,
+        verbose_name="Source",
+    )
+    remittance_reference = models.CharField(max_length=64, verbose_name="Remittance Reference")
+    external_reference = models.CharField(max_length=128, blank=True, default="", verbose_name="External Reference")
+    remitted_at = models.DateTimeField(default=timezone.now, verbose_name="Remitted At")
+    remitted_by = models.CharField(max_length=255, verbose_name="Remitted By")
+    amount = models.DecimalField(max_digits=18, decimal_places=4, verbose_name="Amount")
+    currency = models.CharField(max_length=8, default="USD", verbose_name="Currency")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+
+    class Meta:
+        db_table = "reporting_invoice_remittance"
+        verbose_name = "Invoice Remittance"
+        verbose_name_plural = "Invoice Remittances"
+        ordering = ["-remitted_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "remittance_reference"],
+                condition=Q(is_delete=False),
+                name="reporting_invoice_remittance_reference_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.remittance_reference
+
+
+class InvoiceDispute(TenantAuditModel):
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.PROTECT,
+        related_name="disputes",
+        verbose_name="Invoice",
+    )
+    invoice_line = models.ForeignKey(
+        InvoiceLine,
+        on_delete=models.PROTECT,
+        related_name="disputes",
+        blank=True,
+        null=True,
+        verbose_name="Invoice Line",
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=InvoiceDisputeStatus.choices,
+        default=InvoiceDisputeStatus.OPEN,
+        verbose_name="Status",
+    )
+    reason_code = models.CharField(max_length=16, choices=InvoiceDisputeReason.choices, verbose_name="Reason Code")
+    reference_code = models.CharField(max_length=64, blank=True, default="", verbose_name="Reference Code")
+    disputed_amount = models.DecimalField(max_digits=18, decimal_places=4, verbose_name="Disputed Amount")
+    approved_credit_amount = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        verbose_name="Approved Credit Amount",
+    )
+    opened_at = models.DateTimeField(default=timezone.now, verbose_name="Opened At")
+    opened_by = models.CharField(max_length=255, verbose_name="Opened By")
+    reviewed_at = models.DateTimeField(blank=True, null=True, verbose_name="Reviewed At")
+    reviewed_by = models.CharField(max_length=255, blank=True, default="", verbose_name="Reviewed By")
+    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="Resolved At")
+    resolved_by = models.CharField(max_length=255, blank=True, default="", verbose_name="Resolved By")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+    resolution_notes = models.TextField(blank=True, default="", verbose_name="Resolution Notes")
+
+    class Meta:
+        db_table = "reporting_invoice_dispute"
+        verbose_name = "Invoice Dispute"
+        verbose_name_plural = "Invoice Disputes"
+        ordering = ["-opened_at", "-id"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.invoice.invoice_number}:{self.status}"
+
+
+class CreditNote(TenantAuditModel):
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.PROTECT,
+        related_name="credit_notes",
+        verbose_name="Invoice",
+    )
+    dispute = models.OneToOneField(
+        InvoiceDispute,
+        on_delete=models.PROTECT,
+        related_name="credit_note",
+        blank=True,
+        null=True,
+        verbose_name="Dispute",
+    )
+    credit_note_number = models.CharField(max_length=64, verbose_name="Credit Note Number")
+    status = models.CharField(
+        max_length=16,
+        choices=CreditNoteStatus.choices,
+        default=CreditNoteStatus.ISSUED,
+        verbose_name="Status",
+    )
+    reason_code = models.CharField(max_length=16, choices=InvoiceDisputeReason.choices, default=InvoiceDisputeReason.OTHER, verbose_name="Reason Code")
+    amount = models.DecimalField(max_digits=18, decimal_places=4, verbose_name="Amount")
+    currency = models.CharField(max_length=8, default="USD", verbose_name="Currency")
+    reference_code = models.CharField(max_length=64, blank=True, default="", verbose_name="Reference Code")
+    issued_at = models.DateTimeField(default=timezone.now, verbose_name="Issued At")
+    issued_by = models.CharField(max_length=255, verbose_name="Issued By")
+    applied_at = models.DateTimeField(blank=True, null=True, verbose_name="Applied At")
+    applied_by = models.CharField(max_length=255, blank=True, default="", verbose_name="Applied By")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+
+    class Meta:
+        db_table = "reporting_credit_note"
+        verbose_name = "Credit Note"
+        verbose_name_plural = "Credit Notes"
+        ordering = ["-issued_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "credit_note_number"],
+                condition=Q(is_delete=False),
+                name="reporting_credit_note_number_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.credit_note_number
+
+
+class ExternalRemittanceBatch(TenantAuditModel):
+    source_system = models.CharField(max_length=64, verbose_name="Source System")
+    external_batch_id = models.CharField(max_length=128, verbose_name="External Batch ID")
+    status = models.CharField(
+        max_length=16,
+        choices=ExternalRemittanceBatchStatus.choices,
+        default=ExternalRemittanceBatchStatus.PENDING,
+        verbose_name="Status",
+    )
+    submitted_at = models.DateTimeField(default=timezone.now, verbose_name="Submitted At")
+    processed_at = models.DateTimeField(blank=True, null=True, verbose_name="Processed At")
+    item_count = models.PositiveIntegerField(default=0, verbose_name="Item Count")
+    applied_count = models.PositiveIntegerField(default=0, verbose_name="Applied Count")
+    conflict_count = models.PositiveIntegerField(default=0, verbose_name="Conflict Count")
+    failed_count = models.PositiveIntegerField(default=0, verbose_name="Failed Count")
+    last_error = models.TextField(blank=True, default="", verbose_name="Last Error")
+    payload = models.JSONField(default=dict, blank=True, verbose_name="Payload")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+
+    class Meta:
+        db_table = "reporting_external_remittance_batch"
+        verbose_name = "External Remittance Batch"
+        verbose_name_plural = "External Remittance Batches"
+        ordering = ["-submitted_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "source_system", "external_batch_id"],
+                condition=Q(is_delete=False),
+                name="reporting_external_remittance_batch_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.source_system}:{self.external_batch_id}"
+
+
+class ExternalRemittanceItem(TenantAuditModel):
+    batch = models.ForeignKey(
+        ExternalRemittanceBatch,
+        on_delete=models.PROTECT,
+        related_name="items",
+        verbose_name="Batch",
+    )
+    invoice = models.ForeignKey(
+        Invoice,
+        on_delete=models.PROTECT,
+        related_name="external_remittance_items",
+        blank=True,
+        null=True,
+        verbose_name="Invoice",
+    )
+    settlement = models.ForeignKey(
+        InvoiceSettlement,
+        on_delete=models.PROTECT,
+        related_name="external_remittance_items",
+        blank=True,
+        null=True,
+        verbose_name="Settlement",
+    )
+    remittance = models.OneToOneField(
+        InvoiceRemittance,
+        on_delete=models.PROTECT,
+        related_name="external_ingestion_item",
+        blank=True,
+        null=True,
+        verbose_name="Remittance",
+    )
+    external_reference = models.CharField(max_length=128, verbose_name="External Reference")
+    matched_invoice_number = models.CharField(max_length=64, blank=True, default="", verbose_name="Matched Invoice Number")
+    matched_settlement_reference = models.CharField(max_length=64, blank=True, default="", verbose_name="Matched Settlement Reference")
+    amount = models.DecimalField(max_digits=18, decimal_places=4, verbose_name="Amount")
+    currency = models.CharField(max_length=8, default="USD", verbose_name="Currency")
+    status = models.CharField(
+        max_length=16,
+        choices=ExternalRemittanceItemStatus.choices,
+        default=ExternalRemittanceItemStatus.APPLIED,
+        verbose_name="Status",
+    )
+    processed_at = models.DateTimeField(blank=True, null=True, verbose_name="Processed At")
+    error_message = models.TextField(blank=True, default="", verbose_name="Error Message")
+    payload = models.JSONField(default=dict, blank=True, verbose_name="Payload")
+
+    class Meta:
+        db_table = "reporting_external_remittance_item"
+        verbose_name = "External Remittance Item"
+        verbose_name_plural = "External Remittance Items"
+        ordering = ["batch_id", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "batch", "external_reference"],
+                condition=Q(is_delete=False),
+                name="reporting_external_remittance_item_unique",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.external_reference

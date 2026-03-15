@@ -14,6 +14,7 @@ class LoginViewTests(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.url = reverse("userlogin:login")
+        self.signup_url = reverse("signup")
         self.auth_user = get_user_model().objects.create_user(username="worker", password="password123")
         self.profile = Users.objects.create(
             user_id=self.auth_user.id,
@@ -56,3 +57,98 @@ class LoginViewTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["msg"], "Staff record not found")
+
+    def test_signup_creates_auth_profile_and_staff_record(self) -> None:
+        response = self.client.post(
+            self.signup_url,
+            data=json.dumps(
+                {
+                    "name": "new-manager",
+                    "email": "new-manager@example.com",
+                    "password1": "StrongPassword123!",
+                    "password2": "StrongPassword123!",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        payload = response.json()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(payload["data"]["name"], "new-manager")
+        self.assertEqual(payload["data"]["email"], "new-manager@example.com")
+        self.assertTrue(payload["data"]["mfa_enrollment_required"])
+
+        auth_user = get_user_model().objects.get(username="new-manager")
+        profile = Users.objects.get(user_id=auth_user.id)
+        staff = ListModel.objects.get(id=payload["data"]["user_id"])
+        self.assertEqual(auth_user.email, "new-manager@example.com")
+        self.assertFalse(profile.developer)
+        self.assertEqual(profile.name, "new-manager")
+        self.assertEqual(staff.staff_name, "new-manager")
+        self.assertEqual(staff.staff_type, "Manager")
+
+    def test_signup_rejects_duplicate_username(self) -> None:
+        response = self.client.post(
+            self.signup_url,
+            data=json.dumps(
+                {
+                    "name": "worker",
+                    "email": "duplicate@example.com",
+                    "password1": "StrongPassword123!",
+                    "password2": "StrongPassword123!",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "1022")
+
+    def test_signup_rejects_invalid_email_and_password_mismatch(self) -> None:
+        invalid_email = self.client.post(
+            self.signup_url,
+            data=json.dumps(
+                {
+                    "name": "invalid-email",
+                    "email": "bad-email",
+                    "password1": "StrongPassword123!",
+                    "password2": "StrongPassword123!",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(invalid_email.status_code, 400)
+        self.assertEqual(invalid_email.json()["msg"], "Email is invalid")
+
+        mismatched_password = self.client.post(
+            self.signup_url,
+            data=json.dumps(
+                {
+                    "name": "mismatch-user",
+                    "email": "mismatch@example.com",
+                    "password1": "StrongPassword123!",
+                    "password2": "DifferentPassword123!",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(mismatched_password.status_code, 400)
+        self.assertEqual(mismatched_password.json()["code"], "1026")
+
+    def test_signup_accepts_backend_service_host_used_by_vite_proxy(self) -> None:
+        response = self.client.post(
+            self.signup_url,
+            data=json.dumps(
+                {
+                    "name": "proxy-signup",
+                    "email": "proxy-signup@example.com",
+                    "password1": "StrongPassword123!",
+                    "password2": "StrongPassword123!",
+                }
+            ),
+            content_type="application/json",
+            HTTP_HOST="backend:8000",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["data"]["name"], "proxy-signup")

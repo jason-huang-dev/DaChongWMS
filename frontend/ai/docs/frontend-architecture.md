@@ -1,50 +1,105 @@
 # Frontend Architecture
 
-The DaChongWMS frontend is a Vite-powered React application written in TypeScript. This guide captures the guiding principles before feature code lands.
+The frontend is a Vite + React + TypeScript application under `frontend/src/`. It follows a consistent MVC-inspired feature architecture documented in `frontend/ai/docs/feature-architecture.md`. The browser owns routing and presentation; backend workflow rules stay in Django; feature controllers coordinate between the two.
 
-## Stack
+## Current Stack
 
-- **Tooling**: Vite for dev server/build, ESLint + Prettier for lint/format, Vitest or Jest for unit tests.
-- **Language**: TypeScript with strict mode enabled.
-- **UI Library**: MUI (Material UI) for theming and primitives.
-- **State**: React Query or RTK Query for server state, React Context/Zustand for global UI state, component-local state for transient interactions.
+- **Tooling**: Vite 6, TypeScript, npm.
+- **UI**: MUI 7 with a shared theme in `src/app/theme.ts`.
+- **Routing**: React Router with route-level auth and role guards.
+- **Server state**: TanStack Query.
+- **Forms**: React Hook Form + Zod.
 
-## Folder Structure (proposed)
+## Application Folder Structure
 
-```
+```text
 frontend/
   src/
-    app/            # App shell, routing, theme provider
+    app/
+      layout/
+      App.tsx
+      providers.tsx
+      routes.tsx
+      theme.ts
     features/
-      inventory/
-        components/
-        hooks/
-        api/
-      ...
+      <feature>/
+        model/
+          api.ts
+          mappers.ts
+          types.ts
+          validators.ts
+        controller/
+          actions.ts
+          use<Feature>Controller.ts
+        view/
+          <Feature>Page.tsx
+          <Feature>Table.tsx
+          <Feature>Form.tsx
+          components/
+    lib/
+      config.ts
+      http.ts
+      query-client.ts
     shared/
       components/
       hooks/
+      storage/
+      types/
       utils/
-    lib/            # cross-cutting helpers (http client, config)
-    assets/
-    styles/
 ```
 
-- Keep feature code co-located (components + hooks + API adapters).
-- Shared utilities should be framework-agnostic (formatters, constants, permission helpers).
+Feature roots no longer contain compatibility shims. Imports should target the owning layer directly.
 
-## Environment Management
+## Architectural Decisions
 
-- Use `.env` files consumed by Vite (prefix variables with `VITE_`). Example: `VITE_API_BASE_URL`.
-- Document environment expectations in `frontend/.env.example` when the app materializes.
+- Authentication is based on the backend's legacy login contract, not JWT. The SPA stores the returned `openid` and `user_id`, then sends them back as `TOKEN` and `OPERATOR` headers on each API request.
+- The frontend resolves the logged-in operator profile through `/api/staff/{id}/` after login so route guards and navigation can use the real `staff_type`.
+- React Query stays behind controller hooks; routed pages render controller state instead of owning fetch logic directly.
+- Feature-local `model/` files own endpoint constants, payload mappers, shared feature types, and Zod validators.
+- Feature-local `controller/` files own mutation orchestration, query invalidation, and feature coordination.
+- Feature-local `view/` files own JSX, MUI layout, and presentational composition.
+- Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, and `ResourceTable` keep the first set of screens consistent while the product surface grows.
+- Repeated selector-driven create flows use shared `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, JSON helpers, and reference-option hooks under `src/shared/` instead of rebuilding those primitives per feature.
 
-## Build Targets
+## Current Screen Set
 
-- Development: `npm run dev` (Vite dev server with hot reload).
-- Production: `npm run build` (outputs static assets under `dist/`). Serve via CDN or the backend’s static pipeline (WhiteNoise) if necessary.
+- `LoginPage`: backend login plus test-system bootstrap.
+- `SignupPage`: self-serve manager-account creation using the backend signup endpoint.
+- `MfaChallengePage`: second-step login challenge for TOTP or recovery-code verification.
+- `MfaEnrollmentPage`: authenticated TOTP setup, verification, and recovery-code display.
+- `DashboardPage`: high-level operational summary.
+- `InventoryBalancesPage`: tenant-scoped stock positions.
+- `InboundPage`: purchase orders, receipts, putaway tasks, and scan-first receive/putaway actions.
+- `PurchaseOrderDetailPage`: editable purchase-order header flow plus cancel action.
+- `OutboundPage`: sales orders, pick tasks, shipments, and scan-first pick/ship actions.
+- `SalesOrderDetailPage`: editable sales-order header flow plus allocation and cancel actions.
+- `TransfersPage`: transfer orders, transfer lines, replenishment rules, and replenishment task completion.
+- `TransferOrderDetailPage`: editable transfer-order header flow plus line completion.
+- `ReturnsPage`: return orders, return receipts, return dispositions, and return-side mutation panels.
+- `ReturnOrderDetailPage`: editable return-order header flow with line-level receipt/disposition progress.
+- `CountingPage`: handheld assignments, next-task scanner completion, and supervisor approval queue.
+- `CountApprovalDetailPage`: supervisor approval decision screen with count-line context.
+- `AutomationPage`: schedule creation, queue monitoring, worker health, alert evaluation, and task retry/run-now actions.
+- `ScheduledTaskDetailPage`: schedule inspection with related background tasks and alerts.
+- `BackgroundTaskDetailPage`: queue-task inspection with payload/result JSON and retry action.
+- `IntegrationsPage`: integration job creation, webhook intake, carrier booking creation, and execution monitoring.
+- `IntegrationJobDetailPage`: job state, request/response payloads, and job-scoped logs.
+- `WebhookEventDetailPage`: webhook state, headers/payload inspection, and webhook-scoped logs.
+- `CarrierBookingDetailPage`: carrier booking state, linked jobs, and label payload inspection.
+- `FinancePage`: invoices, settlements, disputes, finance exports.
+- `InvoiceDetailPage`: invoice header, finance state, invoice lines, and finance-review actions.
 
-## Quality Gates
+## Delivery Pattern
 
-- Enforce type-checking via `tsc --noEmit` in CI.
-- Add lint and test steps to the pipeline before merge.
-- Snapshot or visual regression testing is encouraged for data-dense screens.
+- Route bundles are lazy-loaded in `src/app/routes.tsx` so the login and shell do not pull every screen into the first JS payload.
+- Feature routes import directly from `features/<domain>/view/*`.
+- Scan-first mutations and detail actions are split into `model/`, `controller/`, and `view/` layers for inbound, outbound, counting, reporting, auth, and MFA.
+- Shared modules such as `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
+- Search-heavy lookup fields now use debounced, paginated reference hooks instead of assuming the first page of options is sufficient.
+- Read-mostly domains such as dashboard and inventory use the same feature shape, with table components extracted into `view/*Table.tsx`.
+- Tests are colocated with the controller or view layer they exercise.
+- Test coverage now covers auth restore, route guards, first route/data rendering, scan-first mutation panels, remote selector behavior, and transfer/return/automation/integration detail routes through Vitest + Testing Library.
+
+## Immediate Next Frontend Work
+
+- Add richer finance workflows beyond invoice review, such as settlement/remittance and dispute handling screens.

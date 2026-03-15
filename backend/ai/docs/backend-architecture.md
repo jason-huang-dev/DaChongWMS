@@ -12,14 +12,14 @@ DaChongWMS uses Django and Django REST Framework (DRF) to deliver a modular, dom
 6. **Utility Layer**: shared helpers under `backend/utils/` for auth, operator resolution, pagination, validation, and scan-code resolution.
 7. **Bootstrap Services**: `test_system` seeds a usable tenant for smoke tests.
 8. **Operational Domains**: `operations.inbound`, `operations.outbound`, `operations.counting`, `operations.transfers`, and `operations.returns` own warehouse execution.
-9. **Integration + Commercial Domains**: `integrations` owns ERP/carrier/webhook control flow. `reporting` owns KPIs, storage accruals, finance review/export, rate contracts, invoices, and billing charge events.
-10. **Scan Primitives**: `scanner` holds barcode aliases, scan rules, and LPN state used by the operational apps.
+9. **Integration + Commercial Domains**: `integrations` owns ERP/carrier/webhook control flow. `reporting` owns KPIs, storage accruals, finance review/export, rate contracts, invoices, settlements, remittances, disputes, credit notes, external remittance ingestion, and billing charge events.
+10. **Scan Primitives**: `scanner` holds barcode aliases, scan rules, LPN state, handheld device sessions, telemetry, and offline replay used by the operational apps.
 
 ## Current State
 
 - DRF Spectacular is wired under `/api/schema/` and `/api/docs/`.
 - `automation` is now installed and exposed under `/api/automation/`.
-- Scan-first execution now includes ASN/LPN-aware inbound receive/putaway and dock-verified outbound shipping.
+- Scan-first execution now includes ASN/LPN-aware inbound receive/putaway, dock-verified outbound shipping, and scanner-managed handheld session/offline replay.
 
 ## App Layout Template
 

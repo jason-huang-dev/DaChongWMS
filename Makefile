@@ -1,134 +1,152 @@
-# Detect the operating system
-OS := $(shell uname -s)
-
+PYTHON ?= python3
+PROD_ENV_FILE ?= .env.prod
+TEST_TARGET ?=
 COMMIT_MSG ?= no message update
 BRANCH_NAME ?= main
-PARAMS ?= "--ff-only"
-DOCKER_COMPOSE= docker compose
-DJANGO_MANAGE= $(DOCKER_COMPOSE) exec backend python manage.py
-TEST_TARGET ?= 
+PARAMS ?= --ff-only
+DUMP_FILE ?= tmp/pg13-to-pg16.dump
+OLD_PG13_VOLUME ?= dachongwms_db_data
+
+COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
+COMPOSE_PROD := docker compose --env-file $(PROD_ENV_FILE) -f docker-compose.yml -f docker-compose.prod.yml
+MANAGE_DEV := $(COMPOSE_DEV) exec backend python manage.py
+MANAGE_PROD := $(COMPOSE_PROD) exec backend python manage.py
+
 .DEFAULT_GOAL := update
 
-# Docker related commands
-.PHONY: run
-run:
-	$(DOCKER_COMPOSE) up -d
+.PHONY: help \
+	dev run dev_build build build_no_cache \
+	prod run_prod prod_build build_prod \
+	down down_dev down_prod clean_docker \
+	venv migrate migrate_prod makemigrations showmigrations createsuperuser \
+	export_pg13_dump import_pg13_dump \
+	check_tables flush_db db_relations test_backend \
+	update_from_branch push_to_branch update update_run push migrate_and_update \
+	run_local
 
-.PHONY: build
-build: 
-	$(DOCKER_COMPOSE) up -d --build
+help:
+	@printf "%s\n" \
+		"Common targets:" \
+		"  make dev                     Start the development stack" \
+		"  make dev_build               Rebuild and start the development stack" \
+		"  make prod PROD_ENV_FILE=.env.prod" \
+		"                              Start the production stack" \
+		"  make prod_build PROD_ENV_FILE=.env.prod" \
+		"                              Rebuild and start the production stack" \
+		"  make migrate                Run Django migrations in dev" \
+		"  make migrate_prod PROD_ENV_FILE=.env.prod" \
+		"                              Run Django migrations in prod" \
+		"  make export_pg13_dump OLD_PG13_VOLUME=dachongwms_db_data" \
+		"                              Export the old PostgreSQL 13 volume into a dump file" \
+		"  make import_pg13_dump DUMP_FILE=tmp/pg13-to-pg16.dump" \
+		"                              Restore an exported PostgreSQL 13 dump into the PostgreSQL 16 dev db" \
+		"  make test_backend TEST_TARGET='app.tests'" \
+		"                              Run backend tests in dev"
 
-.PHONY: build_no_cache
+# Docker
+dev run:
+	$(COMPOSE_DEV) up -d
+
+dev_build build:
+	$(COMPOSE_DEV) up -d --build
+
 build_no_cache:
-	$(DOCKER_COMPOSE) up -d --build --no-cache
+	$(COMPOSE_DEV) build --no-cache
+	$(COMPOSE_DEV) up -d
 
-.PHONY:down
-down: 
-	$(DOCKER_COMPOSE) down
+prod run_prod:
+	$(COMPOSE_PROD) up -d
 
-.PHONY: clean_docker
+prod_build build_prod:
+	$(COMPOSE_PROD) up -d --build
+
+down down_dev:
+	$(COMPOSE_DEV) down
+
+down_prod:
+	$(COMPOSE_PROD) down
+
 clean_docker:
-	$(DOCKER_COMPOSE) down --rmi all --volumes --remove-orphans
+	$(COMPOSE_DEV) down --rmi all --volumes --remove-orphans
 	docker system prune -a
 
-# Django backend related commands
-.PHONY: venv
+# Local setup
 venv:
-	python -m venv .venv
-ifeq ($(OS),Windows_NT)
-	source .venv/Scripts/activate
-else
-	source .venv/bin/activate
-endif
-	pip install -r ./backend/requirements.txt
-	cd frontend
-	npm install
-	cd ..
+	$(PYTHON) -m venv .venv
+	./.venv/bin/pip install -r backend/requirements.txt
+	npm install --prefix frontend
 
-.PHONY: migrate
+run_local:
+	npm run dev --prefix frontend
+
+# Django
 migrate:
-	$(DJANGO_MANAGE) migrate
+	$(MANAGE_DEV) migrate
 
-.PHONY: makemigrations
+migrate_prod:
+	$(MANAGE_PROD) migrate
+
 makemigrations:
-	$(DJANGO_MANAGE) makemigrations
-# 	$(DJANGO_MANAGE) makemigrations calendars
-# 	$(DJANGO_MANAGE) makemigrations users
-# 	$(DJANGO_MANAGE) makemigrations events
-# 	$(DJANGO_MANAGE) makemigrations invitations
+	$(MANAGE_DEV) makemigrations
 
-
-.PHONY: showmigrations
 showmigrations:
-	$(DJANGO_MANAGE) showmigrations
+	$(MANAGE_DEV) showmigrations
 
-.PHONY: createsuperuser
 createsuperuser:
-	$(DJANGO_MANAGE) createsuperuser
+	$(MANAGE_DEV) createsuperuser
 
-.PHONY: check_tables
 check_tables:
-	docker-compose exec db psql -U myuser -d mydatabase -c "\dt"
-.PHONY: flush_db
-flush_db:
-	docker-compose exec db psql -U myuser -d mydatabase -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-	$(DJANGO_MANAGE) flush
+	$(COMPOSE_DEV) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "\\dt"'
 
-.PHONY: db_relations
+flush_db:
+	$(COMPOSE_DEV) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"'
+	$(MANAGE_DEV) flush
+
 db_relations:
 	mkdir -p backend/docs/diagrams
-	$(DJANGO_MANAGE) graph_models --arrow-shape normal -a -o docs/diagrams/er-diagram.svg
+	$(MANAGE_DEV) graph_models --arrow-shape normal -a -o docs/diagrams/er-diagram.svg
 
-.PHONY: test_backend
 test_backend:
-	$(DJANGO_MANAGE) test $(TEST_TARGET)
-# General git hub commands
-.PHONY:update_from_branch
+	$(MANAGE_DEV) test $(TEST_TARGET)
+
+export_pg13_dump:
+	OLD_PG13_VOLUME=$(OLD_PG13_VOLUME) DUMP_FILE=$(DUMP_FILE) ./scripts/migrate_pg13_to_pg16.sh export
+
+import_pg13_dump:
+	DUMP_FILE=$(DUMP_FILE) ./scripts/migrate_pg13_to_pg16.sh import
+
+# Git workflow
 update_from_branch:
 	git stash
 	git pull origin $(BRANCH_NAME) $(PARAMS)
-	git stash pop
+	-git stash pop
 
-.PHONY: push_to_branch
-push_to_branch: 
-	git stash;
+push_to_branch:
+	git stash
 	git pull origin $(BRANCH_NAME) $(PARAMS)
-	git stash pop;
+	-git stash pop
 	git add .
 	git commit -m "$(COMMIT_MSG)"
 	git push origin $(BRANCH_NAME)
 
-
-# General update recipies
-.PHONY: update
 update:
 	git stash
 	git pull $(PARAMS)
-	git stash pop
+	-git stash pop
 
-.PHONY: update_run
 update_run:
 	git stash
 	git pull $(PARAMS)
-	git stash pop
-	$(MAKE) run
+	-git stash pop
+	$(MAKE) dev
 	$(MAKE) migrate
 
-.PHONY: push
-push: 
+push:
 	git stash
 	git pull $(PARAMS)
-	git stash pop
+	-git stash pop
 	git add .
 	git commit -m "$(COMMIT_MSG)"
 	git push
 
-# Combined migration and update target
-.PHONY: migrate_and_update
-migrate_and_update: update makemigrations migrate 
-
-# Local recipies
-.PHONY: run_local
-run_local:
-	cd frontend
-	npm run dev
+migrate_and_update: update makemigrations migrate

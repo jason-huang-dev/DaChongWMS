@@ -29,7 +29,8 @@ Security is foundational for a warehouse management system. This document aligns
 - `operations.transfers` writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
 - `operations.returns` writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
 - `reporting` KPI, operational export, rate-contract, storage-accrual, invoice, and billing-event writes require `Manager`, `Supervisor`, or `StockControl`.
-- `reporting` finance review and finance-export writes require `Finance`, `Manager`, or `Supervisor`.
+- `reporting` finance review, settlement, remittance, dispute, credit-note, external-remittance-ingestion, and finance-export writes require `Finance`, `Manager`, or `Supervisor`.
+- `scanner` handheld session, telemetry, and offline replay writes require `Inbound`, `Outbound`, `StockControl`, `Manager`, or `Supervisor`.
 
 ## Scanner-First Enforcement
 
@@ -37,10 +38,27 @@ Security is foundational for a warehouse management system. This document aligns
 - Scan completion for putaway and pick also validates task assignment when a task is explicitly assigned.
 - The current scan-first slice resolves direct SKU/location codes plus `scanner.BarcodeAlias` rows.
 - LPN-based receive, putaway, pick, and ship flows now validate `scanner.LicensePlate` state.
-- Device sessions and offline replay are still future work.
+- Device session lifecycle, telemetry, and offline replay now run through `/api/scanner/` and still require tenant-authenticated staff operators.
 
 ## Admin vs API
 
 - Django admin uses the same auth backend and should be treated as a privileged surface.
 - Mutation endpoints must stamp resolved operator names into audit fields rather than trusting client-supplied values.
 - Tokens should map to real users or service identities so background and operational actions remain attributable.
+## Signup and MFA
+
+- Self-serve signup creates a Django auth user, a `userprofile.Users` row, and a matching `staff.ListModel` manager record.
+- Signup now requires an email address and returns `mfa_enrollment_required=true` so the SPA can route the operator into TOTP enrollment immediately.
+- Password login stays first-factor only until a verified MFA enrollment exists. Once a user has a verified enrollment, `POST /api/login/` returns `202` with an MFA challenge payload instead of issuing the normal tenant session payload.
+- `POST /api/mfa/challenges/verify/` completes the login challenge with either a TOTP code or a one-time recovery code and then returns the normal auth payload.
+- Authenticated operators can manage their own MFA setup through:
+  - `GET /api/mfa/status/`
+  - `POST /api/mfa/enrollments/totp/`
+  - `POST /api/mfa/enrollments/totp/verify/`
+
+## MFA Hardening Still Needed
+
+- secret rotation and enrollment revocation UX
+- recovery-code regeneration with explicit confirmation
+- step-up enforcement for privileged actions such as finance approvals and admin-level configuration writes
+- optional policy gates that force MFA before allowing production access for selected roles or environments

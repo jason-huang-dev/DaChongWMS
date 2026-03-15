@@ -34,6 +34,7 @@ class TestSystemRegisterViewTests(TestCase):
     def setUp(self) -> None:
         super().setUp()
         self.url = reverse("test_system:register")
+        self.root_url = reverse("test_system:register-root")
         self.login_url = reverse("userlogin:login")
 
     def test_register_bootstraps_a_full_demo_tenant_with_defaults(self) -> None:
@@ -126,3 +127,24 @@ class TestSystemRegisterViewTests(TestCase):
         response = self.client.post(self.url, data=json.dumps({}), content_type="application/json")
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.json()["msg"], "Test-system bootstrap is disabled")
+
+    @override_settings(TEST_SYSTEM_ENABLED=True)
+    def test_register_root_alias_matches_frontend_bootstrap_path(self) -> None:
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(self.root_url, data=json.dumps({}), content_type="application/json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["data"]["name"], DEFAULT_BOOTSTRAP_USERNAME)
+
+    @override_settings(TEST_SYSTEM_ENABLED=True)
+    def test_register_accepts_backend_service_host_used_by_vite_proxy(self) -> None:
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                self.url,
+                data=json.dumps({"name": "proxy-bootstrap"}),
+                content_type="application/json",
+                HTTP_HOST="backend:8000",
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["data"]["name"], "proxy-bootstrap")

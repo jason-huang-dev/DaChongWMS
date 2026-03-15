@@ -27,12 +27,14 @@ This document explains how Django boots inside DaChongWMS and how each entrypoin
 - Default DB is SQLite via `dj_database_url`, but developers may point to Postgres by exporting `DATABASE_URL`.
 - Use `python manage.py runserver` for quick iteration. This uses the same settings module so features such as DRF, CORS, and static handling follow production paths.
 - Keep `.env` files scoped per developer; do not commit secrets.
+- The Docker dev stack now lives in `docker-compose.dev.yml`; it binds the backend source tree into the container and runs `python manage.py runserver 0.0.0.0:8000`.
 
 ## Deployment Targets
 
 - **ASGI (preferred long-term)**: Allows websocket channels, async views, and compatibility with async task dispatch. Example command: `uvicorn dachong_wms.asgi:application --host 0.0.0.0 --port 8000`.
 - **WSGI**: Works with established Django hosting stacks. Example command: `gunicorn dachong_wms.wsgi:application`.
 - **Management jobs**: Use `python manage.py <command>` inside the same virtualenv/container image used for serving.
+- The Docker production stack now lives in `docker-compose.prod.yml`; it runs `gunicorn dachong_wms.wsgi:application` behind the frontend Nginx container.
 
 ## Shared Utilities
 
