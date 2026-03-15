@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -114,6 +115,8 @@ class MFAApiTests(TestCase):
         self.assertEqual(challenge_response.status_code, 200)
         self.assertTrue(challenge_response.json()["data"]["mfa_verified"])
         self.assertEqual(challenge_response.json()["data"]["openid"], self.profile.openid)
+        self.assertNotIn(settings.SESSION_COOKIE_NAME, challenge_response.cookies)
+        self.assertIsNone(self.client.session.get("_auth_user_id"))
 
     def test_recovery_code_can_complete_a_challenge_once(self) -> None:
         create_response = self.api_client.post(self.enroll_url, {}, format="json")

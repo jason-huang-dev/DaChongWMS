@@ -51,6 +51,7 @@ Security is foundational for a warehouse management system. This document aligns
 - Signup now requires an email address and returns `mfa_enrollment_required=true` so the SPA can route the operator into TOTP enrollment immediately.
 - Password login stays first-factor only until a verified MFA enrollment exists. Once a user has a verified enrollment, `POST /api/login/` returns `202` with an MFA challenge payload instead of issuing the normal tenant session payload.
 - `POST /api/mfa/challenges/verify/` completes the login challenge with either a TOTP code or a one-time recovery code and then returns the normal auth payload.
+- The SPA auth endpoints are token-style only; they do not establish a Django admin session. Admin access remains a separate `is_staff`/`is_superuser` login surface.
 - Authenticated operators can manage their own MFA setup through:
   - `GET /api/mfa/status/`
   - `POST /api/mfa/enrollments/totp/`

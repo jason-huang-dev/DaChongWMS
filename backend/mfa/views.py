@@ -6,7 +6,7 @@ import json
 from typing import Any
 
 from django.conf import settings
-from django.contrib.auth import get_user_model, login as auth_login
+from django.contrib.auth import get_user_model
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework import status
@@ -149,7 +149,6 @@ def verify_challenge(request: HttpRequest, *args: Any, **kwargs: Any) -> JsonRes
         response["msg"] = " ".join(exc.messages) if hasattr(exc, "messages") else str(exc)
         return JsonResponse(response, status=400)
 
-    auth_login(request, result.auth_user, backend="django.contrib.auth.backends.ModelBackend")
     response = FBMsg.ret()
     identity = resolve_workspace_identity(auth_user=result.auth_user)
     response["data"] = build_auth_response_data(

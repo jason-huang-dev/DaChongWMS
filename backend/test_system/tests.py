@@ -4,6 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -52,6 +53,8 @@ class TestSystemRegisterViewTests(TestCase):
                 self.assertEqual(payload["data"]["name"], DEFAULT_BOOTSTRAP_USERNAME)
                 self.assertTrue(payload["data"]["used_default_name"])
                 self.assertTrue(payload["data"]["used_default_password"])
+                self.assertNotIn(settings.SESSION_COOKIE_NAME, response.cookies)
+                self.assertIsNone(self.client.session.get("_auth_user_id"))
                 self.assertEqual(payload["data"]["seed_summary"]["inventory_balances"], 4)
                 self.assertEqual(payload["data"]["seed_summary"]["inventory_movements"], 5)
 

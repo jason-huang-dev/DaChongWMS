@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
@@ -42,6 +43,8 @@ class LoginViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["data"]["openid"], self.profile.openid)
         self.assertEqual(payload["data"]["user_id"], self.staff.id)
+        self.assertNotIn(settings.SESSION_COOKIE_NAME, response.cookies)
+        self.assertIsNone(self.client.session.get("_auth_user_id"))
 
     def test_login_requires_credentials(self) -> None:
         response = self.client.post(self.url, data=json.dumps({}), content_type="application/json")
@@ -86,6 +89,8 @@ class LoginViewTests(TestCase):
         self.assertEqual(profile.name, "new-manager")
         self.assertEqual(staff.staff_name, "new-manager")
         self.assertEqual(staff.staff_type, "Manager")
+        self.assertNotIn(settings.SESSION_COOKIE_NAME, response.cookies)
+        self.assertIsNone(self.client.session.get("_auth_user_id"))
 
     def test_signup_rejects_duplicate_username(self) -> None:
         response = self.client.post(

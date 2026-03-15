@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Alert, Box, Button, Card, CardContent, CircularProgress, Stack, Typography } from "@mui/material";
+import { Alert, Button, CircularProgress, Stack, Typography } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 import { Navigate, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import type { MfaChallengeFormValues } from "@/features/mfa/model/types";
 import { mfaChallengeSchema } from "@/features/mfa/model/validators";
+import { AuthShell } from "@/shared/components/auth-shell";
 import { FormTextField } from "@/shared/components/form-text-field";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
@@ -42,53 +43,40 @@ export function MfaChallengePage() {
   });
 
   return (
-    <Box
-      sx={{
-        alignItems: "center",
-        background: "linear-gradient(135deg, #1f4b99 0%, #11294f 100%)",
-        display: "flex",
-        justifyContent: "center",
-        minHeight: "100vh",
-        px: 2,
-      }}
+    <AuthShell
+      description={`Enter the current code from your authenticator app or one of your recovery codes for ${pendingChallenge.username}.`}
+      heroPoints={["Time-bound challenge", "Recovery-code fallback", "Session issued only after verification"]}
+      heroSummary="MFA challenges stay outside the authenticated route tree and use the same DaChong visual system as login and signup."
+      heroTitle="Step-up verification before warehouse access"
+      title="Verify multi-factor authentication"
     >
-      <Card sx={{ maxWidth: 520, width: "100%" }}>
-        <CardContent sx={{ p: 4 }}>
-          <Stack spacing={3}>
-            <Stack spacing={1}>
-              <Typography variant="h4">Verify multi-factor authentication</Typography>
-              <Typography color="text.secondary" variant="body1">
-                Enter the current code from your authenticator app or one of your recovery codes for {pendingChallenge.username}.
-              </Typography>
-              {expiresLabel ? (
-                <Typography color="text.secondary" variant="body2">
-                  This challenge expires at {expiresLabel}.
-                </Typography>
-              ) : null}
+      <Stack spacing={3}>
+        {expiresLabel ? (
+          <Typography color="text.secondary" variant="body2">
+            This challenge expires at {expiresLabel}.
+          </Typography>
+        ) : null}
+        {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
+        <FormProvider {...form}>
+          <Stack component="form" noValidate onSubmit={handleSubmit} spacing={2.5}>
+            <FormTextField autoComplete="one-time-code" label="Verification code" name="code" />
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
+              <Button disabled={form.formState.isSubmitting} type="submit" variant="contained">
+                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : "Verify"}
+              </Button>
+              <Button
+                onClick={() => {
+                  clearPendingChallenge();
+                  navigate("/login", { replace: true });
+                }}
+                variant="outlined"
+              >
+                Back to login
+              </Button>
             </Stack>
-            {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
-            <FormProvider {...form}>
-              <Stack component="form" noValidate onSubmit={handleSubmit} spacing={2.5}>
-                <FormTextField autoComplete="one-time-code" label="Verification code" name="code" />
-                <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-                  <Button disabled={form.formState.isSubmitting} type="submit" variant="contained">
-                    {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : "Verify"}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      clearPendingChallenge();
-                      navigate("/login", { replace: true });
-                    }}
-                    variant="outlined"
-                  >
-                    Back to login
-                  </Button>
-                </Stack>
-              </Stack>
-            </FormProvider>
           </Stack>
-        </CardContent>
-      </Card>
-    </Box>
+        </FormProvider>
+      </Stack>
+    </AuthShell>
   );
 }

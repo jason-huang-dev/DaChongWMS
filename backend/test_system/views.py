@@ -11,7 +11,7 @@ import json
 from typing import Any
 
 from django.conf import settings
-from django.contrib.auth import get_user_model, login as auth_login
+from django.contrib.auth import get_user_model
 from django.http import HttpRequest, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
@@ -93,8 +93,6 @@ def register(request: HttpRequest, *args: Any, **kwargs: Any) -> JsonResponse:
 
     result = bootstrap_test_system(username=username, password=password1, ip=ip)
     ensure_media_directories(result.profile.openid)
-    auth_login(request, result.auth_user, backend="django.contrib.auth.backends.ModelBackend")
-
     response = FBMsg.ret()
     response["ip"] = ip
     response["data"] = {

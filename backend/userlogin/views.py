@@ -6,7 +6,7 @@ import json
 from typing import Any, Dict
 
 from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate, login as auth_login
+from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
@@ -82,7 +82,6 @@ def login(request: HttpRequest, *args: Any, **kwargs: Any) -> JsonResponse:
         }
         return JsonResponse(response, status=202)
 
-    auth_login(request, user)
     response = FBMsg.ret()
     response["ip"] = ip
     response["data"] = build_auth_response_data(
@@ -169,7 +168,6 @@ def register(request: HttpRequest, *args: Any, **kwargs: Any) -> JsonResponse:
         return JsonResponse(response, status=400)
 
     result = register_workspace_user(username=username, password=password1, email=email, ip=ip or "")
-    auth_login(request, result.auth_user, backend="django.contrib.auth.backends.ModelBackend")
     identity = resolve_workspace_identity(auth_user=result.auth_user)
 
     response = FBMsg.ret()

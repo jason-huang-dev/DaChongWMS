@@ -33,6 +33,16 @@ class SettingsHelpersTests(SimpleTestCase):
             with mock.patch.object(settings, "DEBUG", False):
                 self.assertEqual(settings._build_allowed_hosts(), ["api.example.com"])
 
+    def test_database_conn_max_age_defaults_to_zero_in_debug(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=True):
+            with mock.patch.object(settings, "DEBUG", True):
+                self.assertEqual(settings._database_conn_max_age(), 0)
+
+    def test_database_conn_max_age_uses_explicit_override(self) -> None:
+        with mock.patch.dict(os.environ, {"DJANGO_DB_CONN_MAX_AGE": "120"}, clear=True):
+            with mock.patch.object(settings, "DEBUG", True):
+                self.assertEqual(settings._database_conn_max_age(), 120)
+
 
 class RootUrlsTests(SimpleTestCase):
     def test_schema_and_docs_routes_are_registered(self) -> None:

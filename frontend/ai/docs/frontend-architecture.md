@@ -6,6 +6,7 @@ The frontend is a Vite + React + TypeScript application under `frontend/src/`. I
 
 - **Tooling**: Vite 6, TypeScript, npm.
 - **UI**: MUI 7 with a shared theme in `src/app/theme.ts`.
+- **Branding**: shared DaChong logo assets under `src/assets/logo/` plus reusable brand tokens in `src/app/brand.ts`.
 - **Routing**: React Router with route-level auth and role guards.
 - **Server state**: TanStack Query.
 - **Forms**: React Hook Form + Zod.
@@ -16,11 +17,14 @@ The frontend is a Vite + React + TypeScript application under `frontend/src/`. I
 frontend/
   src/
     app/
+      brand.ts
       layout/
       App.tsx
       providers.tsx
       routes.tsx
       theme.ts
+    assets/
+      logo/
     features/
       <feature>/
         model/
@@ -60,6 +64,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Feature-local `view/` files own JSX, MUI layout, and presentational composition.
 - Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, and `ResourceTable` keep the first set of screens consistent while the product surface grows.
 - Repeated selector-driven create flows use shared `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, JSON helpers, and reference-option hooks under `src/shared/` instead of rebuilding those primitives per feature.
+- Repeated branding usage goes through reusable modules: raw logo files live in `src/assets/logo/`, and the live UI consumes them through shared components such as `BrandLogo` and `AuthShell`.
 
 ## Current Screen Set
 
@@ -95,6 +100,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Feature routes import directly from `features/<domain>/view/*`.
 - Scan-first mutations and detail actions are split into `model/`, `controller/`, and `view/` layers for inbound, outbound, counting, reporting, auth, and MFA.
 - Shared modules such as `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
+- Brand palette, gradients, and shadows come from `src/app/brand.ts`, so auth screens, page headers, and the shell all stay aligned with the gold/copper/charcoal logo theme.
 - Search-heavy lookup fields now use debounced, paginated reference hooks instead of assuming the first page of options is sufficient.
 - Read-mostly domains such as dashboard and inventory use the same feature shape, with table components extracted into `view/*Table.tsx`.
 - Tests are colocated with the controller or view layer they exercise.

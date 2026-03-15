@@ -18,11 +18,14 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { brandColors, brandGradients, brandShadows } from "@/app/brand";
 import { navigationItems } from "@/app/layout/navigation-items";
 import { RouteBreadcrumbs } from "@/app/layout/route-breadcrumbs";
 import { useAuth } from "@/features/auth/controller/useAuthController";
+import { BrandLogo } from "@/shared/components/brand-logo";
 import { hasAnyRole } from "@/shared/utils/permissions";
 
 const drawerWidth = 264;
@@ -40,16 +43,24 @@ export function AppShell() {
   );
 
   const drawerContent = (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      <Toolbar>
+    <Box
+      sx={{
+        background: brandGradients.shellDrawer,
+        color: brandColors.inkSoft,
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+      }}
+    >
+      <Toolbar sx={{ alignItems: "flex-start", px: 3, py: 3 }}>
         <Stack>
-          <Typography variant="h6">DaChongWMS</Typography>
-          <Typography color="text.secondary" variant="body2">
+          <BrandLogo kind="lockup" sx={{ mb: 1, width: 150 }} variant="gold" />
+          <Typography color={alpha(brandColors.inkSoft, 0.7)} variant="body2">
             Operator console
           </Typography>
         </Stack>
       </Toolbar>
-      <Divider />
+      <Divider sx={{ borderColor: alpha(brandColors.gold, 0.16) }} />
       <List sx={{ flexGrow: 1, px: 1.5, py: 2 }}>
         {filteredItems.map((item) => {
           const Icon = item.icon;
@@ -62,7 +73,30 @@ export function AppShell() {
                 setMobileOpen(false);
               }}
               selected={selected}
-              sx={{ borderRadius: 2, mb: 0.5 }}
+              sx={{
+                "& .MuiListItemIcon-root": {
+                  color: selected ? brandColors.goldLight : alpha(brandColors.inkSoft, 0.76),
+                  minWidth: 40,
+                },
+                "& .MuiListItemText-primary": {
+                  fontWeight: selected ? 700 : 500,
+                },
+                "&.Mui-selected": {
+                  backgroundColor: alpha(brandColors.gold, 0.12),
+                  border: `1px solid ${alpha(brandColors.gold, 0.18)}`,
+                  boxShadow: brandShadows.glow,
+                  color: brandColors.goldLight,
+                },
+                "&.Mui-selected:hover": {
+                  backgroundColor: alpha(brandColors.gold, 0.16),
+                },
+                "&:hover": {
+                  backgroundColor: alpha(brandColors.gold, 0.08),
+                },
+                borderRadius: 2.5,
+                color: selected ? brandColors.goldLight : alpha(brandColors.inkSoft, 0.86),
+                mb: 0.75,
+              }}
             >
               <ListItemIcon>
                 <Icon color={selected ? "primary" : "inherit"} />
@@ -77,7 +111,7 @@ export function AppShell() {
 
   return (
     <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      <AppBar color="inherit" elevation={0} position="fixed" sx={{ borderBottom: 1, borderColor: "divider", ml: { md: `${drawerWidth}px` }, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
+      <AppBar color="inherit" elevation={0} position="fixed" sx={{ ml: { md: `${drawerWidth}px` }, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
         <Toolbar sx={{ gap: 2 }}>
           <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { md: "none" } }}>
             <MenuIcon />
@@ -86,7 +120,17 @@ export function AppShell() {
             <RouteBreadcrumbs />
           </Box>
           <Stack alignItems="center" direction="row" onClick={(event) => setMenuAnchor(event.currentTarget)} spacing={1.5} sx={{ cursor: "pointer" }}>
-            <Avatar sx={{ bgcolor: "primary.main", height: 36, width: 36 }}>{session?.operatorName?.slice(0, 1) ?? "U"}</Avatar>
+            <Avatar
+              sx={{
+                backgroundImage: brandGradients.goldAccent,
+                boxShadow: brandShadows.glow,
+                color: brandColors.ink,
+                height: 36,
+                width: 36,
+              }}
+            >
+              {session?.operatorName?.slice(0, 1) ?? "U"}
+            </Avatar>
             <Box sx={{ display: { xs: "none", sm: "block" } }}>
               <Typography variant="body2">{session?.operatorName}</Typography>
               <Typography color="text.secondary" variant="caption">
@@ -111,8 +155,12 @@ export function AppShell() {
         onClose={() => setMobileOpen(false)}
         open={mobileOpen}
         sx={{
+          "& .MuiDrawer-paper": {
+            background: brandGradients.shellDrawer,
+            boxSizing: "border-box",
+            width: drawerWidth,
+          },
           display: { md: "none" },
-          "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
         }}
         variant="temporary"
       >
@@ -121,8 +169,12 @@ export function AppShell() {
       <Drawer
         open
         sx={{
+          "& .MuiDrawer-paper": {
+            background: brandGradients.shellDrawer,
+            boxSizing: "border-box",
+            width: drawerWidth,
+          },
           display: { xs: "none", md: "block" },
-          "& .MuiDrawer-paper": { boxSizing: "border-box", width: drawerWidth },
         }}
         variant="permanent"
       >

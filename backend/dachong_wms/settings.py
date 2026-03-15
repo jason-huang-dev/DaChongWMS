@@ -44,6 +44,13 @@ def _build_allowed_hosts() -> List[str]:
     return hosts
 
 
+def _database_conn_max_age() -> int:
+    raw_value = os.getenv("DJANGO_DB_CONN_MAX_AGE")
+    if raw_value is not None:
+        return int(raw_value)
+    return 0 if DEBUG else 600
+
+
 # Core settings --------------------------------------------------------------
 SECRET_KEY = os.getenv(
     "DJANGO_SECRET_KEY",
@@ -153,7 +160,7 @@ DatabaseConfig = Dict[str, Any]
 DATABASES: Dict[str, DatabaseConfig] = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
+        conn_max_age=_database_conn_max_age(),
         ssl_require=_env_bool("DB_SSL_REQUIRED", default=False),
     )
 }

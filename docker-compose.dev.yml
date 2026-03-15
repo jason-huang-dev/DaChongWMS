@@ -10,6 +10,7 @@ services:
       DJANGO_TEST_SYSTEM_ENABLED: ${DJANGO_TEST_SYSTEM_ENABLED:-true}
       DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-America/New_York}
       DATABASE_URL: ${DATABASE_URL:-postgres://myuser:mypassword@db:5432/mydatabase}
+      DJANGO_DB_CONN_MAX_AGE: ${DJANGO_DB_CONN_MAX_AGE:-0}
       DB_SSL_REQUIRED: ${DB_SSL_REQUIRED:-false}
       SUPERUSER_USERNAME: ${SUPERUSER_USERNAME:-admin}
       SUPERUSER_EMAIL: ${SUPERUSER_EMAIL:-admin@example.com}

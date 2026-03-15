@@ -5,8 +5,8 @@ MUI provides the base component set for the app. Adhering to shared patterns kee
 ## Theming
 
 - Define a custom theme under `src/app/theme.ts` with brand colors, typography, and spacing tuned for dense enterprise UIs.
-- Enable dark mode early if operators will use the app in warehouses with varying lighting.
-- Expose theme tokens (colors, spacing, font sizes) via TS exports to keep ad-hoc styling minimal.
+- Keep the DaChong gold/copper/charcoal palette in `src/app/brand.ts`, then feed those tokens into `src/app/theme.ts` instead of hard-coding ad-hoc values.
+- Store raw logo assets under `src/assets/logo/` and consume them through reusable wrappers like `BrandLogo` instead of importing individual files all over the app.
 
 ## Components
 
@@ -33,3 +33,4 @@ MUI provides the base component set for the app. Adhering to shared patterns kee
 ## Customization
 
 - Centralize overrides in the theme rather than scattered `sx` props. If a pattern repeats more than twice, wrap it in a shared component.
+- Auth-specific full-screen layouts should use a shared wrapper like `AuthShell` so branding, spacing, and responsive behavior stay consistent across login, signup, and MFA challenge screens.

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <defs>
+    <linearGradient id="gold-fill" x1="116" x2="420" y1="128" y2="452" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF4BC" />
+      <stop offset=".34" stop-color="#F9DE79" />
+      <stop offset=".68" stop-color="#F1C347" />
+      <stop offset="1" stop-color="#BA7814" />
+    </linearGradient>
+    <linearGradient id="gold-stroke" x1="144" x2="392" y1="152" y2="424" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFF8D6" />
+      <stop offset=".45" stop-color="#F7D767" />
+      <stop offset="1" stop-color="#CA8821" />
+    </linearGradient>
+    <filter id="logo-glow" width="420" height="420" x="86" y="86" color-interpolation-filters="sRGB" filterUnits="userSpaceOnUse">
+      <feGaussianBlur result="blur" stdDeviation="18" />
+      <feColorMatrix in="blur" result="glow" values="1 0 0 0 0.96 0 1 0 0 0.77 0 0 1 0 0.25 0 0 0 0.42 0" />
+      <feBlend in="SourceGraphic" in2="glow" />
+    </filter>
+  </defs>
+  <g filter="url(#logo-glow)">
+    <path
+      fill="url(#gold-fill)"
+      fill-rule="evenodd"
+      d="M144 132H316C392.216 132 454 193.784 454 270V324C454 400.216 392.216 462 316 462H170C155.641 462 144 450.359 144 436V260H228V378H316C346.928 378 372 352.928 372 322V272C372 241.072 346.928 216 316 216H228L144 132ZM248 232V320H334L248 232Z"
+      clip-rule="evenodd"
+    />
+    <path
+      fill="url(#gold-fill)"
+      d="M170 260L228 216V378H170V260Z"
+    />
+    <path d="M248 232L334 320" stroke="url(#gold-stroke)" stroke-linecap="round" stroke-width="12" />
+    <path
+      d="M160 148H316C383.379 148 438 202.621 438 270V324C438 391.379 383.379 446 316 446H170"
+      stroke="url(#gold-stroke)"
+      stroke-linecap="round"
+      stroke-width="8"
+    />
+  </g>
+</svg>

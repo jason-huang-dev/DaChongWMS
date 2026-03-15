@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 706 730" width="706" height="730">
+  <defs>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff48a"/>
+      <stop offset="38%" stop-color="#f7df4d"/>
+      <stop offset="72%" stop-color="#f2c61e"/>
+      <stop offset="100%" stop-color="#c88300"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff7b0" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#8a4d00" stop-opacity="0.85"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#8a4d00" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <path d="M 590 51 L 520 10 L 34 3 L 11 13 L 1 43 L 28 78 L 81 102 L 85 119 L 138 146 L 123 149 L 182 186 L 349 174 L 457 215 L 506 274 L 524 335 L 522 427 L 502 472 L 260 237 L 90 343 L 77 366 L 78 657 L 76 632 L 66 681 L 78 720 L 464 726 L 561 697 L 627 643 L 680 537 L 705 383 L 666 171 Z M 264 287 L 269 549 L 275 539 L 273 504 L 281 494 L 275 494 L 280 462 L 275 427 L 281 419 L 275 387 L 283 387 L 277 386 L 275 365 L 283 366 L 277 346 L 289 342 L 309 365 L 322 370 L 315 372 L 317 378 L 328 382 L 337 401 L 346 402 L 348 413 L 377 433 L 370 438 L 393 451 L 409 475 L 415 472 L 418 482 L 432 490 L 425 490 L 436 491 L 432 495 L 447 502 L 452 518 L 458 513 L 461 518 L 429 540 L 422 542 L 421 536 L 419 544 L 332 568 L 272 572 L 273 548 L 264 571 Z" fill="url(#gold)" fill-rule="evenodd" filter="url(#shadow)"/>
+  <path d="M 590 51 L 520 10 L 34 3 L 11 13 L 1 43 L 28 78 L 81 102 L 85 119 L 138 146 L 123 149 L 182 186 L 349 174 L 457 215 L 506 274 L 524 335 L 522 427 L 502 472 L 260 237 L 90 343 L 77 366 L 78 657 L 76 632 L 66 681 L 78 720 L 464 726 L 561 697 L 627 643 L 680 537 L 705 383 L 666 171 Z M 264 287 L 269 549 L 275 539 L 273 504 L 281 494 L 275 494 L 280 462 L 275 427 L 281 419 L 275 387 L 283 387 L 277 386 L 275 365 L 283 366 L 277 346 L 289 342 L 309 365 L 322 370 L 315 372 L 317 378 L 328 382 L 337 401 L 346 402 L 348 413 L 377 433 L 370 438 L 393 451 L 409 475 L 415 472 L 418 482 L 432 490 L 425 490 L 436 491 L 432 495 L 447 502 L 452 518 L 458 513 L 461 518 L 429 540 L 422 542 L 421 536 L 419 544 L 332 568 L 272 572 L 273 548 L 264 571 Z" fill="none" stroke="url(#edge)" stroke-width="6" stroke-linejoin="round" fill-rule="evenodd"/>
+</svg>
