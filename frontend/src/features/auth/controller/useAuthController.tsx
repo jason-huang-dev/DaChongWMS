@@ -16,6 +16,7 @@ import {
   persistSession,
   runBootstrap,
   runLogin,
+  runMembershipSwitch,
   runMfaChallengeVerification,
   runSignup,
 } from "@/features/auth/controller/actions";
@@ -89,6 +90,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return result;
   }, []);
 
+  const switchMembership = useCallback(async (membershipId: number) => {
+    const nextSession = await runMembershipSwitch(membershipId);
+    clearPendingChallengeStorage();
+    setPendingChallenge(null);
+    persistSession(nextSession);
+    setSession(nextSession);
+    setStatus("authenticated");
+    return nextSession;
+  }, []);
+
   const completeMfaChallenge = useCallback(async (code: string) => {
     if (!pendingChallenge) {
       throw new Error("No MFA challenge is pending");
@@ -123,11 +134,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       signup,
       bootstrap,
+      switchMembership,
       completeMfaChallenge,
       clearPendingChallenge,
       logout,
     }),
-    [bootstrap, clearPendingChallenge, completeMfaChallenge, login, logout, pendingChallenge, session, signup, status],
+    [bootstrap, clearPendingChallenge, completeMfaChallenge, login, logout, pendingChallenge, session, signup, status, switchMembership],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

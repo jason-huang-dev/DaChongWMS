@@ -16,6 +16,7 @@ Reliable inventory data requires disciplined modeling and migration practices.
 4. **Constraints**: Use `UniqueConstraint`, `CheckConstraint`, and partial indexes to preserve invariants (e.g., SKU per warehouse uniqueness).
 5. **Managers/QuerySets**: Encapsulate query logic (e.g., `InventoryItem.available()`) so views remain thin.
 6. **Tenant Accounts**: The `userprofile` app now holds the `Users` model (openid/appid pairs) used by header-token authentication, so treat it as the canonical source for tenant scoping until a fuller IAM story is built.
+7. **Operator Preferences**: Queue-view presets, workspace tabs, and workbench layouts should be explicit models with membership ownership instead of anonymous browser-only blobs once the frontend starts behaving like a multi-tab operator console.
 
 ## Migrations Workflow
 

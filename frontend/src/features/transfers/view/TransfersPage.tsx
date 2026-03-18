@@ -11,6 +11,7 @@ export function TransfersPage() {
     activeWarehouse,
     actionErrorMessage,
     actionSuccessMessage,
+    bulkArchiveMutation,
     completeTaskMutation,
     createErrorMessage,
     createSuccessMessage,
@@ -22,6 +23,7 @@ export function TransfersPage() {
     replenishmentTasksView,
     transferLinesQuery,
     transferLinesView,
+    transferOrderSelection,
     transferOrdersQuery,
     transferOrdersView,
   } = useTransfersController();
@@ -50,8 +52,11 @@ export function TransfersPage() {
         replenishmentRulesView={replenishmentRulesView}
         replenishmentTasksQuery={replenishmentTasksQuery}
         replenishmentTasksView={replenishmentTasksView}
+        isArchivingOrders={bulkArchiveMutation.isPending}
         transferLinesQuery={transferLinesQuery}
         transferLinesView={transferLinesView}
+        onArchiveTransferOrders={(transferOrderIds) => bulkArchiveMutation.mutate(transferOrderIds)}
+        transferOrderSelection={transferOrderSelection}
         transferOrdersQuery={transferOrdersQuery}
         transferOrdersView={transferOrdersView}
       />

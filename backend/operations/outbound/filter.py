@@ -1,6 +1,6 @@
 from django_filters import FilterSet
 
-from .models import DockLoadVerification, PickTask, SalesOrder, Shipment
+from .models import DockLoadVerification, PickTask, SalesOrder, Shipment, ShortPickRecord
 
 
 class SalesOrderFilter(FilterSet):
@@ -66,5 +66,25 @@ class DockLoadVerificationFilter(FilterSet):
             "status": ["exact"],
             "trailer_reference": ["exact", "icontains"],
             "verified_at": ["exact", "gt", "gte", "lt", "lte", "range"],
+            "create_time": ["gt", "gte", "lt", "lte", "range"],
+        }
+
+
+class ShortPickRecordFilter(FilterSet):
+    class Meta:
+        model = ShortPickRecord
+        fields = {
+            "id": ["exact", "in", "range"],
+            "warehouse": ["exact"],
+            "sales_order": ["exact"],
+            "sales_order_line": ["exact"],
+            "pick_task": ["exact"],
+            "goods": ["exact"],
+            "from_location": ["exact"],
+            "to_location": ["exact", "isnull"],
+            "status": ["exact"],
+            "reason_code": ["exact"],
+            "reported_at": ["exact", "gt", "gte", "lt", "lte", "range"],
+            "resolved_at": ["exact", "gt", "gte", "lt", "lte", "range", "isnull"],
             "create_time": ["gt", "gte", "lt", "lte", "range"],
         }

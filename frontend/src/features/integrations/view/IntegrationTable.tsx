@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 import Grid from "@mui/material/Grid";
-import { Button } from "@mui/material";
+import { Button, Stack } from "@mui/material";
 
 import type {
   CarrierBookingRecord,
@@ -7,9 +9,10 @@ import type {
   IntegrationLogRecord,
   WebhookEventRecord,
 } from "@/features/integrations/model/types";
+import { BulkActionBar } from "@/shared/components/bulk-action-bar";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
-import { ResourceTable } from "@/shared/components/resource-table";
+import { ResourceTable, type ResourceTableRowSelection } from "@/shared/components/resource-table";
 import { StatusChip } from "@/shared/components/status-chip";
 import type { UseDataViewResult } from "@/shared/hooks/use-data-view";
 import type { PaginatedQueryState } from "@/shared/types/query";
@@ -83,20 +86,53 @@ interface IntegrationTableProps {
   activeWarehouseName?: string | null;
   carrierBookingsQuery: PaginatedQueryState<CarrierBookingRecord>;
   carrierBookingsView: UseDataViewResult<{ carrier_code__icontains: string; tracking_number__icontains: string; status: string }>;
+  carrierSelection: {
+    clearSelection: () => void;
+    selectedCount: number;
+    selectedIds: number[];
+    toggleMany: (ids: number[]) => void;
+    toggleOne: (id: number) => void;
+  };
+  cancelCarrierBooking: (bookingId: number) => void;
   completeJob: (jobId: number) => void;
   failJob: (jobId: number) => void;
   generateLabel: (bookingId: number) => void;
+  isBulkRetryingCarrierBookings: boolean;
+  isBulkProcessingWebhooks: boolean;
+  isBulkRetryingJobs: boolean;
+  isCancellingCarrier: boolean;
   isCompletingJob: boolean;
   isFailingJob: boolean;
   isGeneratingLabel: boolean;
   isProcessingWebhook: boolean;
+  isRebookingCarrier: boolean;
+  isRetryingCarrier: boolean;
   isStartingJob: boolean;
+  jobsBulkSelection: {
+    clearSelection: () => void;
+    selectedCount: number;
+    selectedIds: number[];
+    toggleMany: (ids: number[]) => void;
+    toggleOne: (id: number) => void;
+  };
   jobsQuery: PaginatedQueryState<IntegrationJobRecord>;
   jobsView: UseDataViewResult<{ integration_name__icontains: string; job_type: string; status: string }>;
   logsQuery: PaginatedQueryState<IntegrationLogRecord>;
   logsView: UseDataViewResult<{ level: string }>;
+  processSelectedWebhooks: (webhookIds: number[]) => void;
   processWebhook: (webhookId: number) => void;
+  retrySelectedCarrierBookings: (bookingIds: number[]) => void;
+  retrySelectedJobs: (jobIds: number[]) => void;
+  rebookCarrierBooking: (bookingId: number) => void;
+  retryCarrierBooking: (bookingId: number) => void;
   startJob: (jobId: number) => void;
+  webhooksBulkSelection: {
+    clearSelection: () => void;
+    selectedCount: number;
+    selectedIds: number[];
+    toggleMany: (ids: number[]) => void;
+    toggleOne: (id: number) => void;
+  };
   webhooksQuery: PaginatedQueryState<WebhookEventRecord>;
   webhooksView: UseDataViewResult<{ event_key__icontains: string; status: string }>;
 }
@@ -105,23 +141,102 @@ export function IntegrationTable({
   activeWarehouseName,
   carrierBookingsQuery,
   carrierBookingsView,
+  carrierSelection,
+  cancelCarrierBooking,
   completeJob,
   failJob,
   generateLabel,
+  isBulkRetryingCarrierBookings,
+  isBulkProcessingWebhooks,
+  isBulkRetryingJobs,
+  isCancellingCarrier,
   isCompletingJob,
   isFailingJob,
   isGeneratingLabel,
   isProcessingWebhook,
+  isRebookingCarrier,
+  isRetryingCarrier,
   isStartingJob,
+  jobsBulkSelection,
   jobsQuery,
   jobsView,
   logsQuery,
   logsView,
+  processSelectedWebhooks,
   processWebhook,
+  retrySelectedCarrierBookings,
+  retrySelectedJobs,
+  rebookCarrierBooking,
+  retryCarrierBooking,
   startJob,
+  webhooksBulkSelection,
   webhooksQuery,
   webhooksView,
 }: IntegrationTableProps) {
+  const jobRowSelection: ResourceTableRowSelection<IntegrationJobRecord> = {
+    selectedRowIds: jobsBulkSelection.selectedIds,
+    onToggleAll: (rows) => jobsBulkSelection.toggleMany(rows.map((row) => row.id)),
+    onToggleRow: (row) => jobsBulkSelection.toggleOne(row.id),
+    isRowSelectable: (row) => ["QUEUED", "FAILED"].includes(row.status),
+  };
+  const webhookRowSelection: ResourceTableRowSelection<WebhookEventRecord> = {
+    selectedRowIds: webhooksBulkSelection.selectedIds,
+    onToggleAll: (rows) => webhooksBulkSelection.toggleMany(rows.map((row) => row.id)),
+    onToggleRow: (row) => webhooksBulkSelection.toggleOne(row.id),
+    isRowSelectable: (row) => ["RECEIVED", "QUEUED", "FAILED"].includes(row.status),
+  };
+  const jobsToolbar: ReactNode = (
+    <BulkActionBar
+      actions={[
+        {
+          key: "retry-jobs",
+          label: "Retry / start selected",
+          onClick: () => retrySelectedJobs(jobsBulkSelection.selectedIds),
+          disabled: isBulkRetryingJobs,
+        },
+      ]}
+      helperText="Retry failed jobs or start queued jobs from the current filtered queue."
+      onClear={jobsBulkSelection.clearSelection}
+      selectedCount={jobsBulkSelection.selectedCount}
+    />
+  );
+  const webhooksToolbar: ReactNode = (
+    <BulkActionBar
+      actions={[
+        {
+          key: "process-webhooks",
+          label: "Process selected",
+          onClick: () => processSelectedWebhooks(webhooksBulkSelection.selectedIds),
+          disabled: isBulkProcessingWebhooks,
+        },
+      ]}
+      helperText="Reprocess failed webhook events or process newly received webhook rows in bulk."
+      onClear={webhooksBulkSelection.clearSelection}
+      selectedCount={webhooksBulkSelection.selectedCount}
+    />
+  );
+  const carrierRowSelection: ResourceTableRowSelection<CarrierBookingRecord> = {
+    selectedRowIds: carrierSelection.selectedIds,
+    onToggleAll: (rows) => carrierSelection.toggleMany(rows.map((row) => row.id)),
+    onToggleRow: (row) => carrierSelection.toggleOne(row.id),
+    isRowSelectable: (row) => row.status === "FAILED",
+  };
+  const carrierToolbar: ReactNode = (
+    <BulkActionBar
+      actions={[
+        {
+          key: "retry-carrier",
+          label: "Retry selected",
+          onClick: () => retrySelectedCarrierBookings(carrierSelection.selectedIds),
+          disabled: isBulkRetryingCarrierBookings,
+        },
+      ]}
+      helperText="Retry failed carrier booking or label rows from the current filtered queue."
+      onClear={carrierSelection.clearSelection}
+      selectedCount={carrierSelection.selectedCount}
+    />
+  );
+
   return (
     <Grid container spacing={2.5}>
       <Grid size={{ xs: 12 }}>
@@ -167,25 +282,29 @@ export function IntegrationTable({
             onPageChange: jobsView.setPage,
           }}
           rows={jobsQuery.data?.results ?? []}
+          rowSelection={jobRowSelection}
           subtitle="Manual ERP and carrier sync jobs that operators or admins can trigger from the console."
           title="Integration jobs"
           toolbar={
-            <DataViewToolbar
-              activeFilterCount={jobsView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
-              fields={jobFields}
-              filters={jobsView.filters}
-              onChange={jobsView.updateFilter}
-              onReset={jobsView.resetFilters}
-              resultCount={jobsQuery.data?.count}
-              savedViews={{
-                items: jobsView.savedViews,
-                selectedId: jobsView.selectedSavedViewId,
-                onApply: jobsView.applySavedView,
-                onDelete: jobsView.deleteSavedView,
-                onSave: jobsView.saveCurrentView,
-              }}
-            />
+            <Stack spacing={1.5}>
+              {jobsToolbar}
+              <DataViewToolbar
+                activeFilterCount={jobsView.activeFilterCount}
+                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                fields={jobFields}
+                filters={jobsView.filters}
+                onChange={jobsView.updateFilter}
+                onReset={jobsView.resetFilters}
+                resultCount={jobsQuery.data?.count}
+                savedViews={{
+                  items: jobsView.savedViews,
+                  selectedId: jobsView.selectedSavedViewId,
+                  onApply: jobsView.applySavedView,
+                  onDelete: jobsView.deleteSavedView,
+                  onSave: jobsView.saveCurrentView,
+                }}
+              />
+            </Stack>
           }
         />
       </Grid>
@@ -225,25 +344,29 @@ export function IntegrationTable({
             onPageChange: webhooksView.setPage,
           }}
           rows={webhooksQuery.data?.results ?? []}
+          rowSelection={webhookRowSelection}
           subtitle="Inbound webhooks waiting for processing or requiring retry."
           title="Webhook events"
           toolbar={
-            <DataViewToolbar
-              activeFilterCount={webhooksView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
-              fields={webhookFields}
-              filters={webhooksView.filters}
-              onChange={webhooksView.updateFilter}
-              onReset={webhooksView.resetFilters}
-              resultCount={webhooksQuery.data?.count}
-              savedViews={{
-                items: webhooksView.savedViews,
-                selectedId: webhooksView.selectedSavedViewId,
-                onApply: webhooksView.applySavedView,
-                onDelete: webhooksView.deleteSavedView,
-                onSave: webhooksView.saveCurrentView,
-              }}
-            />
+            <Stack spacing={1.5}>
+              {webhooksToolbar}
+              <DataViewToolbar
+                activeFilterCount={webhooksView.activeFilterCount}
+                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                fields={webhookFields}
+                filters={webhooksView.filters}
+                onChange={webhooksView.updateFilter}
+                onReset={webhooksView.resetFilters}
+                resultCount={webhooksQuery.data?.count}
+                savedViews={{
+                  items: webhooksView.savedViews,
+                  selectedId: webhooksView.selectedSavedViewId,
+                  onApply: webhooksView.applySavedView,
+                  onDelete: webhooksView.deleteSavedView,
+                  onSave: webhooksView.saveCurrentView,
+                }}
+              />
+            </Stack>
           }
         />
       </Grid>
@@ -262,14 +385,29 @@ export function IntegrationTable({
               header: "Action",
               key: "action",
               render: (row) => (
-                <Button
-                  disabled={isGeneratingLabel || row.status === "LABELED"}
-                  onClick={() => generateLabel(row.id)}
-                  size="small"
-                  variant="contained"
-                >
-                  Generate label
-                </Button>
+                <Grid container spacing={1}>
+                  <Button
+                    disabled={isGeneratingLabel || row.status === "LABELED"}
+                    onClick={() => generateLabel(row.id)}
+                    size="small"
+                    variant="contained"
+                  >
+                    Generate label
+                  </Button>
+                  {row.status === "FAILED" ? (
+                    <>
+                      <Button disabled={isRetryingCarrier} onClick={() => retryCarrierBooking(row.id)} size="small" variant="outlined">
+                        Retry
+                      </Button>
+                      <Button disabled={isRebookingCarrier} onClick={() => rebookCarrierBooking(row.id)} size="small" variant="text">
+                        Rebook
+                      </Button>
+                      <Button disabled={isCancellingCarrier} onClick={() => cancelCarrierBooking(row.id)} size="small" variant="text">
+                        Cancel
+                      </Button>
+                    </>
+                  ) : null}
+                </Grid>
               ),
             },
           ]}
@@ -283,25 +421,29 @@ export function IntegrationTable({
             onPageChange: carrierBookingsView.setPage,
           }}
           rows={carrierBookingsQuery.data?.results ?? []}
+          rowSelection={carrierRowSelection}
           subtitle="Carrier bookings and label lifecycle state."
           title="Carrier bookings"
           toolbar={
-            <DataViewToolbar
-              activeFilterCount={carrierBookingsView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
-              fields={carrierBookingFields}
-              filters={carrierBookingsView.filters}
-              onChange={carrierBookingsView.updateFilter}
-              onReset={carrierBookingsView.resetFilters}
-              resultCount={carrierBookingsQuery.data?.count}
-              savedViews={{
-                items: carrierBookingsView.savedViews,
-                selectedId: carrierBookingsView.selectedSavedViewId,
-                onApply: carrierBookingsView.applySavedView,
-                onDelete: carrierBookingsView.deleteSavedView,
-                onSave: carrierBookingsView.saveCurrentView,
-              }}
-            />
+            <Stack spacing={1.5}>
+              {carrierToolbar}
+              <DataViewToolbar
+                activeFilterCount={carrierBookingsView.activeFilterCount}
+                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                fields={carrierBookingFields}
+                filters={carrierBookingsView.filters}
+                onChange={carrierBookingsView.updateFilter}
+                onReset={carrierBookingsView.resetFilters}
+                resultCount={carrierBookingsQuery.data?.count}
+                savedViews={{
+                  items: carrierBookingsView.savedViews,
+                  selectedId: carrierBookingsView.selectedSavedViewId,
+                  onApply: carrierBookingsView.applySavedView,
+                  onDelete: carrierBookingsView.deleteSavedView,
+                  onSave: carrierBookingsView.saveCurrentView,
+                }}
+              />
+            </Stack>
           }
         />
       </Grid>

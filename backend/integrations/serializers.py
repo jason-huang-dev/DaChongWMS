@@ -166,3 +166,21 @@ class CarrierBookingSerializer(serializers.ModelSerializer[CarrierBooking]):
 
 class CarrierLabelSerializer(serializers.Serializer[dict[str, object]]):
     label_format = serializers.ChoiceField(choices=["PDF", "ZPL"], default="PDF")
+
+
+class CarrierBookingRetrySerializer(serializers.Serializer[dict[str, object]]):
+    label_format = serializers.ChoiceField(choices=["PDF", "ZPL"], default="PDF", required=False)
+
+
+class CarrierBookingRebookSerializer(serializers.Serializer[dict[str, object]]):
+    booking_number = serializers.CharField(max_length=64, required=False)
+    carrier_code = serializers.CharField(max_length=64, required=False)
+    service_level = serializers.CharField(max_length=64, required=False, allow_blank=True)
+    package_count = serializers.IntegerField(min_value=1, required=False)
+    total_weight = serializers.DecimalField(max_digits=18, decimal_places=4, min_value=0, required=False)
+    external_reference = serializers.CharField(max_length=128, required=False, allow_blank=True)
+    request_payload = serializers.JSONField(required=False, default=dict)
+
+
+class CarrierBookingCancelSerializer(serializers.Serializer[dict[str, object]]):
+    cancel_reason = serializers.CharField(max_length=500, allow_blank=True, required=False, default="")

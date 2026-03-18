@@ -309,6 +309,145 @@ class IntegrationsApiTests(TestCase):
         self.assertEqual(IntegrationJob.objects.count(), 2)
         self.assertGreaterEqual(IntegrationLog.objects.filter(job__isnull=False).count(), 4)
 
+    def test_retry_endpoint_requeues_failed_carrier_label_job(self) -> None:
+        booking = CarrierBooking.objects.create(
+            warehouse=self.warehouse,
+            shipment=self.shipment,
+            booking_number="CB-RETRY-1",
+            carrier_code="UPS",
+            service_level="GROUND",
+            package_count=1,
+            total_weight=Decimal("5.0000"),
+            status=CarrierBookingStatus.BOOKED,
+            creator="creator",
+            openid=self.warehouse.openid,
+            booked_by=self.operator.staff_name,
+            booked_at=self.shipment.shipped_at,
+        )
+        label_job = IntegrationJob.objects.create(
+            warehouse=self.warehouse,
+            system_type="CARRIER",
+            integration_name="UPS",
+            job_type="LABEL_GENERATION",
+            direction="EXPORT",
+            status=IntegrationJobStatus.FAILED,
+            reference_code=booking.booking_number,
+            request_payload={"label_format": "PDF"},
+            creator=self.operator.staff_name,
+            triggered_by=self.operator.staff_name,
+            last_error="Carrier label API timeout",
+            openid=self.warehouse.openid,
+        )
+        booking.label_job = label_job
+        booking.status = CarrierBookingStatus.FAILED
+        booking.last_error = "Carrier label API timeout"
+        booking.save(update_fields=["label_job", "status", "last_error", "update_time"])
+
+        retry_view = CarrierBookingViewSet.as_view({"post": "retry"})
+        retry_request = self.factory.post(
+            f"/api/integrations/carrier-bookings/{booking.id}/retry/",
+            {"label_format": "ZPL"},
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        self._auth_request(retry_request, self.operator)
+        retry_response = retry_view(retry_request, pk=booking.id)
+        self.assertEqual(retry_response.status_code, 202)
+
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, CarrierBookingStatus.BOOKED)
+        self.assertNotEqual(booking.label_job_id, label_job.id)
+        self.assertEqual(booking.label_job.request_payload["label_format"], "ZPL")
+
+    def test_rebook_endpoint_requeues_booking_with_overrides(self) -> None:
+        booking = CarrierBooking.objects.create(
+            warehouse=self.warehouse,
+            shipment=self.shipment,
+            booking_number="CB-REBOOK-1",
+            carrier_code="UPS",
+            service_level="GROUND",
+            package_count=1,
+            total_weight=Decimal("5.0000"),
+            status=CarrierBookingStatus.FAILED,
+            creator="creator",
+            openid=self.warehouse.openid,
+            last_error="Booking rejected by carrier",
+        )
+        booking_job = IntegrationJob.objects.create(
+            warehouse=self.warehouse,
+            system_type="CARRIER",
+            integration_name="UPS",
+            job_type="CARRIER_BOOKING",
+            direction="EXPORT",
+            status=IntegrationJobStatus.FAILED,
+            reference_code=booking.booking_number,
+            request_payload={"service_level": "GROUND"},
+            creator=self.operator.staff_name,
+            triggered_by=self.operator.staff_name,
+            last_error="Booking rejected by carrier",
+            openid=self.warehouse.openid,
+        )
+        booking.booking_job = booking_job
+        booking.save(update_fields=["booking_job", "update_time"])
+
+        rebook_view = CarrierBookingViewSet.as_view({"post": "rebook"})
+        rebook_request = self.factory.post(
+            f"/api/integrations/carrier-bookings/{booking.id}/rebook/",
+            {
+                "booking_number": "CB-REBOOK-2",
+                "carrier_code": "FDX",
+                "service_level": "PRIORITY",
+                "package_count": 2,
+                "total_weight": "7.5000",
+                "external_reference": "external-2",
+                "request_payload": {"priority": True},
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        self._auth_request(rebook_request, self.operator)
+        rebook_response = rebook_view(rebook_request, pk=booking.id)
+        self.assertEqual(rebook_response.status_code, 202)
+
+        booking.refresh_from_db()
+        self.assertEqual(booking.booking_number, "CB-REBOOK-2")
+        self.assertEqual(booking.carrier_code, "FDX")
+        self.assertEqual(booking.service_level, "PRIORITY")
+        self.assertEqual(booking.status, CarrierBookingStatus.OPEN)
+        self.assertEqual(booking.request_payload["priority"], True)
+        self.assertNotEqual(booking.booking_job_id, booking_job.id)
+
+    def test_cancel_endpoint_marks_carrier_booking_cancelled(self) -> None:
+        booking = CarrierBooking.objects.create(
+            warehouse=self.warehouse,
+            shipment=self.shipment,
+            booking_number="CB-CANCEL-1",
+            carrier_code="UPS",
+            service_level="GROUND",
+            package_count=1,
+            total_weight=Decimal("5.0000"),
+            status=CarrierBookingStatus.FAILED,
+            creator="creator",
+            openid=self.warehouse.openid,
+            last_error="Carrier timeout",
+        )
+
+        cancel_view = CarrierBookingViewSet.as_view({"post": "cancel"})
+        cancel_request = self.factory.post(
+            f"/api/integrations/carrier-bookings/{booking.id}/cancel/",
+            {"cancel_reason": "Escalated to manual booking"},
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        self._auth_request(cancel_request, self.operator)
+        cancel_response = cancel_view(cancel_request, pk=booking.id)
+        self.assertEqual(cancel_response.status_code, 200)
+
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, CarrierBookingStatus.CANCELLED)
+        self.assertEqual(booking.last_error, "Escalated to manual booking")
+        self.assertTrue(IntegrationLog.objects.filter(message="Carrier booking cancelled").exists())
+
     def test_viewer_cannot_create_carrier_booking(self) -> None:
         view = CarrierBookingViewSet.as_view({"post": "create"})
         request = self.factory.post(

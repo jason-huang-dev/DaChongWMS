@@ -36,3 +36,16 @@ MUI provides the base component set for the app. Adhering to shared patterns kee
 - Centralize overrides in the theme rather than scattered `sx` props. If a pattern repeats more than twice, wrap it in a shared component.
 - Auth-specific full-screen layouts should use a shared wrapper like `AuthShell` so branding, spacing, and responsive behavior stay consistent across login, signup, and MFA challenge screens.
 - Tenant/workspace and warehouse switching should go through a shared control such as `WorkspaceContextSwitcher`, not page-specific selects in each route.
+
+## JF-Inspired Enterprise Density Patterns
+
+The reference target is a dense operator console. To match that style without losing maintainability:
+
+- support a compact theme variant for queue pages and workbenches
+- prefer shared toolbar, filter-row, secondary-nav, and workbench-card wrappers over large `sx` blocks in route files
+- queue pages may use multi-row filter bands above the table when the domain genuinely needs them
+- left secondary navigation for status buckets should be a shared pattern, not custom markup per module
+- table actions such as refresh, export, customize columns, and help should be placed consistently in the same region of the shell
+- homepage/workbench pages should support a center analytical area plus a right utility rail for notices, help, or downloads
+
+The goal is a high-information-density layout that still feels deliberate and consistent.

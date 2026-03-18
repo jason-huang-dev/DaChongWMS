@@ -28,6 +28,46 @@ export function installFetchMock(...handlers: FetchHandler[]) {
     if (url.pathname === "/api/warehouse/") {
       return jsonResponse(buildPaginatedResponse([]));
     }
+    if (
+      url.pathname === "/api/access/company-invites/" ||
+      url.pathname === "/api/access/password-resets/" ||
+      url.pathname === "/api/access/audit-events/" ||
+      url.pathname === "/api/access/workspace-tabs/" ||
+      url.pathname === "/api/outbound/dock-load-verifications/"
+    ) {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
+    if (url.pathname === "/api/access/workspace-tabs/sync/") {
+      return jsonResponse({
+        id: 1,
+        membership_id: 1,
+        route_key: "dashboard",
+        route_path: "/dashboard",
+        title: "Dashboard",
+        icon_key: "",
+        position: 0,
+        is_active: true,
+        is_pinned: false,
+        state_payload: {},
+        context_payload: {},
+        last_opened_at: "2026-03-15T00:00:00Z",
+        create_time: "2026-03-15T00:00:00Z",
+        update_time: "2026-03-15T00:00:00Z",
+      });
+    }
+    if (url.pathname === "/api/access/workbench-preferences/current/") {
+      return jsonResponse({
+        id: 1,
+        membership_id: 1,
+        page_key: "dashboard",
+        time_window: "WEEK",
+        visible_widget_keys: [],
+        right_rail_widget_keys: [],
+        layout_payload: {},
+        create_time: "2026-03-15T00:00:00Z",
+        update_time: "2026-03-15T00:00:00Z",
+      });
+    }
     throw new Error(`Unhandled fetch request: ${url.toString()}`);
   });
 

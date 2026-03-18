@@ -27,7 +27,11 @@ async function hydrateAuthSuccess(data: AuthenticatedResponseData): Promise<Auth
       {
         username: data.name,
         openid: data.openid,
+        token: data.token,
         operatorId: data.user_id,
+        companyId: data.company_id,
+        companyName: data.company_name,
+        membershipId: data.membership_id,
       },
       operator,
     ),

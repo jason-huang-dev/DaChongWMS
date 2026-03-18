@@ -14,6 +14,7 @@ from rest_framework.exceptions import APIException
 from customer.models import ListModel as Customer
 from inventory.models import InventoryBalance, InventoryStatus, MovementType
 from inventory.services import (
+    create_inventory_hold,
     ensure_location_usable,
     ensure_tenant_match,
     record_inventory_movement,
@@ -42,6 +43,8 @@ from .models import (
     SalesOrderStatus,
     Shipment,
     ShipmentLine,
+    ShortPickRecord,
+    ShortPickStatus,
 )
 
 ZERO = Decimal("0.0000")
@@ -106,6 +109,20 @@ class ScanShipmentPayload:
     reference_code: str
     notes: str
     trailer_reference: str
+
+
+@dataclass(frozen=True)
+class ShortPickReportPayload:
+    short_qty: Decimal
+    picked_qty: Decimal | None
+    reason_code: str
+    to_location: Location | None
+    notes: str
+
+
+@dataclass(frozen=True)
+class ShortPickResolvePayload:
+    resolution_notes: str
 
 
 def _validate_staging_location(location: Location, *, openid: str, warehouse: Warehouse) -> None:
@@ -419,7 +436,7 @@ def complete_pick_task(
     to_location: Location | None,
 ) -> PickTask:
     ensure_tenant_match(pick_task, openid, "Pick task")
-    pick_task = PickTask.objects.select_for_update().select_related(
+    pick_task = PickTask.objects.select_for_update(of=("self",)).select_related(
         "sales_order_line",
         "sales_order_line__sales_order",
         "warehouse",
@@ -501,6 +518,161 @@ def complete_pick_task(
     )
     refresh_sales_order_status(line.sales_order)
     return pick_task
+
+
+@transaction.atomic
+def report_short_pick(
+    *,
+    openid: str,
+    operator_name: str,
+    pick_task: PickTask,
+    payload: ShortPickReportPayload,
+) -> ShortPickRecord:
+    ensure_tenant_match(pick_task, openid, "Pick task")
+    task = PickTask.objects.select_for_update(of=("self",)).select_related(
+        "sales_order_line",
+        "sales_order_line__sales_order",
+        "warehouse",
+        "goods",
+        "from_location",
+        "to_location",
+        "license_plate",
+    ).get(pk=pick_task.pk)
+    if task.status == PickTaskStatus.CANCELLED:
+        raise APIException({"detail": "Cancelled pick tasks cannot be short-picked"})
+    if task.status == PickTaskStatus.COMPLETED:
+        raise APIException({"detail": "Completed pick tasks cannot be short-picked again"})
+    if task.short_pick_records.filter(is_delete=False, status=ShortPickStatus.OPEN).exists():
+        raise APIException({"detail": "This pick task already has an open short-pick exception"})
+
+    picked_qty = payload.picked_qty if payload.picked_qty is not None else task.quantity - payload.short_qty
+    if picked_qty < ZERO:
+        raise APIException({"detail": "Picked quantity cannot be negative"})
+    if picked_qty + payload.short_qty != task.quantity:
+        raise APIException({"detail": "Picked quantity plus short quantity must equal the task quantity"})
+    if payload.short_qty <= ZERO:
+        raise APIException({"detail": "Short quantity must be greater than zero"})
+    if picked_qty >= task.quantity:
+        raise APIException({"detail": "Use the complete endpoint when the full task quantity was picked"})
+    if task.license_plate_id and picked_qty != ZERO:
+        raise APIException({"detail": "LPN-based pick tasks must be completed in full or short-picked without a partial quantity"})
+
+    destination = payload.to_location or task.to_location
+    _validate_staging_location(destination, openid=openid, warehouse=task.warehouse)
+    source_balance = InventoryBalance.objects.select_for_update().get(
+        openid=openid,
+        warehouse=task.warehouse,
+        location=task.from_location,
+        goods=task.goods,
+        stock_status=task.stock_status,
+        lot_number=task.lot_number,
+        serial_number=task.serial_number,
+        is_delete=False,
+    )
+    if source_balance.allocated_qty < task.quantity:
+        raise APIException({"detail": "Allocated quantity is lower than the pick task quantity"})
+    source_balance.allocated_qty -= task.quantity
+    validate_balance_quantities(source_balance)
+    source_balance.save(update_fields=["allocated_qty", "update_time"])
+
+    if payload.short_qty > ZERO:
+        create_inventory_hold(
+            openid=openid,
+            operator_name=operator_name,
+            inventory_balance=source_balance,
+            quantity=payload.short_qty,
+            reason=f"SHORT_PICK:{payload.reason_code}",
+            reference_code=task.task_number,
+            notes=payload.notes or "Short pick requires follow-up",
+        )
+
+    movement = None
+    if picked_qty > ZERO:
+        movement = record_inventory_movement(
+            openid=openid,
+            operator_name=operator_name,
+            warehouse=task.warehouse,
+            goods=task.goods,
+            movement_type=MovementType.PICK,
+            quantity=picked_qty,
+            stock_status=task.stock_status,
+            lot_number=task.lot_number,
+            serial_number=task.serial_number,
+            unit_cost=source_balance.unit_cost,
+            from_location=task.from_location,
+            to_location=destination,
+            reference_code=task.task_number,
+            reason="Outbound short-pick completion",
+        )
+
+    line = task.sales_order_line
+    if line.allocated_qty < task.quantity:
+        raise APIException({"detail": "Sales order line allocated quantity is lower than the pick task quantity"})
+    line.allocated_qty -= task.quantity
+    line.picked_qty += picked_qty
+    line.status = _line_status(line)
+    line.save(update_fields=["allocated_qty", "picked_qty", "status", "update_time"])
+
+    task.to_location = destination
+    task.status = PickTaskStatus.COMPLETED
+    task.completed_by = operator_name
+    task.completed_at = timezone.now()
+    task.inventory_movement = movement
+    task.notes = payload.notes or task.notes
+    task.save(
+        update_fields=[
+            "to_location",
+            "status",
+            "completed_by",
+            "completed_at",
+            "inventory_movement",
+            "notes",
+            "update_time",
+        ]
+    )
+
+    short_pick = ShortPickRecord.objects.create(
+        warehouse=task.warehouse,
+        sales_order=line.sales_order,
+        sales_order_line=line,
+        pick_task=task,
+        goods=task.goods,
+        from_location=task.from_location,
+        to_location=destination,
+        requested_qty=task.quantity,
+        picked_qty=picked_qty,
+        short_qty=payload.short_qty,
+        stock_status=task.stock_status,
+        lot_number=task.lot_number,
+        serial_number=task.serial_number,
+        reason_code=payload.reason_code,
+        notes=payload.notes,
+        reported_by=operator_name,
+        creator=operator_name,
+        openid=openid,
+    )
+    refresh_sales_order_status(line.sales_order)
+    return short_pick
+
+
+@transaction.atomic
+def resolve_short_pick_record(
+    *,
+    openid: str,
+    operator_name: str,
+    short_pick_record: ShortPickRecord,
+    payload: ShortPickResolvePayload,
+) -> ShortPickRecord:
+    ensure_tenant_match(short_pick_record, openid, "Short-pick record")
+    record = ShortPickRecord.objects.select_for_update().get(pk=short_pick_record.pk)
+    if record.status == ShortPickStatus.RESOLVED:
+        return record
+    record.status = ShortPickStatus.RESOLVED
+    record.resolved_by = operator_name
+    record.resolved_at = timezone.now()
+    record.resolution_notes = payload.resolution_notes
+    record.save(update_fields=["status", "resolved_by", "resolved_at", "resolution_notes", "update_time"])
+    return record
 
 
 @transaction.atomic
@@ -653,7 +825,7 @@ def _record_dock_load_verification(
 @transaction.atomic
 def scan_complete_pick_task(*, openid: str, operator: Staff, payload: ScanPickPayload) -> PickTask:
     ensure_tenant_match(operator, openid, "Operator")
-    task = PickTask.objects.select_for_update().select_related("warehouse", "from_location", "goods", "assigned_to", "license_plate").get(
+    task = PickTask.objects.select_for_update(of=("self",)).select_related("warehouse", "from_location", "goods", "assigned_to", "license_plate").get(
         openid=openid,
         task_number=payload.task_number,
         is_delete=False,

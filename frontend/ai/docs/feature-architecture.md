@@ -88,3 +88,30 @@ Views may import controller hooks, shared presentational components, and model t
 ## Current Application
 
 This structure is now applied across `auth`, `dashboard`, `inventory`, `inbound`, `outbound`, `transfers`, `returns`, `counting`, `automation`, `integrations`, `reporting`, and `security`.
+
+## JF-Inspired Packaging Additions
+
+Because the next phase is explicitly aligning to `frontend/ai/docs/jf-wms-reference.md`, feature packages should also be ready for denser queue-first screens.
+
+Recommended optional view files for queue-heavy domains:
+
+```text
+frontend/src/features/<feature>/
+  view/
+    <Feature>WorkbenchPage.tsx
+    <Feature>StatusNav.tsx
+    <Feature>AdvancedFilters.tsx
+    <Feature>Table.tsx
+    <Feature>DetailPage.tsx
+    components/
+      WorkspaceTabTitle.tsx
+      QueueSummaryCards.tsx
+```
+
+Additional guidance:
+
+- `WorkbenchPage.tsx` should be used when a domain needs summary cards, notifications, help links, or queue shortcuts before the main table.
+- `StatusNav.tsx` should package left-rail or top-rail queue state buckets with counts.
+- `AdvancedFilters.tsx` should wrap domain-specific filter definitions on top of the shared queue primitives.
+- Queue-specific configuration objects such as column registries, status-bucket definitions, and export mappings belong in `model/` or `controller/`, not inline in JSX.
+- If workspace tabs are introduced, their persistence/orchestration belongs in shared app/controller layers, while tab titles and local route affordances stay in `view/`.

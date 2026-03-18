@@ -11,15 +11,25 @@ from rest_framework.test import APIRequestFactory, force_authenticate
 
 from catalog.goods.models import ListModel as Goods
 from customer.models import ListModel as Customer
-from inventory.models import InventoryBalance, InventoryMovement, MovementType
+from inventory.models import InventoryBalance, InventoryHold, InventoryMovement, MovementType
 from locations.models import Location, LocationStatus, LocationType, Zone, ZoneUsage
 from scanner.models import GoodsScanRule, LicensePlate, LicensePlateStatus
 from staff.models import ListModel as Staff
 from userprofile.models import Users
 from warehouse.models import Warehouse
 
-from .models import DockLoadVerification, PickTask, PickTaskStatus, SalesOrder, SalesOrderLineStatus, SalesOrderStatus, Shipment
-from .views import DockLoadVerificationViewSet, PickTaskViewSet, SalesOrderViewSet, ShipmentViewSet
+from .models import (
+    DockLoadVerification,
+    PickTask,
+    PickTaskStatus,
+    SalesOrder,
+    SalesOrderLineStatus,
+    SalesOrderStatus,
+    Shipment,
+    ShortPickRecord,
+    ShortPickStatus,
+)
+from .views import DockLoadVerificationViewSet, PickTaskViewSet, SalesOrderViewSet, ShipmentViewSet, ShortPickRecordViewSet
 
 
 def create_user_profile(**overrides: Any) -> Users:
@@ -611,6 +621,132 @@ class OutboundApiTests(TestCase):
         pick_task = PickTask.objects.get(sales_order_line=order_line)
         self.assertEqual(pick_task.from_location_id, self.pick_location.id)
 
+    def test_report_short_pick_creates_explicit_record_and_inventory_hold(self) -> None:
+        sales_order = SalesOrder.objects.create(
+            warehouse=self.warehouse,
+            customer=self.customer,
+            staging_location=self.staging_location,
+            order_number="SO-3002",
+            creator="creator",
+            openid=self.warehouse.openid,
+        )
+        sales_order.lines.create(
+            line_number=1,
+            goods=self.goods,
+            ordered_qty=Decimal("4.0000"),
+            unit_price=Decimal("10.0000"),
+            stock_status="AVAILABLE",
+            creator="creator",
+            openid=self.warehouse.openid,
+        )
+
+        allocate_view = SalesOrderViewSet.as_view({"post": "allocate"})
+        allocate_request = self.factory.post(
+            f"/api/outbound/sales-orders/{sales_order.pk}/allocate/",
+            {},
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(allocate_request, user=self.user, token=self.auth)
+        self.assertEqual(allocate_view(allocate_request, pk=sales_order.pk).status_code, 200)
+
+        pick_task = PickTask.objects.get(sales_order_line__sales_order=sales_order)
+        short_pick_view = PickTaskViewSet.as_view({"post": "report_short_pick"})
+        short_pick_request = self.factory.post(
+            f"/api/outbound/pick-tasks/{pick_task.pk}/report-short-pick/",
+            {
+                "short_qty": "2.0000",
+                "picked_qty": "2.0000",
+                "reason_code": "LOCATION_EMPTY",
+                "to_location": self.staging_location.pk,
+                "notes": "Pick face did not contain the expected stock.",
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(short_pick_request, user=self.user, token=self.auth)
+        response = short_pick_view(short_pick_request, pk=pick_task.pk)
+        self.assertEqual(response.status_code, 201)
+
+        record = ShortPickRecord.objects.get(pk=response.data["id"])
+        self.source_balance.refresh_from_db()
+        sales_order.refresh_from_db()
+        order_line = sales_order.lines.get()
+        pick_task.refresh_from_db()
+        self.assertEqual(record.status, ShortPickStatus.OPEN)
+        self.assertEqual(record.short_qty, Decimal("2.0000"))
+        self.assertEqual(record.picked_qty, Decimal("2.0000"))
+        self.assertEqual(pick_task.status, PickTaskStatus.COMPLETED)
+        self.assertEqual(order_line.picked_qty, Decimal("2.0000"))
+        self.assertEqual(order_line.allocated_qty, Decimal("0.0000"))
+        self.assertEqual(self.source_balance.hold_qty, Decimal("2.0000"))
+        self.assertTrue(InventoryHold.objects.filter(reference_code=pick_task.task_number, is_active=True).exists())
+        self.assertEqual(sales_order.status, SalesOrderStatus.PICKING)
+
+    def test_resolve_short_pick_marks_record_resolved(self) -> None:
+        sales_order = SalesOrder.objects.create(
+            warehouse=self.warehouse,
+            customer=self.customer,
+            staging_location=self.staging_location,
+            order_number="SO-3003",
+            creator="creator",
+            openid=self.warehouse.openid,
+        )
+        line = sales_order.lines.create(
+            line_number=1,
+            goods=self.goods,
+            ordered_qty=Decimal("3.0000"),
+            unit_price=Decimal("10.0000"),
+            stock_status="AVAILABLE",
+            creator="creator",
+            openid=self.warehouse.openid,
+        )
+        pick_task = PickTask.objects.create(
+            sales_order_line=line,
+            warehouse=self.warehouse,
+            goods=self.goods,
+            task_number="PICK-SHORT-001",
+            from_location=self.pick_location,
+            to_location=self.staging_location,
+            quantity=Decimal("3.0000"),
+            stock_status="AVAILABLE",
+            status=PickTaskStatus.OPEN,
+            creator="creator",
+            openid=self.warehouse.openid,
+        )
+        record = ShortPickRecord.objects.create(
+            warehouse=self.warehouse,
+            sales_order=sales_order,
+            sales_order_line=line,
+            pick_task=pick_task,
+            goods=self.goods,
+            from_location=self.pick_location,
+            to_location=self.staging_location,
+            requested_qty=Decimal("3.0000"),
+            picked_qty=Decimal("0.0000"),
+            short_qty=Decimal("3.0000"),
+            stock_status="AVAILABLE",
+            reason_code="COUNT_REQUIRED",
+            notes="Count required before replenishment.",
+            reported_by=self.operator.staff_name,
+            creator=self.operator.staff_name,
+            openid=self.warehouse.openid,
+        )
+
+        resolve_view = ShortPickRecordViewSet.as_view({"post": "resolve"})
+        resolve_request = self.factory.post(
+            f"/api/outbound/short-picks/{record.pk}/resolve/",
+            {"resolution_notes": "Cycle count completed and replenishment queued."},
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(resolve_request, user=self.user, token=self.auth)
+        response = resolve_view(resolve_request, pk=record.pk)
+        self.assertEqual(response.status_code, 200)
+        record.refresh_from_db()
+        self.assertEqual(record.status, ShortPickStatus.RESOLVED)
+        self.assertEqual(record.resolved_by, self.operator.staff_name)
+
     def test_allocate_requires_outbound_authorization(self) -> None:
         sales_order = SalesOrder.objects.create(
             warehouse=self.warehouse,
@@ -648,6 +784,9 @@ class OutboundUrlsTests(TestCase):
         self.assertEqual(reverse("outbound:pick-task-list"), "/api/outbound/pick-tasks/")
         self.assertEqual(reverse("outbound:shipment-list"), "/api/outbound/shipments/")
         self.assertEqual(reverse("outbound:dock-load-verification-list"), "/api/outbound/dock-load-verifications/")
+        self.assertEqual(reverse("outbound:short-pick-list"), "/api/outbound/short-picks/")
         self.assertEqual(reverse("outbound:pick-task-scan-complete"), "/api/outbound/pick-tasks/scan-complete/")
         self.assertEqual(reverse("outbound:shipment-scan-ship"), "/api/outbound/shipments/scan-ship/")
+        self.assertEqual(reverse("outbound:pick-task-report-short-pick", kwargs={"pk": 1}), "/api/outbound/pick-tasks/1/report-short-pick/")
+        self.assertEqual(reverse("outbound:short-pick-resolve", kwargs={"pk": 1}), "/api/outbound/short-picks/1/resolve/")
         self.assertEqual(resolve("/api/outbound/sales-orders/").url_name, "sales-order-list")

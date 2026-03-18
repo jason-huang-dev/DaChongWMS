@@ -55,7 +55,7 @@ export function SecurityForm({
           <FormTextField label="Verification code" name="check_code" type="number" />
           <FormSwitchField label="Lock access" name="is_lock" />
           <Alert severity="info">
-            Browser account provisioning still needs a backend admin-create/invite endpoint. This screen currently manages tenant staff records and role assignment.
+            Use this panel for legacy handheld-only staff rows. Browser access provisioning and workspace memberships now live in the dedicated browser-account panel.
           </Alert>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting} type="submit" variant="contained">

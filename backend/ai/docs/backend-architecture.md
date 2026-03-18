@@ -11,15 +11,18 @@ DaChongWMS uses Django and Django REST Framework (DRF) to deliver a modular, dom
 5. **Automation Layer**: `automation` owns queued work, recurring schedules, retry state, worker heartbeats, alerting, and the worker command for async execution.
 6. **Utility Layer**: shared helpers under `backend/utils/` for auth, operator resolution, pagination, validation, and scan-code resolution.
 7. **Bootstrap Services**: `test_system` seeds a usable tenant for smoke tests.
-8. **Operational Domains**: `operations.inbound`, `operations.outbound`, `operations.counting`, `operations.transfers`, and `operations.returns` own warehouse execution.
-9. **Integration + Commercial Domains**: `integrations` owns ERP/carrier/webhook control flow. `reporting` owns KPIs, storage accruals, finance review/export, rate contracts, invoices, settlements, remittances, disputes, credit notes, external remittance ingestion, and billing charge events.
-10. **Scan Primitives**: `scanner` holds barcode aliases, scan rules, LPN state, handheld device sessions, telemetry, and offline replay used by the operational apps.
+8. **Access Domain**: `access` owns companies and company memberships for browser users, including company switching, admin-driven account provisioning, and persisted frontend preferences such as queue views, workspace tabs, and workbench layouts.
+9. **Operational Domains**: `operations.inbound`, `operations.outbound`, `operations.counting`, `operations.transfers`, and `operations.returns` own warehouse execution.
+10. **Integration + Commercial Domains**: `integrations` owns ERP/carrier/webhook control flow. `reporting` owns KPIs, storage accruals, finance review/export, rate contracts, invoices, settlements, remittances, disputes, credit notes, external remittance ingestion, and billing charge events.
+11. **Scan Primitives**: `scanner` holds barcode aliases, scan rules, LPN state, handheld device sessions, telemetry, and offline replay used by the operational apps.
 
 ## Current State
 
 - DRF Spectacular is wired under `/api/schema/` and `/api/docs/`.
 - `automation` is now installed and exposed under `/api/automation/`.
+- `access` is now installed and exposed under `/api/access/`.
 - Scan-first execution now includes ASN/LPN-aware inbound receive/putaway, dock-verified outbound shipping, and scanner-managed handheld session/offline replay.
+- Browser auth now resolves through company memberships so one browser identity can move between multiple companies while warehouse APIs remain tenant-safe.
 
 ## App Layout Template
 

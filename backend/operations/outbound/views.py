@@ -14,18 +14,21 @@ from rest_framework.response import Response
 from utils.operator import get_request_operator
 from utils.page import MyPageNumberPagination
 
-from .filter import DockLoadVerificationFilter, PickTaskFilter, SalesOrderFilter, ShipmentFilter
-from .models import DockLoadVerification, PickTask, SalesOrder, Shipment
+from .filter import DockLoadVerificationFilter, PickTaskFilter, SalesOrderFilter, ShipmentFilter, ShortPickRecordFilter
+from .models import DockLoadVerification, PickTask, SalesOrder, Shipment, ShortPickRecord
 from .permissions import CanManageOutboundRecords
 from .serializers import (
     DockLoadVerificationSerializer,
     PickTaskCompleteSerializer,
+    PickTaskShortPickReportSerializer,
     PickTaskSerializer,
     ScanPickSerializer,
     ScanShipmentSerializer,
     SalesOrderAllocateSerializer,
     SalesOrderSerializer,
     ShipmentSerializer,
+    ShortPickRecordSerializer,
+    ShortPickResolveSerializer,
 )
 from .services import (
     SalesOrderLinePayload,
@@ -42,6 +45,10 @@ from .services import (
     PickTaskUpdatePayload,
     ScanPickPayload,
     ScanShipmentPayload,
+    ShortPickReportPayload,
+    ShortPickResolvePayload,
+    report_short_pick,
+    resolve_short_pick_record,
 )
 
 
@@ -201,6 +208,20 @@ class PickTaskViewSet(
         )
         return Response(self.get_serializer(pick_task).data, status=status.HTTP_200_OK)
 
+    def report_short_pick(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        pick_task = self.get_object()
+        self.check_object_permissions(request, pick_task)
+        serializer = PickTaskShortPickReportSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        short_pick = report_short_pick(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            pick_task=pick_task,
+            payload=ShortPickReportPayload(**serializer.validated_data),
+        )
+        return Response(ShortPickRecordSerializer(short_pick).data, status=status.HTTP_201_CREATED)
+
 
 class ShipmentViewSet(
     mixins.CreateModelMixin,
@@ -269,3 +290,33 @@ class DockLoadVerificationViewSet(mixins.ListModelMixin, mixins.RetrieveModelMix
     filterset_class = DockLoadVerificationFilter
     ordering_fields = ["verified_at", "create_time"]
     search_fields = ["shipment__shipment_number", "goods__goods_code", "trailer_reference", "verified_by"]
+
+
+class ShortPickRecordViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, TenantScopedViewSet):
+    queryset = ShortPickRecord.objects.select_related(
+        "warehouse",
+        "sales_order",
+        "sales_order_line",
+        "pick_task",
+        "goods",
+        "from_location",
+        "to_location",
+    )
+    serializer_class = ShortPickRecordSerializer
+    filterset_class = ShortPickRecordFilter
+    ordering_fields = ["reported_at", "resolved_at", "create_time"]
+    search_fields = ["sales_order__order_number", "goods__goods_code", "pick_task__task_number", "reported_by", "resolved_by"]
+
+    def resolve(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        record = self.get_object()
+        self.check_object_permissions(request, record)
+        serializer = ShortPickResolveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        record = resolve_short_pick_record(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            short_pick_record=record,
+            payload=ShortPickResolvePayload(**serializer.validated_data),
+        )
+        return Response(self.get_serializer(record).data, status=status.HTTP_200_OK)

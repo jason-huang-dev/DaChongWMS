@@ -1,9 +1,13 @@
+import type { ReactNode } from "react";
+
+import { Stack } from "@mui/material";
+
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
-import { ResourceTable } from "@/shared/components/resource-table";
+import { ResourceTable, type ResourceTableRowSelection } from "@/shared/components/resource-table";
 import { StatusChip } from "@/shared/components/status-chip";
-import type { UseDataViewResult } from "@/shared/hooks/use-data-view";
 import type { CountApprovalQueueRecord } from "@/features/counting/model/types";
+import type { UseDataViewResult } from "@/shared/hooks/use-data-view";
 import { formatDateTime, formatNumber } from "@/shared/utils/format";
 
 const approvalFields: DataViewFieldConfig<{ status: string; requested_by__icontains: string }>[] = [
@@ -32,6 +36,8 @@ interface CountingTableProps {
   total: number;
   activeWarehouseName?: string | null;
   dataView: UseDataViewResult<{ status: string; requested_by__icontains: string }>;
+  rowSelection?: ResourceTableRowSelection<CountApprovalQueueRecord>;
+  toolbarContent?: ReactNode;
 }
 
 export function CountingTable({
@@ -41,6 +47,8 @@ export function CountingTable({
   total,
   activeWarehouseName,
   dataView,
+  rowSelection,
+  toolbarContent,
 }: CountingTableProps) {
   return (
     <ResourceTable
@@ -68,25 +76,29 @@ export function CountingTable({
         onPageChange: dataView.setPage,
       }}
       rows={rows}
+      rowSelection={rowSelection}
       subtitle="Approval queue used by supervisors and stock control"
       title="Variance approvals"
       toolbar={
-        <DataViewToolbar
-          activeFilterCount={dataView.activeFilterCount}
-          contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : undefined}
-          fields={approvalFields}
-          filters={dataView.filters}
-          onChange={dataView.updateFilter}
-          onReset={dataView.resetFilters}
-          resultCount={total}
-          savedViews={{
-            items: dataView.savedViews,
-            selectedId: dataView.selectedSavedViewId,
-            onApply: dataView.applySavedView,
-            onDelete: dataView.deleteSavedView,
-            onSave: dataView.saveCurrentView,
-          }}
-        />
+        <Stack spacing={1.5}>
+          {toolbarContent}
+          <DataViewToolbar
+            activeFilterCount={dataView.activeFilterCount}
+            contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : undefined}
+            fields={approvalFields}
+            filters={dataView.filters}
+            onChange={dataView.updateFilter}
+            onReset={dataView.resetFilters}
+            resultCount={total}
+            savedViews={{
+              items: dataView.savedViews,
+              selectedId: dataView.selectedSavedViewId,
+              onApply: dataView.applySavedView,
+              onDelete: dataView.deleteSavedView,
+              onSave: dataView.saveCurrentView,
+            }}
+          />
+        </Stack>
       }
     />
   );

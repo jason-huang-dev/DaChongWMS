@@ -55,6 +55,22 @@ export function generateCarrierLabel(bookingId: number, labelFormat: "PDF" | "ZP
   });
 }
 
+export function retryCarrierBooking(bookingId: number, labelFormat: "PDF" | "ZPL" = "PDF") {
+  return apiPost<CarrierBookingRecord>(`${integrationsApi.carrierBookings}${bookingId}/retry/`, {
+    label_format: labelFormat,
+  });
+}
+
+export function rebookCarrierBooking(bookingId: number) {
+  return apiPost<CarrierBookingRecord>(`${integrationsApi.carrierBookings}${bookingId}/rebook/`, {});
+}
+
+export function cancelCarrierBooking(bookingId: number, cancelReason = "") {
+  return apiPost<CarrierBookingRecord>(`${integrationsApi.carrierBookings}${bookingId}/cancel/`, {
+    cancel_reason: cancelReason,
+  });
+}
+
 export function listIntegrationJobs(page = 1, pageSize = 8) {
   return apiGet<PaginatedResponse<IntegrationJobRecord>>(integrationsApi.jobs, { page, page_size: pageSize });
 }

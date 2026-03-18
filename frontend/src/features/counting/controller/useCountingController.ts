@@ -22,8 +22,10 @@ import type {
 } from "@/features/counting/model/types";
 import { defaultApprovalDecisionValues } from "@/features/counting/model/mappers";
 import { useDataView } from "@/shared/hooks/use-data-view";
+import { useBulkSelection } from "@/shared/hooks/use-bulk-selection";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
+import { executeBulkAction } from "@/shared/lib/bulk-actions";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
@@ -34,6 +36,11 @@ async function invalidateCountingQueries(queryClient: ReturnType<typeof useQuery
 
 export function useCountingController() {
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
+  const queueSelection = useBulkSelection<number>();
+  const queryClient = useQueryClient();
+  const [bulkActionSuccessMessage, setBulkActionSuccessMessage] = useState<string | null>(null);
+  const [bulkActionErrorMessage, setBulkActionErrorMessage] = useState<string | null>(null);
+  const [bulkDecisionNotes, setBulkDecisionNotes] = useState("");
   const assignmentsView = useDataView({
     viewKey: `counting.assignments.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
@@ -49,6 +56,45 @@ export function useCountingController() {
       requested_by__icontains: "",
     },
     pageSize: 10,
+  });
+
+  const bulkDecisionMutation = useMutation({
+    mutationFn: async ({
+      action,
+      approvalIds,
+      notes,
+    }: {
+      action: ApprovalDecisionAction;
+      approvalIds: number[];
+      notes: string;
+    }) =>
+      executeBulkAction(approvalIds, (approvalId) =>
+        runApprovalDecision(String(approvalId), action, { notes }),
+      ),
+    onSuccess: async (result, variables) => {
+      if (result.successCount > 0) {
+        setBulkActionSuccessMessage(
+          `${variables.action === "approve" ? "Approved" : "Rejected"} ${result.successCount} count approval${result.successCount === 1 ? "" : "s"}.`,
+        );
+      } else {
+        setBulkActionSuccessMessage(null);
+      }
+      setBulkActionErrorMessage(
+        result.failures.length > 0
+          ? `Failed ${result.failures.length} approval${result.failures.length === 1 ? "" : "s"}: ${result.failures
+              .slice(0, 3)
+              .map((failure) => `#${failure.item} ${failure.message}`)
+              .join("; ")}`
+          : null,
+      );
+      setBulkDecisionNotes("");
+      queueSelection.clearSelection();
+      await invalidateCountingQueries(queryClient);
+    },
+    onError: (error) => {
+      setBulkActionSuccessMessage(null);
+      setBulkActionErrorMessage(parseApiError(error));
+    },
   });
 
   return {
@@ -71,7 +117,13 @@ export function useCountingController() {
         warehouse: activeWarehouseId ?? undefined,
       },
     ),
+    bulkActionErrorMessage,
+    bulkActionSuccessMessage,
+    bulkDecisionNotes,
+    bulkDecisionMutation,
+    setBulkDecisionNotes,
     queueView,
+    queueSelection,
     queueQuery: usePaginatedResource<CountApprovalQueueRecord>(
       ["counting", "approval-queue"],
       countingApi.approvalsQueue,

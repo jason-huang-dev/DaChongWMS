@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 import Grid from "@mui/material/Grid";
-import { Button } from "@mui/material";
+import { Button, Stack } from "@mui/material";
 
 import type {
   ReplenishmentRuleRecord,
@@ -7,9 +9,10 @@ import type {
   TransferLineRecord,
   TransferOrderRecord,
 } from "@/features/transfers/model/types";
+import { BulkActionBar } from "@/shared/components/bulk-action-bar";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
-import { ResourceTable } from "@/shared/components/resource-table";
+import { ResourceTable, type ResourceTableRowSelection } from "@/shared/components/resource-table";
 import type { UseDataViewResult } from "@/shared/hooks/use-data-view";
 import { StatusChip } from "@/shared/components/status-chip";
 import type { PaginatedQueryState } from "@/shared/types/query";
@@ -108,10 +111,19 @@ interface TransfersTableProps {
   replenishmentRulesView: UseDataViewResult<{ stock_status: string; is_active: string }>;
   replenishmentTasksQuery: PaginatedQueryState<ReplenishmentTaskRecord>;
   replenishmentTasksView: UseDataViewResult<{ status: string; assigned_to__isnull: string }>;
+  isArchivingOrders: boolean;
   isGeneratingTask: boolean;
   isCompletingTask: boolean;
+  onArchiveTransferOrders: (transferOrderIds: number[]) => void;
   onGenerateTask: (replenishmentRuleId: number) => void;
   onCompleteTask: (replenishmentTaskId: number) => void;
+  transferOrderSelection: {
+    clearSelection: () => void;
+    selectedCount: number;
+    selectedIds: number[];
+    toggleMany: (ids: number[]) => void;
+    toggleOne: (id: number) => void;
+  };
 }
 
 export function TransfersTable({
@@ -124,11 +136,39 @@ export function TransfersTable({
   replenishmentRulesView,
   replenishmentTasksQuery,
   replenishmentTasksView,
+  isArchivingOrders,
   isGeneratingTask,
   isCompletingTask,
+  onArchiveTransferOrders,
   onGenerateTask,
   onCompleteTask,
+  transferOrderSelection,
 }: TransfersTableProps) {
+  const transferOrderRowSelection: ResourceTableRowSelection<TransferOrderRecord> = {
+    selectedRowIds: transferOrderSelection.selectedIds,
+    onToggleAll: (rows) => transferOrderSelection.toggleMany(rows.map((row) => row.id)),
+    onToggleRow: (row) => transferOrderSelection.toggleOne(row.id),
+    isRowSelectable: (row) => row.status !== "COMPLETED",
+  };
+
+  const transferOrderToolbar: ReactNode = (
+    <BulkActionBar
+      actions={[
+        {
+          key: "archive",
+          label: "Archive selected",
+          onClick: () => onArchiveTransferOrders(transferOrderSelection.selectedIds),
+          disabled: isArchivingOrders,
+          color: "error",
+          variant: "outlined",
+        },
+      ]}
+      helperText="Archive open or in-progress transfer orders after the current filtered queue is reviewed."
+      onClear={transferOrderSelection.clearSelection}
+      selectedCount={transferOrderSelection.selectedCount}
+    />
+  );
+
   return (
     <Grid container spacing={2.5}>
       <Grid size={{ xs: 12 }}>
@@ -157,25 +197,29 @@ export function TransfersTable({
             onPageChange: transferOrdersView.setPage,
           }}
           rows={transferOrdersQuery.data?.results ?? []}
+          rowSelection={transferOrderRowSelection}
           subtitle="Planned internal stock moves across warehouse locations"
           title="Transfer orders"
           toolbar={
-            <DataViewToolbar
-              activeFilterCount={transferOrdersView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
-              fields={transferOrderFields}
-              filters={transferOrdersView.filters}
-              onChange={transferOrdersView.updateFilter}
-              onReset={transferOrdersView.resetFilters}
-              resultCount={transferOrdersQuery.data?.count}
-              savedViews={{
-                items: transferOrdersView.savedViews,
-                selectedId: transferOrdersView.selectedSavedViewId,
-                onApply: transferOrdersView.applySavedView,
-                onDelete: transferOrdersView.deleteSavedView,
-                onSave: transferOrdersView.saveCurrentView,
-              }}
-            />
+            <Stack spacing={1.5}>
+              {transferOrderToolbar}
+              <DataViewToolbar
+                activeFilterCount={transferOrdersView.activeFilterCount}
+                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                fields={transferOrderFields}
+                filters={transferOrdersView.filters}
+                onChange={transferOrdersView.updateFilter}
+                onReset={transferOrdersView.resetFilters}
+                resultCount={transferOrdersQuery.data?.count}
+                savedViews={{
+                  items: transferOrdersView.savedViews,
+                  selectedId: transferOrdersView.selectedSavedViewId,
+                  onApply: transferOrdersView.applySavedView,
+                  onDelete: transferOrdersView.deleteSavedView,
+                  onSave: transferOrdersView.saveCurrentView,
+                }}
+              />
+            </Stack>
           }
         />
       </Grid>

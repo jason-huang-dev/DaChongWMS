@@ -1,4 +1,4 @@
-import { allocateSalesOrder, cancelSalesOrder, createShipment, postScanPick, postScanShip, updateSalesOrder } from "@/features/outbound/model/api";
+import { allocateSalesOrder, cancelSalesOrder, createShipment, postScanPick, postScanShip, resolveShortPick, updateSalesOrder } from "@/features/outbound/model/api";
 import { mapEditValuesToSalesOrderPayload } from "@/features/outbound/model/mappers";
 import type { SalesOrderEditValues, ScanPickValues, ScanShipValues, ShipmentCreateValues } from "@/features/outbound/model/types";
 
@@ -24,4 +24,8 @@ export function runScanPick(values: ScanPickValues) {
 
 export function runScanShip(values: ScanShipValues) {
   return postScanShip(values);
+}
+
+export function runShortPickResolve(shortPickId: number) {
+  return resolveShortPick(shortPickId);
 }

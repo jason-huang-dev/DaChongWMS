@@ -93,6 +93,7 @@ CATALOG_APPS: List[str] = [
 
 LOCAL_APPS: List[str] = [
     "userprofile",
+    "access.apps.AccessConfig",
     "mfa.apps.MfaConfig",
     "warehouse",
     "locations.apps.LocationsConfig",

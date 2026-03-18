@@ -51,7 +51,8 @@ Route configuration lives in `frontend/src/app/routes.tsx`.
 
 `frontend/src/app/layout/app-shell.tsx` provides:
 
-- persistent left navigation
+- horizontal role-aware module navigation
+- workspace-tab strip backed by persisted membership-scoped tab records
 - top bar with breadcrumbs
 - workspace/company and warehouse context switcher
 - operator identity menu and sign-out action
@@ -78,7 +79,7 @@ Scan-first action panels and selector-driven create panels are packaged as route
 - Inbound purchase-order detail exposes editable header fields and a cancel action.
 - Inbound queue now exposes an overdue-receipts exception lane ahead of the broader purchase-order queue.
 - Outbound sales-order detail exposes editable header fields plus allocation/cancel actions.
-- Outbound queue now exposes a short-pick follow-up proxy lane based on overdue ship-risk orders until the backend emits explicit short-pick records.
+- Outbound queue now exposes a real short-pick exception lane backed by explicit backend short-pick records and resolution actions, plus a dock-load verification table and status-bucket navigation for trailer confirmation follow-up.
 - Transfers expose transfer-order detail plus replenishment task actions.
 - Returns expose return-order detail plus receipt/disposition posting panels.
 - Counting approval detail exposes approve/reject actions with count-line context, and the parent counting route surfaces blocked-count exception lanes.
@@ -87,9 +88,54 @@ Scan-first action panels and selector-driven create panels are packaged as route
 - Integrations expose job/webhook/carrier booking creation plus execution actions from the same route, along with failed-integration exception lanes.
 - Integration detail routes expose object-level inspection for jobs, webhooks, and carrier bookings.
 - Finance invoice detail exposes finalize and finance-review actions with invoice-line detail.
-- Security exposes staff directory management, role assignment, lock-state control, and a direct path to personal MFA management.
+- Security exposes company membership provisioning, invite issuance, password-reset issuance, access audit review, staff directory management, role assignment, lock-state control, and a direct path to personal MFA management.
 
 ## Next Routing Work
 
 - Split desktop and handheld route trees once scanner-first UX is added.
 - Add route-level loaders or prefetch for critical operator flows.
+
+## JF-Inspired Routing And Shell Expansion
+
+The next routing phase should align with `frontend/ai/docs/jf-wms-reference.md`.
+
+### Shell requirements
+
+- support a broad top-level module nav with role-aware visibility
+- support optional workspace tabs beneath the global nav
+- preserve independent route/filter state per open workspace tab
+- allow domain workbench pages to include right-rail utility widgets
+
+The first slice of this is now implemented: module nav is horizontal, workspace tabs are persisted per membership, and dashboard uses a workbench + right-rail layout.
+
+### Domain planning requirements
+
+Treat these as first-class navigational families even if some start as placeholders:
+
+- homepage/workbench
+- clients
+- products
+- inventory
+- inbound
+- outbound
+- cross-border/direct shipping
+- dispatch/split workflows
+- work orders
+- B2B
+- returns / FBA returns
+- logistics
+- fees / billing
+- statistics / reporting
+- settings / security
+
+### Queue-route requirements
+
+Queue routes should be able to restore:
+
+- active status bucket
+- saved view or filter preset
+- visible columns
+- page size / density
+- selected warehouse and company context
+
+This is necessary if we want operators to move between multiple queue tabs without losing context.

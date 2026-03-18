@@ -7,7 +7,7 @@ from django.urls import path, re_path
 from django.urls.resolvers import URLPattern
 from rest_framework.viewsets import ViewSet
 
-from .views import DockLoadVerificationViewSet, PickTaskViewSet, SalesOrderViewSet, ShipmentViewSet
+from .views import DockLoadVerificationViewSet, PickTaskViewSet, SalesOrderViewSet, ShipmentViewSet, ShortPickRecordViewSet
 
 app_name = "outbound"
 
@@ -35,9 +35,17 @@ urlpatterns: List[URLPattern] = [
         name="pick-task-detail",
     ),
     re_path(r"^pick-tasks/(?P<pk>\d+)/complete/$", _action(PickTaskViewSet, {"post": "complete"}), name="pick-task-complete"),
+    re_path(
+        r"^pick-tasks/(?P<pk>\d+)/report-short-pick/$",
+        _action(PickTaskViewSet, {"post": "report_short_pick"}),
+        name="pick-task-report-short-pick",
+    ),
     path("shipments/", _action(ShipmentViewSet, {"get": "list", "post": "create"}), name="shipment-list"),
     path("shipments/scan-ship/", _action(ShipmentViewSet, {"post": "scan_ship"}), name="shipment-scan-ship"),
     re_path(r"^shipments/(?P<pk>\d+)/$", _action(ShipmentViewSet, {"get": "retrieve"}), name="shipment-detail"),
     path("dock-load-verifications/", _action(DockLoadVerificationViewSet, {"get": "list"}), name="dock-load-verification-list"),
     re_path(r"^dock-load-verifications/(?P<pk>\d+)/$", _action(DockLoadVerificationViewSet, {"get": "retrieve"}), name="dock-load-verification-detail"),
+    path("short-picks/", _action(ShortPickRecordViewSet, {"get": "list"}), name="short-pick-list"),
+    re_path(r"^short-picks/(?P<pk>\d+)/$", _action(ShortPickRecordViewSet, {"get": "retrieve"}), name="short-pick-detail"),
+    re_path(r"^short-picks/(?P<pk>\d+)/resolve/$", _action(ShortPickRecordViewSet, {"post": "resolve"}), name="short-pick-resolve"),
 ]

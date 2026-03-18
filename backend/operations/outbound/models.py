@@ -58,6 +58,20 @@ class DockLoadVerificationStatus(models.TextChoices):
     REJECTED = "REJECTED", "Rejected"
 
 
+class ShortPickStatus(models.TextChoices):
+    OPEN = "OPEN", "Open"
+    RESOLVED = "RESOLVED", "Resolved"
+
+
+class ShortPickReason(models.TextChoices):
+    INVENTORY_MISSING = "INVENTORY_MISSING", "Inventory Missing"
+    DAMAGED = "DAMAGED", "Damaged"
+    LOCATION_EMPTY = "LOCATION_EMPTY", "Location Empty"
+    LPN_MISMATCH = "LPN_MISMATCH", "LPN Mismatch"
+    COUNT_REQUIRED = "COUNT_REQUIRED", "Count Required"
+    OTHER = "OTHER", "Other"
+
+
 class SalesOrder(TenantAuditModel):
     warehouse = models.ForeignKey(
         "warehouse.Warehouse",
@@ -464,3 +478,93 @@ class DockLoadVerification(TenantAuditModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.shipment.shipment_number}:{self.goods.goods_code}:{self.verified_qty}"
+
+
+class ShortPickRecord(TenantAuditModel):
+    warehouse = models.ForeignKey(
+        "warehouse.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="short_pick_records",
+        verbose_name="Warehouse",
+    )
+    sales_order = models.ForeignKey(
+        SalesOrder,
+        on_delete=models.PROTECT,
+        related_name="short_pick_records",
+        verbose_name="Sales Order",
+    )
+    sales_order_line = models.ForeignKey(
+        SalesOrderLine,
+        on_delete=models.PROTECT,
+        related_name="short_pick_records",
+        verbose_name="Sales Order Line",
+    )
+    pick_task = models.ForeignKey(
+        PickTask,
+        on_delete=models.PROTECT,
+        related_name="short_pick_records",
+        verbose_name="Pick Task",
+    )
+    goods = models.ForeignKey(
+        "goods.ListModel",
+        on_delete=models.PROTECT,
+        related_name="short_pick_records",
+        verbose_name="Goods",
+    )
+    from_location = models.ForeignKey(
+        "locations.Location",
+        on_delete=models.PROTECT,
+        related_name="short_pick_records_from",
+        verbose_name="From Location",
+    )
+    to_location = models.ForeignKey(
+        "locations.Location",
+        on_delete=models.PROTECT,
+        related_name="short_pick_records_to",
+        blank=True,
+        null=True,
+        verbose_name="To Location",
+    )
+    requested_qty = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0.0001"))],
+        verbose_name="Requested Qty",
+    )
+    picked_qty = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Picked Qty",
+    )
+    short_qty = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0.0001"))],
+        verbose_name="Short Qty",
+    )
+    stock_status = models.CharField(
+        max_length=32,
+        choices=InventoryStatus.choices,
+        default=InventoryStatus.AVAILABLE,
+        verbose_name="Stock Status",
+    )
+    lot_number = models.CharField(max_length=64, blank=True, default="", verbose_name="Lot Number")
+    serial_number = models.CharField(max_length=64, blank=True, default="", verbose_name="Serial Number")
+    reason_code = models.CharField(max_length=32, choices=ShortPickReason.choices, verbose_name="Reason Code")
+    status = models.CharField(max_length=16, choices=ShortPickStatus.choices, default=ShortPickStatus.OPEN, verbose_name="Status")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+    reported_by = models.CharField(max_length=255, verbose_name="Reported By")
+    reported_at = models.DateTimeField(default=timezone.now, verbose_name="Reported At")
+    resolved_by = models.CharField(max_length=255, blank=True, default="", verbose_name="Resolved By")
+    resolved_at = models.DateTimeField(blank=True, null=True, verbose_name="Resolved At")
+    resolution_notes = models.TextField(blank=True, default="", verbose_name="Resolution Notes")
+
+    class Meta:
+        db_table = "outbound_short_pick_record"
+        verbose_name = "Short Pick Record"
+        verbose_name_plural = "Short Pick Records"
+        ordering = ["status", "-reported_at", "-id"]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.sales_order.order_number}:{self.goods.goods_code}:{self.short_qty}"

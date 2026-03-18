@@ -3,7 +3,11 @@ import type { AuthSession, PendingMfaChallenge } from "@/shared/types/domain";
 export interface AuthenticatedResponseData {
   name: string;
   openid: string;
+  token?: string;
   user_id: number;
+  company_id?: number;
+  company_name?: string;
+  membership_id?: number;
   mfa_enrollment_required: boolean;
   mfa_verified?: boolean;
   mfa_method?: string;
@@ -85,6 +89,7 @@ export interface AuthContextValue {
   login: (username: string, password: string) => Promise<LoginResult>;
   signup: (payload: SignupPayload) => Promise<SignupResult>;
   bootstrap: (payload?: BootstrapPayload) => Promise<AuthSession>;
+  switchMembership: (membershipId: number) => Promise<AuthSession>;
   completeMfaChallenge: (code: string) => Promise<AuthenticatedResult>;
   clearPendingChallenge: () => void;
   logout: () => void;

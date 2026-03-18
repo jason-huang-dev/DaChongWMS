@@ -70,6 +70,27 @@ class CarrierLabelPayload:
     label_format: str
 
 
+@dataclass(frozen=True)
+class CarrierBookingRetryPayload:
+    label_format: str = "PDF"
+
+
+@dataclass(frozen=True)
+class CarrierBookingRebookPayload:
+    booking_number: str | None = None
+    carrier_code: str | None = None
+    service_level: str | None = None
+    package_count: int | None = None
+    total_weight: Decimal | None = None
+    external_reference: str | None = None
+    request_payload: dict[str, object] | None = None
+
+
+@dataclass(frozen=True)
+class CarrierBookingCancelPayload:
+    cancel_reason: str = ""
+
+
 @transaction.atomic
 def append_integration_log(
     *,
@@ -364,7 +385,7 @@ def process_webhook_event(
 @transaction.atomic
 def execute_integration_job(*, openid: str, operator_name: str, job: IntegrationJob) -> dict[str, object]:
     ensure_tenant_match(job, openid, "Integration job")
-    locked_job = IntegrationJob.objects.select_for_update().select_related("source_webhook", "warehouse").get(pk=job.pk)
+    locked_job = IntegrationJob.objects.select_for_update(of=("self",)).select_related("source_webhook", "warehouse").get(pk=job.pk)
     if locked_job.request_payload.get("force_fail"):
         raise ValidationError({"detail": "Simulated integration failure"})
 
@@ -523,7 +544,7 @@ def generate_carrier_label(
     payload: CarrierLabelPayload,
 ) -> CarrierBooking:
     ensure_tenant_match(carrier_booking, openid, "Carrier booking")
-    booking = CarrierBooking.objects.select_for_update().select_related("warehouse", "shipment").get(pk=carrier_booking.pk)
+    booking = CarrierBooking.objects.select_for_update(of=("self",)).select_related("warehouse", "shipment").get(pk=carrier_booking.pk)
     if booking.status == CarrierBookingStatus.CANCELLED:
         raise ValidationError({"detail": "Cancelled carrier bookings cannot generate labels"})
     if booking.status not in {CarrierBookingStatus.BOOKED, CarrierBookingStatus.LABELED}:
@@ -552,5 +573,220 @@ def generate_carrier_label(
         job=job,
         message="Carrier label queued",
         payload={"label_format": payload.label_format},
+    )
+    return booking
+
+
+@transaction.atomic
+def retry_carrier_booking(
+    *,
+    openid: str,
+    operator_name: str,
+    carrier_booking: CarrierBooking,
+    payload: CarrierBookingRetryPayload,
+) -> CarrierBooking:
+    ensure_tenant_match(carrier_booking, openid, "Carrier booking")
+    booking = CarrierBooking.objects.select_for_update(of=("self",)).select_related("warehouse", "shipment", "booking_job", "label_job").get(pk=carrier_booking.pk)
+    if booking.status == CarrierBookingStatus.CANCELLED:
+        raise ValidationError({"detail": "Cancelled carrier bookings cannot be retried"})
+
+    label_failure = booking.label_job_id is not None and getattr(booking.label_job, "status", None) == IntegrationJobStatus.FAILED
+    if label_failure and booking.booked_at is not None:
+        label_job = create_integration_job(
+            openid=openid,
+            operator_name=operator_name,
+            payload=IntegrationJobCreatePayload(
+                warehouse=booking.warehouse,
+                source_webhook=None,
+                system_type=IntegrationSystemType.CARRIER,
+                integration_name=booking.carrier_code,
+                job_type=IntegrationJobType.LABEL_GENERATION,
+                direction=IntegrationDirection.EXPORT,
+                reference_code=booking.booking_number,
+                external_reference=booking.external_reference,
+                request_payload={"label_format": payload.label_format},
+            ),
+        )
+        booking.label_job = label_job
+        booking.status = CarrierBookingStatus.BOOKED
+        booking.last_error = ""
+        booking.save(update_fields=["label_job", "status", "last_error", "update_time"])
+        append_integration_log(
+            openid=openid,
+            operator_name=operator_name,
+            job=label_job,
+            message="Carrier label retry queued",
+            payload={"label_format": payload.label_format},
+        )
+        return booking
+
+    booking_job = create_integration_job(
+        openid=openid,
+        operator_name=operator_name,
+        payload=IntegrationJobCreatePayload(
+            warehouse=booking.warehouse,
+            source_webhook=None,
+            system_type=IntegrationSystemType.CARRIER,
+            integration_name=booking.carrier_code,
+            job_type=IntegrationJobType.CARRIER_BOOKING,
+            direction=IntegrationDirection.EXPORT,
+            reference_code=booking.booking_number,
+            external_reference=booking.external_reference,
+            request_payload=booking.request_payload,
+        ),
+    )
+    booking.booking_job = booking_job
+    booking.label_job = None
+    booking.status = CarrierBookingStatus.OPEN
+    booking.tracking_number = ""
+    booking.label_format = ""
+    booking.label_document = ""
+    booking.response_payload = {}
+    booking.booked_by = ""
+    booking.booked_at = None
+    booking.labeled_at = None
+    booking.last_error = ""
+    booking.save(
+        update_fields=[
+            "booking_job",
+            "label_job",
+            "status",
+            "tracking_number",
+            "label_format",
+            "label_document",
+            "response_payload",
+            "booked_by",
+            "booked_at",
+            "labeled_at",
+            "last_error",
+            "update_time",
+        ]
+    )
+    append_integration_log(
+        openid=openid,
+        operator_name=operator_name,
+        job=booking_job,
+        message="Carrier booking retry queued",
+        payload={"booking_number": booking.booking_number, "carrier_code": booking.carrier_code},
+    )
+    return booking
+
+
+@transaction.atomic
+def rebook_carrier_booking(
+    *,
+    openid: str,
+    operator_name: str,
+    carrier_booking: CarrierBooking,
+    payload: CarrierBookingRebookPayload,
+) -> CarrierBooking:
+    ensure_tenant_match(carrier_booking, openid, "Carrier booking")
+    booking = CarrierBooking.objects.select_for_update(of=("self",)).select_related("warehouse", "shipment").get(pk=carrier_booking.pk)
+    if booking.status == CarrierBookingStatus.CANCELLED:
+        raise ValidationError({"detail": "Cancelled carrier bookings cannot be rebooked"})
+
+    booking_number = payload.booking_number or booking.booking_number
+    if booking_number != booking.booking_number and CarrierBooking.objects.filter(
+        openid=openid,
+        booking_number=booking_number,
+        is_delete=False,
+    ).exclude(pk=booking.pk).exists():
+        raise ValidationError({"booking_number": "Booking number is already in use"})
+
+    carrier_code = payload.carrier_code or booking.carrier_code
+    service_level = booking.service_level if payload.service_level is None else payload.service_level
+    package_count = payload.package_count if payload.package_count is not None else booking.package_count
+    total_weight = payload.total_weight if payload.total_weight is not None else booking.total_weight
+    external_reference = booking.external_reference if payload.external_reference is None else payload.external_reference
+    request_payload = booking.request_payload if payload.request_payload is None else payload.request_payload
+
+    booking_job = create_integration_job(
+        openid=openid,
+        operator_name=operator_name,
+        payload=IntegrationJobCreatePayload(
+            warehouse=booking.warehouse,
+            source_webhook=None,
+            system_type=IntegrationSystemType.CARRIER,
+            integration_name=carrier_code,
+            job_type=IntegrationJobType.CARRIER_BOOKING,
+            direction=IntegrationDirection.EXPORT,
+            reference_code=booking_number,
+            external_reference=external_reference,
+            request_payload=request_payload,
+        ),
+    )
+    booking.booking_number = booking_number
+    booking.carrier_code = carrier_code
+    booking.service_level = service_level
+    booking.package_count = package_count
+    booking.total_weight = total_weight
+    booking.external_reference = external_reference
+    booking.request_payload = request_payload
+    booking.booking_job = booking_job
+    booking.label_job = None
+    booking.status = CarrierBookingStatus.OPEN
+    booking.tracking_number = ""
+    booking.label_format = ""
+    booking.label_document = ""
+    booking.response_payload = {}
+    booking.booked_by = ""
+    booking.booked_at = None
+    booking.labeled_at = None
+    booking.last_error = ""
+    booking.save(
+        update_fields=[
+            "booking_number",
+            "carrier_code",
+            "service_level",
+            "package_count",
+            "total_weight",
+            "external_reference",
+            "request_payload",
+            "booking_job",
+            "label_job",
+            "status",
+            "tracking_number",
+            "label_format",
+            "label_document",
+            "response_payload",
+            "booked_by",
+            "booked_at",
+            "labeled_at",
+            "last_error",
+            "update_time",
+        ]
+    )
+    append_integration_log(
+        openid=openid,
+        operator_name=operator_name,
+        job=booking_job,
+        message="Carrier booking rebook queued",
+        payload={"booking_number": booking.booking_number, "carrier_code": booking.carrier_code},
+    )
+    return booking
+
+
+@transaction.atomic
+def cancel_carrier_booking(
+    *,
+    openid: str,
+    operator_name: str,
+    carrier_booking: CarrierBooking,
+    payload: CarrierBookingCancelPayload,
+) -> CarrierBooking:
+    ensure_tenant_match(carrier_booking, openid, "Carrier booking")
+    booking = CarrierBooking.objects.select_for_update(of=("self",)).select_related("warehouse", "shipment").get(pk=carrier_booking.pk)
+    if booking.status == CarrierBookingStatus.CANCELLED:
+        raise ValidationError({"detail": "Carrier booking is already cancelled"})
+
+    booking.status = CarrierBookingStatus.CANCELLED
+    booking.last_error = payload.cancel_reason or "Cancelled by operator"
+    booking.save(update_fields=["status", "last_error", "update_time"])
+    append_integration_log(
+        openid=openid,
+        operator_name=operator_name,
+        job=booking.label_job or booking.booking_job,
+        message="Carrier booking cancelled",
+        payload={"booking_number": booking.booking_number, "reason": payload.cancel_reason},
     )
     return booking

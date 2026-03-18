@@ -1,11 +1,14 @@
 import {
   completeIntegrationJob,
+  cancelCarrierBooking,
   createCarrierBooking,
   createIntegrationJob,
   createWebhookEvent,
   failIntegrationJob,
   generateCarrierLabel,
   processWebhookEvent,
+  rebookCarrierBooking,
+  retryCarrierBooking,
   startIntegrationJob,
 } from "@/features/integrations/model/api";
 import {
@@ -49,4 +52,16 @@ export function runCarrierBookingCreate(values: CarrierBookingCreateValues) {
 
 export function runCarrierLabelGenerate(bookingId: number) {
   return generateCarrierLabel(bookingId, "PDF");
+}
+
+export function runCarrierBookingRetry(bookingId: number) {
+  return retryCarrierBooking(bookingId, "PDF");
+}
+
+export function runCarrierBookingRebook(bookingId: number) {
+  return rebookCarrierBooking(bookingId);
+}
+
+export function runCarrierBookingCancel(bookingId: number) {
+  return cancelCarrierBooking(bookingId, "Cancelled from the operator console");
 }

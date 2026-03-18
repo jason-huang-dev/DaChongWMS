@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
 
+from access.services import ensure_company_membership
 from capital.models import ListModel as Capital
 from catalog.goods.models import ListModel as Goods
 from catalog.goodsbrand.models import ListModel as GoodsBrand
@@ -128,6 +129,7 @@ def bootstrap_test_system(*, username: str, password: str, ip: str) -> Bootstrap
         check_code=8888,
         openid=transaction_code,
     )
+    ensure_company_membership(auth_user=auth_user, profile=profile, staff=admin_staff, creator=admin_staff.staff_name)
 
     for role, staff_name in (
         ("Supervisor", "Test Supervisor"),

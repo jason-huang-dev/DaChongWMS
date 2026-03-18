@@ -22,6 +22,9 @@ from .permissions import CanManageIntegrationRecords
 from .serializers import (
     CarrierBookingSerializer,
     CarrierLabelSerializer,
+    CarrierBookingCancelSerializer,
+    CarrierBookingRetrySerializer,
+    CarrierBookingRebookSerializer,
     IntegrationJobCompleteSerializer,
     IntegrationJobFailSerializer,
     IntegrationJobSerializer,
@@ -39,9 +42,15 @@ from .services import (
     create_integration_job,
     fail_integration_job,
     generate_carrier_label,
+    cancel_carrier_booking,
+    rebook_carrier_booking,
     process_webhook_event,
+    retry_carrier_booking,
     start_integration_job,
     intake_webhook,
+    CarrierBookingRetryPayload,
+    CarrierBookingRebookPayload,
+    CarrierBookingCancelPayload,
 )
 
 
@@ -236,5 +245,47 @@ class CarrierBookingViewSet(
             operator_name=operator.staff_name,
             carrier_booking=booking,
             payload=CarrierLabelPayload(label_format=serializer.validated_data["label_format"]),
+        )
+        return Response(self.get_serializer(booking).data, status=status.HTTP_200_OK)
+
+    def retry(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        booking = self.get_object()
+        self.check_object_permissions(request, booking)
+        serializer = CarrierBookingRetrySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        booking = retry_carrier_booking(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            carrier_booking=booking,
+            payload=CarrierBookingRetryPayload(**serializer.validated_data),
+        )
+        return Response(self.get_serializer(booking).data, status=status.HTTP_202_ACCEPTED)
+
+    def rebook(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        booking = self.get_object()
+        self.check_object_permissions(request, booking)
+        serializer = CarrierBookingRebookSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        booking = rebook_carrier_booking(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            carrier_booking=booking,
+            payload=CarrierBookingRebookPayload(**serializer.validated_data),
+        )
+        return Response(self.get_serializer(booking).data, status=status.HTTP_202_ACCEPTED)
+
+    def cancel(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        booking = self.get_object()
+        self.check_object_permissions(request, booking)
+        serializer = CarrierBookingCancelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        booking = cancel_carrier_booking(
+            openid=self._current_openid(),
+            operator_name=operator.staff_name,
+            carrier_booking=booking,
+            payload=CarrierBookingCancelPayload(**serializer.validated_data),
         )
         return Response(self.get_serializer(booking).data, status=status.HTTP_200_OK)

@@ -449,7 +449,7 @@ def enqueue_due_scheduled_tasks(*, now=None) -> int:
 def claim_next_background_task(*, worker_name: str, now=None) -> BackgroundTask | None:
     current_time = now or timezone.now()
     task = (
-        BackgroundTask.objects.select_for_update()
+        BackgroundTask.objects.select_for_update(of=("self",))
         .select_related("scheduled_task", "warehouse", "customer", "integration_job")
         .filter(
             is_delete=False,
@@ -644,7 +644,7 @@ def requeue_background_task(*, openid: str, operator_name: str, task: Background
     ensure_tenant_match(task, openid, "Background task")
     current_time = now or timezone.now()
     locked_task = (
-        BackgroundTask.objects.select_for_update()
+        BackgroundTask.objects.select_for_update(of=("self",))
         .select_related("integration_job", "integration_job__source_webhook")
         .get(pk=task.pk)
     )

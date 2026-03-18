@@ -67,7 +67,7 @@ def login(request: HttpRequest, *args: Any, **kwargs: Any) -> JsonResponse:
         response["msg"] = str(exc)
         return JsonResponse(response, status=400)
 
-    mfa_enrollment_required = not has_verified_enrollment(auth_user=user, openid=identity.profile.openid)
+    mfa_enrollment_required = not has_verified_enrollment(auth_user=user, openid=identity.company.openid)
     if not mfa_enrollment_required:
         challenge = create_login_challenge(identity=identity, ip=ip or "")
         response = FBMsg.ret()

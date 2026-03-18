@@ -4,6 +4,8 @@ The frontend is a Vite + React + TypeScript application under `frontend/src/`. I
 
 The current product audit and UX gap list live in `frontend/ai/docs/wms-product-audit.md`. That document is the source of truth for missing warehouse workflows, backend dependencies, and shared frontend priorities.
 
+The external reference model for the next implementation phase lives in `frontend/ai/docs/jf-wms-reference.md`. Codex should use it to emulate the functional posture of JF WMS — dense operator workbenches, broad domain navigation, advanced queue filters, status-bucket navigation, and strong bulk-action tooling — while still following our own architecture and branding.
+
 ## Current Stack
 
 - **Tooling**: Vite 6, TypeScript, npm.
@@ -59,7 +61,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 
 ## Architectural Decisions
 
-- Authentication is based on the backend's legacy login contract, not JWT. The SPA stores the returned `openid` and `user_id`, then sends them back as `TOKEN` and `OPERATOR` headers on each API request.
+- Authentication is based on the backend's legacy login contract, not JWT. The SPA stores the returned profile token, active company membership, and `user_id`, then sends them back as `TOKEN` and `OPERATOR` headers on each API request.
 - The frontend resolves the logged-in operator profile through `/api/staff/{id}/` after login so route guards and navigation can use the real `staff_type`.
 - React Query stays behind controller hooks; routed pages render controller state instead of owning fetch logic directly.
 - Feature-local `model/` files own endpoint constants, payload mappers, shared feature types, and Zod validators.
@@ -67,10 +69,12 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Feature-local `view/` files own JSX, MUI layout, and presentational composition.
 - Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, and `ResourceTable` keep the first set of screens consistent while the product surface grows.
 - Exception-first surfaces use shared `ExceptionLane` tables so overdue, blocked, and failed workflow queues keep the same visual contract across domains.
+- Shared bulk queue actions use `useBulkSelection`, `BulkActionBar`, and `executeBulkAction` so selection state, batch orchestration, and operator feedback stay consistent across features.
 - Repeated selector-driven create flows use shared `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, JSON helpers, and reference-option hooks under `src/shared/` instead of rebuilding those primitives per feature.
-- Workspace and warehouse context are centralized through `src/app/scope-context.tsx`, which keeps page flows aligned on the currently selected tenant/company and warehouse scope.
+- Workspace and warehouse context are centralized through `src/app/scope-context.tsx`, which keeps page flows aligned on the currently selected company membership and warehouse scope.
 - Repeated table filtering and saved views use shared modules (`useDataView`, `DataViewToolbar`, and `ResourceTable` with toolbar slots) instead of per-page one-off controls.
 - Repeated branding usage goes through reusable modules: raw logo files live in `src/assets/logo/`, and the live UI consumes them through shared components such as `BrandLogo` and `AuthShell`.
+- JF-style shell state now lives in shared app modules: `src/app/workspace-preferences.ts` owns workspace-tab and workbench-preference queries, while `app/layout/*` owns the horizontal module nav and workspace-tab strip.
 
 ## Current Screen Set
 
@@ -79,22 +83,23 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - `MfaChallengePage`: second-step login challenge for TOTP or recovery-code verification.
 - `MfaEnrollmentPage`: authenticated TOTP setup, verification, and recovery-code display.
 - `SecurityPage`: tenant staff access management, role assignment, lock-state control, and MFA posture summary.
-- `DashboardPage`: high-level operational summary.
+- `SecurityPage`: company membership provisioning, browser-account management, staff directory controls, role assignment, lock-state control, and MFA posture summary.
+- `DashboardPage`: workbench-style operational summary with persisted time window and right-rail widgets.
 - `InventoryBalancesPage`: tenant-scoped stock positions.
 - `InboundPage`: purchase orders, receipts, putaway tasks, and scan-first receive/putaway actions.
 - `PurchaseOrderDetailPage`: editable purchase-order header flow plus cancel action.
-- `OutboundPage`: sales orders, pick tasks, shipments, and scan-first pick/ship actions.
+- `OutboundPage`: sales orders, pick tasks, shipments, dock-load verification, explicit short-pick follow-up, and scan-first pick/ship actions.
 - `SalesOrderDetailPage`: editable sales-order header flow plus allocation and cancel actions.
-- `TransfersPage`: transfer orders, transfer lines, replenishment rules, and replenishment task completion.
+- `TransfersPage`: transfer orders, transfer lines, replenishment rules, replenishment task completion, and bulk transfer archiving.
 - `TransferOrderDetailPage`: editable transfer-order header flow plus line completion.
 - `ReturnsPage`: return orders, return receipts, return dispositions, and return-side mutation panels.
 - `ReturnOrderDetailPage`: editable return-order header flow with line-level receipt/disposition progress.
-- `CountingPage`: handheld assignments, next-task scanner completion, supervisor approval queue, and blocked-count exception lanes.
+- `CountingPage`: handheld assignments, next-task scanner completion, supervisor approval queue, blocked-count exception lanes, and bulk approval decisions.
 - `CountApprovalDetailPage`: supervisor approval decision screen with count-line context.
-- `AutomationPage`: schedule creation, queue monitoring, worker health, alert evaluation, and task retry/run-now actions.
+- `AutomationPage`: schedule creation, queue monitoring, worker health, alert evaluation, row-level task retry/run-now actions, and bulk schedule run-now actions.
 - `ScheduledTaskDetailPage`: schedule inspection with related background tasks and alerts.
 - `BackgroundTaskDetailPage`: queue-task inspection with payload/result JSON and retry action.
-- `IntegrationsPage`: integration job creation, webhook intake, carrier booking creation, execution monitoring, and failed-integration exception lanes.
+- `IntegrationsPage`: integration job creation, webhook intake, carrier booking creation, execution monitoring, failed-integration exception lanes, bulk job/webhook recovery actions, and carrier retry/rebook recovery.
 - `IntegrationJobDetailPage`: job state, request/response payloads, and job-scoped logs.
 - `WebhookEventDetailPage`: webhook state, headers/payload inspection, and webhook-scoped logs.
 - `CarrierBookingDetailPage`: carrier booking state, linked jobs, and label payload inspection.
@@ -109,15 +114,33 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Shared modules such as `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Shared modules such as `WorkspaceContextSwitcher`, `DataViewToolbar`, `useDataView(...)`, `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Brand palette, gradients, and shadows come from `src/app/brand.ts`, so auth screens, page headers, and the shell all stay aligned with the gold/copper/charcoal logo theme.
+- The authenticated shell is now JF-inspired: horizontal module nav first, workspace-tab strip second, content canvas third. Mobile keeps a drawer fallback.
 - Search-heavy lookup fields now use debounced, paginated reference hooks instead of assuming the first page of options is sufficient.
-- Queue-heavy screens now use the same filter/saved-view pattern for inventory, inbound, outbound, and security.
-- Queue-heavy screens now use the same filter/saved-view pattern for transfers, returns, counting, finance, automation, and integrations as well.
-- Inbound and outbound now expose exception-first lanes for overdue receipts and short-pick follow-up proxies before operators drop into the deeper queues.
+- Queue-heavy screens now use the same filter/saved-view pattern across inventory, inbound, outbound, transfers, returns, counting, finance, automation, integrations, and security.
+- `DataViewToolbar` now acts as a denser enterprise filter band, and queue pages can layer `StatusBucketNav` above it for state-first navigation.
+- Queue-heavy screens now reuse the same row-selection and bulk-action contract where backend endpoints support batch-safe orchestration.
+- Inbound and outbound now expose exception-first lanes for overdue receipts and explicit short-pick records before operators drop into the deeper queues.
 - Read-mostly domains such as dashboard and inventory use the same feature shape, with table components extracted into `view/*Table.tsx`.
 - Tests are colocated with the controller or view layer they exercise.
 - Test coverage now covers auth restore, route guards, first route/data rendering, scan-first mutation panels, remote selector behavior, and transfer/return/automation/integration detail routes through Vitest + Testing Library.
 
 ## Immediate Next Frontend Work
 
+- Group shared/components in to modules where we have the view and hooks under the the component directory
 - Add richer finance workflows beyond invoice review, such as settlement/remittance and dispute handling screens.
-- Replace synthetic company context and staff-only access management once dedicated company and user-provisioning APIs exist on the backend.
+- Hook the new backend queue-view preference APIs into `useDataView(...)` so saved views become cross-device instead of browser-local.
+- Extend status-bucket navigation beyond outbound into inbound, returns, and finance.
+- Add true right-rail widgets and configurable workbench cards for more domains than dashboard.
+
+## JF WMS Alignment
+
+The next iteration target is no longer just “generic WMS screens.” It is a multi-tenant operator console that can stand beside JF-style WMS products. That means:
+
+- workbench-style homepage and module landing pages
+- queue-first domain pages with dense advanced filters
+- broad first-class modules across warehouse, logistics, billing, and reporting
+- status-driven secondary navigation with counts
+- export, batch actions, and column customization as shared table capabilities
+- optional multi-tab workspace behavior for power users
+
+Any new feature that touches queue-heavy operations should check `jf-wms-reference.md` before inventing a thinner interaction model.

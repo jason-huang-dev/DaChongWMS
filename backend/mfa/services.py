@@ -168,13 +168,13 @@ def create_login_challenge(*, identity: WorkspaceIdentity, ip: str) -> MFAChalle
     now = timezone.now()
     MFAChallenge.objects.filter(
         user=identity.auth_user,
-        openid=identity.profile.openid,
+        openid=identity.company.openid,
         status=MFAChallenge.Status.PENDING,
         is_delete=False,
     ).update(status=MFAChallenge.Status.EXPIRED)
     return MFAChallenge.objects.create(
         user=identity.auth_user,
-        openid=identity.profile.openid,
+        openid=identity.company.openid,
         username=getattr(identity.auth_user, "username", identity.profile.name),
         operator_id=identity.staff.id,
         operator_name=identity.staff.staff_name,

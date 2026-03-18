@@ -22,9 +22,11 @@ import type {
   TransferOrderEditValues,
   TransferOrderRecord,
 } from "@/features/transfers/model/types";
+import { useBulkSelection } from "@/shared/hooks/use-bulk-selection";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
+import { executeBulkAction } from "@/shared/lib/bulk-actions";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
@@ -39,6 +41,7 @@ async function invalidateTransfersQueries(queryClient: ReturnType<typeof useQuer
 export function useTransfersController() {
   const queryClient = useQueryClient();
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
+  const transferOrderSelection = useBulkSelection<number>();
   const [createSuccessMessage, setCreateSuccessMessage] = useState<string | null>(null);
   const [createErrorMessage, setCreateErrorMessage] = useState<string | null>(null);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
@@ -167,8 +170,37 @@ export function useTransfersController() {
     },
   });
 
+  const bulkArchiveMutation = useMutation({
+    mutationFn: (transferOrderIds: number[]) =>
+      executeBulkAction(transferOrderIds, (transferOrderId) =>
+        runTransferOrderArchive(String(transferOrderId)),
+      ),
+    onSuccess: async (result) => {
+      setActionSuccessMessage(
+        result.successCount > 0
+          ? `Archived ${result.successCount} transfer order${result.successCount === 1 ? "" : "s"}.`
+          : null,
+      );
+      setActionErrorMessage(
+        result.failures.length > 0
+          ? `Failed ${result.failures.length} transfer archive${result.failures.length === 1 ? "" : "s"}: ${result.failures
+              .slice(0, 3)
+              .map((failure) => `#${failure.item} ${failure.message}`)
+              .join("; ")}`
+          : null,
+      );
+      transferOrderSelection.clearSelection();
+      await invalidateTransfersQueries(queryClient);
+    },
+    onError: (error) => {
+      setActionSuccessMessage(null);
+      setActionErrorMessage(parseApiError(error));
+    },
+  });
+
   return {
     activeWarehouse,
+    bulkArchiveMutation,
     actionErrorMessage,
     actionSuccessMessage,
     completeTaskMutation,
@@ -183,6 +215,7 @@ export function useTransfersController() {
     replenishmentTasksView,
     transferLinesQuery,
     transferLinesView,
+    transferOrderSelection,
     transferOrdersQuery,
     transferOrdersView,
   };

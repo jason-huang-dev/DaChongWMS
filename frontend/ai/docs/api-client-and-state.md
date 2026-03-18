@@ -8,10 +8,16 @@ The backend is not using a typical SPA bearer token flow. The current contract i
 
 1. `POST /api/login/` with `name` and `password`, or `POST /api/signup/` with `name`, `email`, `password1`, and `password2`
 2. If the operator already has verified MFA, `/api/login/` returns a pending challenge instead of an authenticated tenant session
-3. `POST /api/mfa/challenges/verify/` completes that challenge and returns `openid` and `user_id`
+3. `POST /api/mfa/challenges/verify/` completes that challenge and returns:
+   - `token` for the browser session
+   - `company_id`
+   - `company_name`
+   - `membership_id`
+   - `openid` for backend tenant scoping
+   - `user_id`
 4. Frontend stores the authenticated values in local storage as the active session
 5. Every authenticated API request sends:
-   - `TOKEN: <openid>`
+   - `TOKEN: <profile token>`
    - `OPERATOR: <user_id>`
 
 The operator profile is then fetched from `/api/staff/{id}/` so the SPA knows the resolved `staff_type`.
@@ -59,11 +65,13 @@ Views should not import `useResource(...)` or `usePaginatedResource(...)` direct
 
 ## Workspace and Warehouse Context
 
-- `frontend/src/app/scope-context.tsx` owns the current tenant/company and warehouse selection.
-- Today the backend only exposes tenant scope implicitly through `openid`, so the frontend synthesizes company/workspace context from the authenticated session until a dedicated company API exists.
+- `frontend/src/app/scope-context.tsx` owns the current company membership and warehouse selection.
+- `frontend/src/app/workspace-preferences.ts` owns membership-scoped workbench preferences and workspace-tab state.
+- Company membership lists come from `/api/access/my-memberships/`, and membership switching uses `/api/access/my-memberships/{id}/activate/`.
 - Warehouse lists come from `/api/warehouse/`, and the active warehouse is persisted per tenant in local storage.
 - Controllers should read the active warehouse from the scope context and add `warehouse=<id>` to backend queries whenever the endpoint supports it.
-- Where the backend does not yet expose company or admin user-provisioning APIs, controllers must surface that limitation explicitly in UX copy instead of inventing unsupported local state.
+- Company-admin browser-account provisioning comes from `/api/access/company-memberships/`.
+- Invite issuance, password-reset issuance, audit review, queue-view persistence, workspace tabs, and workbench preferences now come from `/api/access/*` endpoints instead of synthetic local-only state.
 
 ## Searchable Reference Inputs
 
@@ -81,6 +89,9 @@ Large selector flows now use the shared remote reference pattern:
   - page state
   - filter state
   - local saved views
+- `useBulkSelection(...)` owns queue row selection state for batch-safe actions.
+- `executeBulkAction(...)` runs repeated per-record mutations with aggregated success and failure reporting.
+- `BulkActionBar` renders the shared selected-count and bulk-action affordance above queue tables.
 - `DataViewToolbar` renders consistent queue controls:
   - filter inputs
   - active-filter counts
@@ -88,7 +99,8 @@ Large selector flows now use the shared remote reference pattern:
   - save/apply/delete view controls
 - `ResourceTable` accepts the toolbar as a slot, so pages keep a stable structure while queue-specific filters change.
 - `ExceptionLane` reuses the same table shell for watchlists such as overdue receipts, blocked counts, and failed integrations.
-- Saved views are currently local-browser only. Cross-device saved views require backend persistence later.
+- Saved views are still local-browser only in the current controller layer, but the backend now exposes `QueueViewPreference` models so `useDataView(...)` can be upgraded to cross-device persistence next.
+- Controllers should only expose bulk queue actions when the backend already exposes safe per-record endpoints. Where the backend lacks explicit bulk-safe primitives, the UI should document the gap instead of simulating unsupported state.
 
 ## API Base URL Strategy
 
@@ -120,4 +132,31 @@ The auth provider currently owns:
 - Invalidate related queries after create/update flows.
 - Add download helpers for finance/counting export endpoints and settlement/remittance artifacts.
 - Add optimistic state only where operator workflows need it.
-- Replace the synthetic company scope and staff-only user management once dedicated backend company and user-provisioning APIs exist.
+- Add cross-device persistence for saved views if the backend exposes a settings/preferences surface.
+- Add access-audit and invite/reset flows on top of the company-membership APIs.
+
+## JF-Inspired State Requirements
+
+To support the next JF-style surface area, shared state should account for more than auth and simple table filters.
+
+Add or extend support for:
+
+- workspace-tab state with per-tab route, filter, sort, pagination, and active-detail context
+- column-visibility and density preferences per queue
+- saved advanced filter presets per domain and per tenant when backend persistence becomes available
+- status-bucket definitions that can be reused between dashboard cards, left-rail queue navigation, and exception lanes
+- homepage/workbench widget preferences by role
+
+Implementation rule:
+
+- if a state shape is reused across modules, it belongs in shared app/controller infrastructure rather than page-local `useState` trees
+- any future backend preference endpoints should persist queue views, column configs, and workbench layouts rather than inventing disconnected settings surfaces
+
+The first backend-backed slice is now in place:
+
+- `GET /api/access/workspace-tabs/`
+- `POST /api/access/workspace-tabs/sync/`
+- `POST /api/access/workspace-tabs/{id}/activate/`
+- `DELETE /api/access/workspace-tabs/{id}/`
+- `GET/PATCH /api/access/workbench-preferences/current/`
+- `GET/POST/PATCH/DELETE /api/access/queue-view-preferences/`

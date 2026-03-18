@@ -11,6 +11,7 @@ The first frontend form layer is now in place and follows the documented RHF + Z
 - `frontend/src/features/mfa/view/MfaChallengePage.tsx` and `frontend/src/features/mfa/view/MfaEnrollmentPage.tsx` use React Hook Form and Zod for MFA verification and enrollment.
 - `frontend/src/shared/components/form-text-field.tsx` wraps MUI `TextField` with RHF `Controller` integration.
 - `frontend/src/shared/components/form-autocomplete.tsx`, `frontend/src/shared/components/reference-autocomplete-field.tsx`, and `frontend/src/shared/components/form-switch-field.tsx` now cover repeated selector and boolean inputs.
+- `frontend/src/shared/components/data-view-toolbar.tsx` now acts as the dense queue-filter band for enterprise pages and supports compact date inputs in addition to text/select fields.
 - Scan-first mutation forms now exist for receive, putaway, pick, ship, and assigned count completion, each using feature-local validators and controller actions.
 - Detail/action forms now exist for purchase-order edits, sales-order edits, transfer-order edits, return-order edits, count-approval decisions, invoice finance actions, and selector-driven create flows for receipts, shipments, transfer orders, return orders, return receipts, and return dispositions through `view/*Form.tsx` or route-local view components.
 - Access-management forms now exist for tenant staff directory maintenance, role assignment, verification-code control, and lock-state management.
@@ -51,3 +52,29 @@ The first frontend form layer is now in place and follows the documented RHF + Z
 - Add field-level mapping for DRF validation objects on create/update flows.
 - Add richer handheld affordances such as barcode-focused autofocus, hotkey submit, and scanner-specific validation copy.
 - Add richer create/edit flows for finance, counting, and remaining admin domains using the same selector-based form pattern.
+
+## JF-Inspired Queue Filter Forms
+
+The next form surface is not only create/edit flows. JF-style operational queues require a reusable filter-form system that can express:
+
+- search-by selector + search value
+- enum and reference-data dropdowns
+- date range windows
+- numeric min/max ranges
+- boolean/interception/reshipment toggles
+- warehouse/client/platform/logistics selectors
+
+Rules for implementation:
+
+- advanced queue filters should still be modeled with RHF + Zod when the filter density or validation complexity is non-trivial
+- shared filter schemas belong in `model/validators.ts` when a queue has canonical filter shapes
+- reset/apply/save-view behavior belongs in controller hooks, not in field components
+- filter rows should support compact enterprise density without losing helper/error behavior
+
+The first implementation slice is active now on outbound:
+
+- status buckets live beside the main queue instead of inside the table only
+- date-window filters sit inside the shared dense filter band
+- queue state can now be paired with persisted workspace tabs and workbench preferences from the backend
+
+Scanner-first work is still important, but the next large form investment should be advanced filter composition for queue pages.

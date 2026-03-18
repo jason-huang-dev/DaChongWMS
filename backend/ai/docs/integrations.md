@@ -21,6 +21,8 @@
 2. `automation` claims the queued work and calls the integration execution service.
 3. Success or failure is written back to `IntegrationJob`, `IntegrationLog`, and linked webhook/carrier records.
 4. Dead tasks can be requeued manually when operations want controlled replay.
+5. Failed carrier bookings can be retried in place or rebooked with carrier/service overrides when operations need direct booking recovery.
+6. Operators can now cancel unrecoverable carrier bookings from the console so failed rows can be explicitly closed out instead of lingering in `FAILED`.
 
 ## Validation Rules
 
@@ -29,6 +31,8 @@
 - Webhook intake is idempotent per active `(openid, source_system, event_key)` tuple.
 - Finalized jobs (`SUCCEEDED`, `CANCELLED`) cannot be restarted through the manual job endpoints.
 - Cancelled carrier bookings cannot generate labels.
+- Carrier booking retry only applies to failed bookings and reuses the existing shipment context.
+- Carrier booking rebook creates a fresh booking attempt while preserving lineage to the failed booking record.
 
 ## API Surface
 
@@ -45,3 +49,6 @@
 - `GET/POST /api/integrations/carrier-bookings/`
 - `GET /api/integrations/carrier-bookings/{id}/`
 - `POST /api/integrations/carrier-bookings/{id}/generate-label/`
+- `POST /api/integrations/carrier-bookings/{id}/retry/`
+- `POST /api/integrations/carrier-bookings/{id}/rebook/`
+- `POST /api/integrations/carrier-bookings/{id}/cancel/`

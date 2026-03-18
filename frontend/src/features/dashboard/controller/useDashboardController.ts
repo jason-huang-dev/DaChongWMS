@@ -1,3 +1,4 @@
+import { useWorkbenchPreference } from "@/app/workspace-preferences";
 import { useTenantScope } from "@/app/scope-context";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { dashboardApi } from "@/features/dashboard/model/api";
@@ -10,6 +11,7 @@ export function useDashboardController() {
   const { session } = useAuth();
   const { company, activeWarehouse, activeWarehouseId, warehousesQuery } = useTenantScope();
   const { canViewOps, canViewFinance } = getDashboardAccess(session);
+  const { preferenceQuery, updateWorkbenchPreference } = useWorkbenchPreference("dashboard");
 
   const balancesQuery = usePaginatedResource<InventoryBalanceRecord>(["dashboard", "balances"], dashboardApi.balances, 1, 10, {
     warehouse: activeWarehouseId ?? undefined,
@@ -48,6 +50,11 @@ export function useDashboardController() {
     approvalsSummaryQuery,
     countingDashboardQuery,
     invoicesQuery,
+    workbenchPreferenceQuery: preferenceQuery,
+    updateWorkbenchPreference,
+    timeWindow: preferenceQuery.data?.time_window ?? "WEEK",
+    visibleWidgetKeys: preferenceQuery.data?.visible_widget_keys ?? [],
+    rightRailWidgetKeys: preferenceQuery.data?.right_rail_widget_keys ?? [],
     activeWarehouse,
     firstWarehouse: activeWarehouse ?? warehousesQuery.data?.results[0],
     visibleOnHand: sumVisibleOnHand(balancesQuery.data?.results ?? []),

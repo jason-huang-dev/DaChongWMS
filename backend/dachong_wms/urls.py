@@ -35,6 +35,7 @@ urlpatterns = [
     path("api/reporting/", include("reporting.urls")),
     path("api/scanner/", include("scanner.urls")),
     path("api/staff/", include("staff.urls")),
+    path("api/access/", include("access.urls")),
     path("api/mfa/", include("mfa.urls")),
     path("api/login/", include("userlogin.urls")),
     path("api/signup/", auth_views.register, name="signup"),

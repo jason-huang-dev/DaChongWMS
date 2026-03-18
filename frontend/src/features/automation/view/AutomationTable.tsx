@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 import Grid from "@mui/material/Grid";
-import { Button } from "@mui/material";
+import { Button, Stack } from "@mui/material";
 
 import type {
   AutomationAlertRecord,
@@ -7,9 +9,10 @@ import type {
   ScheduledTaskRecord,
   WorkerHeartbeatRecord,
 } from "@/features/automation/model/types";
+import { BulkActionBar } from "@/shared/components/bulk-action-bar";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
-import { ResourceTable } from "@/shared/components/resource-table";
+import { ResourceTable, type ResourceTableRowSelection } from "@/shared/components/resource-table";
 import { StatusChip } from "@/shared/components/status-chip";
 import type { UseDataViewResult } from "@/shared/hooks/use-data-view";
 import type { PaginatedQueryState } from "@/shared/types/query";
@@ -80,9 +83,18 @@ interface AutomationTableProps {
   backgroundTasksView: UseDataViewResult<{ task_type: string; status: string; reference_code__icontains: string }>;
   isRetryingTask: boolean;
   isRunningNow: boolean;
+  isRunningSchedulesBulk: boolean;
   onRetryTask: (backgroundTaskId: number) => void;
   onRunNow: (scheduledTaskId: number) => void;
+  onRunSchedulesBulk: (scheduledTaskIds: number[]) => void;
   scheduledTasksQuery: PaginatedQueryState<ScheduledTaskRecord>;
+  scheduledTaskSelection: {
+    clearSelection: () => void;
+    selectedCount: number;
+    selectedIds: number[];
+    toggleMany: (ids: number[]) => void;
+    toggleOne: (id: number) => void;
+  };
   scheduledTasksView: UseDataViewResult<{ task_type: string; is_active: string }>;
   workerHeartbeatsQuery: PaginatedQueryState<WorkerHeartbeatRecord>;
   workerHeartbeatsView: UseDataViewResult<{ worker_name__icontains: string }>;
@@ -96,13 +108,39 @@ export function AutomationTable({
   backgroundTasksView,
   isRetryingTask,
   isRunningNow,
+  isRunningSchedulesBulk,
   onRetryTask,
   onRunNow,
+  onRunSchedulesBulk,
   scheduledTasksQuery,
+  scheduledTaskSelection,
   scheduledTasksView,
   workerHeartbeatsQuery,
   workerHeartbeatsView,
 }: AutomationTableProps) {
+  const scheduledTaskRowSelection: ResourceTableRowSelection<ScheduledTaskRecord> = {
+    selectedRowIds: scheduledTaskSelection.selectedIds,
+    onToggleAll: (rows) => scheduledTaskSelection.toggleMany(rows.map((row) => row.id)),
+    onToggleRow: (row) => scheduledTaskSelection.toggleOne(row.id),
+    isRowSelectable: (row) => row.is_active,
+  };
+
+  const scheduledTaskToolbar: ReactNode = (
+    <BulkActionBar
+      actions={[
+        {
+          key: "run-selected",
+          label: "Run selected schedules",
+          onClick: () => onRunSchedulesBulk(scheduledTaskSelection.selectedIds),
+          disabled: isRunningSchedulesBulk,
+        },
+      ]}
+      helperText="Queue immediate runs for the selected active schedules."
+      onClear={scheduledTaskSelection.clearSelection}
+      selectedCount={scheduledTaskSelection.selectedCount}
+    />
+  );
+
   return (
     <Grid container spacing={2.5}>
       <Grid size={{ xs: 12 }}>
@@ -136,25 +174,29 @@ export function AutomationTable({
             onPageChange: scheduledTasksView.setPage,
           }}
           rows={scheduledTasksQuery.data?.results ?? []}
+          rowSelection={scheduledTaskRowSelection}
           subtitle="Configured schedules that enqueue reporting, finance, and integration work."
           title="Scheduled tasks"
           toolbar={
-            <DataViewToolbar
-              activeFilterCount={scheduledTasksView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
-              fields={scheduledTaskFields}
-              filters={scheduledTasksView.filters}
-              onChange={scheduledTasksView.updateFilter}
-              onReset={scheduledTasksView.resetFilters}
-              resultCount={scheduledTasksQuery.data?.count}
-              savedViews={{
-                items: scheduledTasksView.savedViews,
-                selectedId: scheduledTasksView.selectedSavedViewId,
-                onApply: scheduledTasksView.applySavedView,
-                onDelete: scheduledTasksView.deleteSavedView,
-                onSave: scheduledTasksView.saveCurrentView,
-              }}
-            />
+            <Stack spacing={1.5}>
+              {scheduledTaskToolbar}
+              <DataViewToolbar
+                activeFilterCount={scheduledTasksView.activeFilterCount}
+                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                fields={scheduledTaskFields}
+                filters={scheduledTasksView.filters}
+                onChange={scheduledTasksView.updateFilter}
+                onReset={scheduledTasksView.resetFilters}
+                resultCount={scheduledTasksQuery.data?.count}
+                savedViews={{
+                  items: scheduledTasksView.savedViews,
+                  selectedId: scheduledTasksView.selectedSavedViewId,
+                  onApply: scheduledTasksView.applySavedView,
+                  onDelete: scheduledTasksView.deleteSavedView,
+                  onSave: scheduledTasksView.saveCurrentView,
+                }}
+              />
+            </Stack>
           }
         />
       </Grid>

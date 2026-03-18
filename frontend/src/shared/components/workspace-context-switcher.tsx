@@ -1,9 +1,12 @@
 import { Chip, MenuItem, Stack, TextField, Typography } from "@mui/material";
 
-import type { CompanyContextRecord, WarehouseRecord } from "@/shared/types/domain";
+import type { CompanyContextRecord, CompanyMembershipRecord, WarehouseRecord } from "@/shared/types/domain";
 
 interface WorkspaceContextSwitcherProps {
   company: CompanyContextRecord | null;
+  memberships: CompanyMembershipRecord[];
+  activeMembershipId: number | null;
+  onMembershipChange: (membershipId: number) => void;
   warehouses: WarehouseRecord[];
   activeWarehouseId: number | null;
   onWarehouseChange: (warehouseId: number | null) => void;
@@ -11,13 +14,43 @@ interface WorkspaceContextSwitcherProps {
 
 export function WorkspaceContextSwitcher({
   company,
+  memberships,
+  activeMembershipId,
+  onMembershipChange,
   warehouses,
   activeWarehouseId,
   onWarehouseChange,
 }: WorkspaceContextSwitcherProps) {
   return (
     <Stack alignItems={{ xs: "stretch", lg: "center" }} direction={{ xs: "column", lg: "row" }} spacing={1.5}>
-      {company ? <Chip label={`Workspace: ${company.label}`} variant="outlined" /> : null}
+      {memberships.length <= 1 ? (
+        company ? <Chip label={`Workspace: ${company.label}`} variant="outlined" /> : null
+      ) : (
+        <TextField
+          label="Workspace"
+          onChange={(event) => {
+            const nextValue = Number(event.target.value);
+            if (Number.isFinite(nextValue)) {
+              onMembershipChange(nextValue);
+            }
+          }}
+          select
+          size="small"
+          sx={{ minWidth: 240 }}
+          value={activeMembershipId ?? ""}
+        >
+          {memberships.map((membership) => (
+            <MenuItem key={membership.id} value={membership.id}>
+              <Stack>
+                <Typography variant="body2">{membership.company_name}</Typography>
+                <Typography color="text.secondary" variant="caption">
+                  {membership.staff_name} · {membership.staff_type}
+                </Typography>
+              </Stack>
+            </MenuItem>
+          ))}
+        </TextField>
+      )}
       {warehouses.length <= 1 ? (
         <Chip
           color="primary"

@@ -7,6 +7,9 @@ This audit records the current frontend gaps for the warehouse product and the s
 ### Dashboard
 
 - Strong on summary metrics, weak on queue management.
+- Implemented this pass:
+  - workbench-style dashboard layout with right rail
+  - persisted workbench time-window preference
 - Needed next:
   - saved dashboard layouts by role
   - KPI drill-down routing from every summary tile
@@ -42,16 +45,18 @@ This audit records the current frontend gaps for the warehouse product and the s
 - Implemented this pass:
   - reusable table filters and saved views for sales orders, pick tasks, and shipments
   - warehouse-scoped queue browsing
-  - short-pick follow-up proxy lane driven by overdue ship-risk orders
+  - explicit short-pick exception lane backed by real backend short-pick records
+  - JF-style status bucket navigation with visible counts
+  - dock-load verification kept in the same workbench as shipment exceptions
 - Still needed:
-  - explicit short-pick backend events instead of proxy logic
   - wave and route grouping
-  - dock-load verification UI
+  - dock door assignment and trailer-queue management beyond the current verification table
 
 ### Transfers
 
 - Implemented this pass:
   - reusable filters, pagination, and saved views for transfer orders, transfer lines, replenishment rules, and replenishment tasks
+  - bulk archive flow for transfer orders on the filtered queue
 - Still needed:
   - bulk completion/release flows
   - replenishment hot-list prioritization by pick-face risk
@@ -71,8 +76,8 @@ This audit records the current frontend gaps for the warehouse product and the s
 - Implemented this pass:
   - reusable filters and saved views for supervisor approvals and handheld assignments
   - blocked-count exception lanes for approval breaches and recount breaches
+  - bulk approve / reject actions for filtered approval queues
 - Still needed:
-  - bulk approval actions
   - blind-count specific views
   - handheld-friendly large-target layout
 
@@ -89,6 +94,7 @@ This audit records the current frontend gaps for the warehouse product and the s
 
 - Implemented this pass:
   - reusable filters, pagination, and saved views for schedules, background tasks, worker heartbeats, and alerts
+  - bulk run-now actions for filtered scheduled-task queues
 - Still needed:
   - alert acknowledgement workflow
   - schedule cloning and template presets
@@ -99,32 +105,37 @@ This audit records the current frontend gaps for the warehouse product and the s
 - Implemented this pass:
   - reusable filters, pagination, and saved views for jobs, webhooks, carrier bookings, and logs
   - failed-integration exception lanes for jobs, webhooks, and carrier bookings
+  - bulk retry/start for filtered job queues where the backend can restart failed or queued jobs
+  - bulk reprocess for filtered webhook queues
+  - carrier-booking retry and rebook actions for failed booking recovery
 - Still needed:
   - payload diff tooling
-  - reprocess batching
   - integration health SLA views
+  - carrier escalation policies beyond retry / rebook / cancel
 
 ### Security
 
 - Before this pass, security was effectively MFA-only.
 - Implemented this pass:
+  - company membership provisioning for browser users
+  - invite issuance for new browser users
+  - password-reset token issuance and revocation
+  - access-audit review
   - staff directory management
   - role assignment
   - lock-state control
   - reusable filters and saved views
   - clear link between personal MFA and tenant access management
 - Still needed:
-  - admin-created browser accounts or invite flow
+  - public invite-acceptance and password-reset completion screens
   - permission matrices beyond coarse `staff_type`
   - audit history for access changes
 
 ## Cross-App UX Gaps
 
-- No explicit company model from the backend; current frontend maps tenant scope from `openid`.
-- No backend support yet for true multi-company switching in a single login session.
-- No backend support yet for warehouse admins to provision login credentials for other users.
-- Exception-driven workflows are now visible, but short-pick capture still relies on a frontend proxy because the backend does not emit explicit short-pick records.
-- Queue screens still need bulk actions, keyboard-heavy handheld affordances, and stronger status segmentation.
+- Company membership, invite issuance, reset issuance, and audit review now exist, but the browser experience still needs public invite-acceptance and reset-completion screens.
+- Bulk actions now exist on the main queues where the backend exposes safe endpoints, but several domains still need deeper bulk workflow coverage.
+- Queue screens still need keyboard-heavy handheld affordances and stronger status segmentation.
 
 ## Shared Frontend Architecture Needed
 
@@ -132,13 +143,13 @@ This audit records the current frontend gaps for the warehouse product and the s
 
 - `TenantScopeProvider` owns the active workspace/company context and the active warehouse selection.
 - Today:
-  - company scope is synthesized from `openid`
+  - company scope comes from `/api/access/my-memberships/`
+  - company switching uses membership activation
   - warehouse scope comes from `/api/warehouse/`
-- Future backend requirement:
-  - explicit company API
-  - multiple warehouses per company without tier restrictions
-  - multi-company membership for a single user
-  - warehouse-admin user provisioning endpoints
+- Still needed from the backend:
+  - richer role/permission models than `staff_type`
+  - access audit detail/export endpoints beyond the current list feed
+  - mail delivery or notification hooks for invite/reset distribution
 
 ### 2. Reusable Data View System
 
@@ -150,16 +161,72 @@ This audit records the current frontend gaps for the warehouse product and the s
   - save/apply/delete view actions
 - `ResourceTable` accepts a toolbar slot so every queue uses the same shell.
 - `ExceptionLane` packages recurring exception-first table patterns for operator watchlists and escalations.
+- `useBulkSelection(...)`, `BulkActionBar`, and `executeBulkAction(...)` package reusable bulk queue actions so controllers do not rebuild row selection and batch feedback from scratch.
 
 ### 3. Access Management Foundations
 
 - `SecurityPage` is the frontend home for:
+  - company membership provisioning
   - staff directory
   - role assignment
   - lock state
   - personal MFA posture
 - Backend gap:
-  - user provisioning/invite/password-reset flows still need dedicated APIs
+  - public invite acceptance, password-reset completion, and notification delivery still need dedicated browser flows
+
+
+## JF WMS Reference Alignment
+
+The next frontend phase should use `frontend/ai/docs/jf-wms-reference.md` as the external reference model for high-density enterprise workflows. The goal is to emulate the functional shape of JF WMS, especially:
+
+- broad top-level module navigation
+- operational homepages instead of static dashboards
+- multi-row advanced filter bars on queue pages
+- status-bucket secondary navigation with counts
+- strong bulk-action and export affordances
+- configurable table workbenches for power users
+
+This means the product audit priorities now extend beyond filling isolated CRUD gaps. The next work should close the gap between our current route set and a true operator console.
+
+## Additional Gaps Exposed By The JF Reference
+
+### Global shell and navigation
+
+- Implemented this pass:
+  - backend-backed workspace-tab model for parallel queue work
+  - horizontal top-level module navigation
+  - right-rail workbench pattern on dashboard
+- Still needed:
+  - more modules at the top level than the current operational surface
+  - workspace-tab restore of full queue state, not just route/context
+  - right-rail notices/download widgets on non-dashboard modules
+
+### Queue system
+
+- Implemented this pass:
+  - denser shared queue filter band
+  - backend models for queue-view persistence
+  - status segmentation now starts on outbound
+- Still needed:
+  - wider mixed-type filter coverage across more routes
+  - column personalization wired end to end
+- column personalization, dense-mode preference, and refresh/help controls are not yet a shared contract
+- export is not uniformly available across queue pages
+
+### Domain coverage
+
+- client and product modules need first-class route treatment
+- logistics should grow beyond integration records into an operator-facing logistics workbench
+- fee/billing flows need a workbench model closer to JF's finance/fees posture
+- reporting/statistics need explicit role-oriented routes rather than being implied by dashboard cards
+
+## Reprioritized Delivery Sequence
+
+1. Extend the new queue workbench primitives aligned to `jf-wms-reference.md`
+2. Expand the dashboard/workbench redesign into inbound, outbound, finance, and logistics module landing pages
+3. Finish backend-backed saved-view and column preference wiring
+4. Deeper domain coverage for clients, products, logistics, fees, and statistics
+5. Remaining workflow exceptions and handheld ergonomics
 
 ## Priority Order
 
@@ -171,9 +238,6 @@ This audit records the current frontend gaps for the warehouse product and the s
 
 ## Backend Dependencies To Track
 
-- dedicated company APIs
-- admin-created user provisioning and invite APIs
 - richer RBAC than `staff_type`
-- explicit short-pick exception endpoints
 - warehouse-independent global search endpoints
-- audit endpoints for access changes and workflow exceptions
+- audit detail routes and downloadable audit exports

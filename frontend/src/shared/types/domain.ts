@@ -1,16 +1,161 @@
 export interface AuthSession {
   username: string;
   openid: string;
+  token?: string;
   operatorId: number;
   operatorName: string;
   operatorRole: string;
+  companyId?: number;
+  companyName?: string;
+  membershipId?: number;
 }
 
 export interface CompanyContextRecord {
-  id: string;
+  id: number | string;
   openid: string;
   label: string;
   description: string;
+}
+
+export interface CompanyMembershipRecord {
+  id: number;
+  company_id: number;
+  company_name: string;
+  company_code: string;
+  company_openid: string;
+  company_description: string;
+  staff_id: number;
+  staff_name: string;
+  staff_type: string;
+  username: string;
+  email: string;
+  profile_token: string;
+  check_code: number;
+  is_lock: boolean;
+  default_warehouse: number | null;
+  default_warehouse_name: string;
+  is_company_admin: boolean;
+  can_manage_users: boolean;
+  is_active: boolean;
+  last_selected_at: string | null;
+  is_current?: boolean;
+  invited_by?: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface CompanyInviteRecord {
+  id: number;
+  company_id: number;
+  company_name: string;
+  email: string;
+  staff_name: string;
+  staff_type: string;
+  check_code: number;
+  default_warehouse: number | null;
+  default_warehouse_name: string;
+  is_company_admin: boolean;
+  can_manage_users: boolean;
+  status: string;
+  invite_token: string;
+  invite_message: string;
+  invited_by: string;
+  expires_at: string;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  accepted_membership_id: number | null;
+  accepted_username: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface CompanyPasswordResetRecord {
+  id: number;
+  company_id: number;
+  company_name: string;
+  membership_id: number;
+  username: string;
+  email: string;
+  staff_name: string;
+  staff_type: string;
+  reset_token: string;
+  status: string;
+  issued_by: string;
+  expires_at: string;
+  completed_at: string | null;
+  revoked_at: string | null;
+  notes: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface AccessAuditEventRecord {
+  id: number;
+  company_id: number;
+  company_name: string;
+  membership_id: number | null;
+  username: string;
+  invite: number | null;
+  invite_email: string;
+  password_reset: number | null;
+  password_reset_username: string;
+  action_type: string;
+  actor_name: string;
+  target_identifier: string;
+  payload: Record<string, unknown>;
+  occurred_at: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface QueueViewPreferenceRecord {
+  id: number;
+  membership_id: number;
+  company_id: number;
+  warehouse: number | null;
+  warehouse_name: string;
+  route_key: string;
+  name: string;
+  search_scope: string;
+  status_bucket: string;
+  filter_payload: Record<string, string>;
+  sort_payload: Record<string, string>;
+  visible_columns: string[];
+  page_size: number;
+  density: string;
+  is_default: boolean;
+  last_used_at: string | null;
+  create_time: string;
+  update_time: string;
+}
+
+export interface WorkspaceTabPreferenceRecord {
+  id: number;
+  membership_id: number;
+  route_key: string;
+  route_path: string;
+  title: string;
+  icon_key: string;
+  position: number;
+  is_active: boolean;
+  is_pinned: boolean;
+  state_payload: Record<string, unknown>;
+  context_payload: Record<string, unknown>;
+  last_opened_at: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface WorkbenchPreferenceRecord {
+  id: number;
+  membership_id: number;
+  page_key: string;
+  time_window: string;
+  visible_widget_keys: string[];
+  right_rail_widget_keys: string[];
+  layout_payload: Record<string, unknown>;
+  create_time: string;
+  update_time: string;
 }
 
 export interface PendingMfaChallenge {
@@ -242,6 +387,64 @@ export interface PickTaskRecord {
   license_plate: number | null;
   license_plate_code: string;
   notes: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface ShortPickRecord {
+  id: number;
+  warehouse: number;
+  warehouse_name: string;
+  sales_order: number;
+  order_number: string;
+  sales_order_line: number;
+  pick_task: number;
+  goods: number;
+  goods_code: string;
+  from_location: number;
+  from_location_code: string;
+  to_location: number | null;
+  to_location_code: string;
+  requested_qty: string;
+  picked_qty: string;
+  short_qty: string;
+  stock_status: string;
+  lot_number: string;
+  serial_number: string;
+  reason_code: string;
+  status: string;
+  notes: string;
+  reported_by: string;
+  reported_at: string;
+  resolved_by: string;
+  resolved_at: string | null;
+  resolution_notes: string;
+  creator: string;
+  openid: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface DockLoadVerificationRecord {
+  id: number;
+  shipment: number;
+  shipment_number: string;
+  shipment_line: number | null;
+  warehouse: number;
+  dock_location: number;
+  dock_location_code: string;
+  goods: number;
+  goods_code: string;
+  license_plate: number | null;
+  license_plate_code: string;
+  verified_qty: string;
+  status: string;
+  trailer_reference: string;
+  verified_by: string;
+  verified_at: string;
+  notes: string;
+  creator: string;
+  openid: string;
   create_time: string;
   update_time: string;
 }

@@ -13,10 +13,14 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { apiGet } from "@/lib/http";
 import type { PaginatedResponse } from "@/shared/types/api";
-import type { CompanyContextRecord, WarehouseRecord } from "@/shared/types/domain";
+import type { CompanyContextRecord, CompanyMembershipRecord, WarehouseRecord } from "@/shared/types/domain";
 
 interface TenantScopeContextValue {
   company: CompanyContextRecord | null;
+  memberships: CompanyMembershipRecord[];
+  membershipsQuery: UseQueryResult<PaginatedResponse<CompanyMembershipRecord>, Error>;
+  activeMembershipId: number | null;
+  switchMembership: (membershipId: number) => Promise<void>;
   warehouses: WarehouseRecord[];
   warehousesQuery: UseQueryResult<PaginatedResponse<WarehouseRecord>, Error>;
   activeWarehouseId: number | null;
@@ -57,11 +61,21 @@ function persistWarehouseId(openid: string, warehouseId: number | null) {
 }
 
 export function TenantScopeProvider({ children }: PropsWithChildren) {
-  const { session } = useAuth();
+  const { session, switchMembership: switchAuthMembership } = useAuth();
   const [activeWarehouseId, setActiveWarehouseIdState] = useState<number | null>(null);
 
+  const membershipsQuery = useQuery({
+    queryKey: ["scope", "memberships", session?.token ?? session?.openid],
+    queryFn: () =>
+      apiGet<PaginatedResponse<CompanyMembershipRecord>>("/api/access/my-memberships/", {
+        page: 1,
+        page_size: 100,
+      }),
+    enabled: Boolean(session),
+  });
+
   const warehousesQuery = useQuery({
-    queryKey: ["scope", "warehouses", session?.openid],
+    queryKey: ["scope", "warehouses", session?.openid, session?.membershipId],
     queryFn: () =>
       apiGet<PaginatedResponse<WarehouseRecord>>("/api/warehouse/", {
         page: 1,
@@ -71,6 +85,12 @@ export function TenantScopeProvider({ children }: PropsWithChildren) {
   });
 
   const warehouses = warehousesQuery.data?.results ?? [];
+  const memberships = membershipsQuery.data?.results ?? [];
+  const currentMembership =
+    memberships.find((membership) => membership.id === session?.membershipId) ??
+    memberships.find((membership) => membership.is_current) ??
+    memberships[0] ??
+    null;
 
   useEffect(() => {
     if (!session) {
@@ -114,27 +134,52 @@ export function TenantScopeProvider({ children }: PropsWithChildren) {
   const activeWarehouse = warehouses.find((warehouse) => warehouse.id === activeWarehouseId) ?? warehouses[0] ?? null;
 
   const company = useMemo<CompanyContextRecord | null>(() => {
-    if (!session) {
+    if (!session || !currentMembership) {
       return null;
     }
     return {
-      id: session.openid,
-      openid: session.openid,
-      label: `${session.username} workspace`,
-      description: "Current tenant context. This maps to company/tenant scope until a dedicated company API exists.",
+      id: currentMembership.company_id,
+      openid: currentMembership.company_openid,
+      label: currentMembership.company_name,
+      description: currentMembership.company_description,
     };
-  }, [session]);
+  }, [currentMembership, session]);
+
+  const switchMembership = useCallback(
+    async (membershipId: number) => {
+      if (membershipId === session?.membershipId) {
+        return;
+      }
+      await switchAuthMembership(membershipId);
+    },
+    [session?.membershipId, switchAuthMembership],
+  );
 
   const value = useMemo<TenantScopeContextValue>(
     () => ({
       company,
+      memberships,
+      membershipsQuery,
+      activeMembershipId: currentMembership?.id ?? session?.membershipId ?? null,
+      switchMembership,
       warehouses,
       warehousesQuery,
       activeWarehouseId: activeWarehouse?.id ?? null,
       activeWarehouse,
       setActiveWarehouseId,
     }),
-    [activeWarehouse, company, setActiveWarehouseId, warehouses, warehousesQuery],
+    [
+      activeWarehouse,
+      company,
+      currentMembership?.id,
+      memberships,
+      membershipsQuery,
+      session?.membershipId,
+      setActiveWarehouseId,
+      switchMembership,
+      warehouses,
+      warehousesQuery,
+    ],
   );
 
   return <TenantScopeContext.Provider value={value}>{children}</TenantScopeContext.Provider>;

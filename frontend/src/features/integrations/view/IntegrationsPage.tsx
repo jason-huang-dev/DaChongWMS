@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Grid from "@mui/material/Grid";
-import { Alert, Stack } from "@mui/material";
+import { Alert, Button, Stack } from "@mui/material";
 import { useForm } from "react-hook-form";
 
 import { useIntegrationsController } from "@/features/integrations/controller/useIntegrationsController";
@@ -30,8 +30,13 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 export function IntegrationsPage() {
   const {
     activeWarehouse,
+    bulkRetryCarrierBookingMutation,
+    bulkProcessWebhookMutation,
+    bulkStartJobsMutation,
+    carrierBookingSelection,
     carrierBookingsQuery,
     carrierBookingsView,
+    cancelCarrierBookingMutation,
     completeJobMutation,
     createCarrierBookingMutation,
     createJobMutation,
@@ -45,13 +50,17 @@ export function IntegrationsPage() {
     failedJobsQuery,
     failedWebhooksQuery,
     generateLabelMutation,
+    jobSelection,
     jobsQuery,
     jobsView,
     logsQuery,
     logsView,
     processWebhookMutation,
+    rebookCarrierBookingMutation,
+    retryCarrierBookingMutation,
     startJobMutation,
     successMessage,
+    webhookSelection,
     webhooksQuery,
     webhooksView,
   } = useIntegrationsController();
@@ -170,6 +179,31 @@ export function IntegrationsPage() {
               { header: "Carrier", key: "carrier", render: (row) => row.carrier_code },
               { header: "Tracking", key: "tracking", render: (row) => row.tracking_number || "--" },
               { header: "Status", key: "status", render: (row) => <StatusChip status={row.status} /> },
+              {
+                header: "Action",
+                key: "action",
+                render: (row) => (
+                  <>
+                    <Button
+                      disabled={retryCarrierBookingMutation.isPending}
+                      onClick={() => retryCarrierBookingMutation.mutate(row.id)}
+                      size="small"
+                      variant="outlined"
+                    >
+                      Retry
+                    </Button>
+                    <Button
+                      disabled={cancelCarrierBookingMutation.isPending}
+                      onClick={() => cancelCarrierBookingMutation.mutate(row.id)}
+                      size="small"
+                      sx={{ ml: 1 }}
+                      variant="text"
+                    >
+                      Cancel
+                    </Button>
+                  </>
+                ),
+              },
             ]}
             emptyMessage="No failed carrier bookings."
             error={failedCarrierBookingsQuery.error ? parseApiError(failedCarrierBookingsQuery.error) : null}
@@ -186,20 +220,35 @@ export function IntegrationsPage() {
         activeWarehouseName={activeWarehouse?.warehouse_name ?? null}
         carrierBookingsQuery={carrierBookingsQuery}
         carrierBookingsView={carrierBookingsView}
+        carrierSelection={carrierBookingSelection}
+        cancelCarrierBooking={(bookingId) => cancelCarrierBookingMutation.mutate(bookingId)}
         completeJob={(jobId) => completeJobMutation.mutate(jobId)}
         failJob={(jobId) => failJobMutation.mutate(jobId)}
         generateLabel={(bookingId) => generateLabelMutation.mutate(bookingId)}
+        isBulkRetryingCarrierBookings={bulkRetryCarrierBookingMutation.isPending}
+        isBulkProcessingWebhooks={bulkProcessWebhookMutation.isPending}
+        isBulkRetryingJobs={bulkStartJobsMutation.isPending}
+        isCancellingCarrier={cancelCarrierBookingMutation.isPending}
         isCompletingJob={completeJobMutation.isPending}
         isFailingJob={failJobMutation.isPending}
         isGeneratingLabel={generateLabelMutation.isPending}
         isProcessingWebhook={processWebhookMutation.isPending}
+        isRebookingCarrier={rebookCarrierBookingMutation.isPending}
+        isRetryingCarrier={retryCarrierBookingMutation.isPending}
         isStartingJob={startJobMutation.isPending}
+        jobsBulkSelection={jobSelection}
         jobsQuery={jobsQuery}
         jobsView={jobsView}
         logsQuery={logsQuery}
         logsView={logsView}
+        processSelectedWebhooks={(webhookIds) => bulkProcessWebhookMutation.mutate(webhookIds)}
+        retrySelectedJobs={(jobIds) => bulkStartJobsMutation.mutate(jobIds)}
+        retrySelectedCarrierBookings={(bookingIds) => bulkRetryCarrierBookingMutation.mutate(bookingIds)}
         processWebhook={(webhookId) => processWebhookMutation.mutate(webhookId)}
+        rebookCarrierBooking={(bookingId) => rebookCarrierBookingMutation.mutate(bookingId)}
+        retryCarrierBooking={(bookingId) => retryCarrierBookingMutation.mutate(bookingId)}
         startJob={(jobId) => startJobMutation.mutate(jobId)}
+        webhooksBulkSelection={webhookSelection}
         webhooksQuery={webhooksQuery}
         webhooksView={webhooksView}
       />

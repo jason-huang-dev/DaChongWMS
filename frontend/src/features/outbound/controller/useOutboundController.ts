@@ -3,10 +3,28 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useTenantScope } from "@/app/scope-context";
-import { runSalesOrderAllocate, runSalesOrderCancel, runSalesOrderUpdate, runScanPick, runScanShip, runShipmentCreate } from "@/features/outbound/controller/actions";
+import {
+  runSalesOrderAllocate,
+  runSalesOrderCancel,
+  runSalesOrderUpdate,
+  runScanPick,
+  runScanShip,
+  runShipmentCreate,
+  runShortPickResolve,
+} from "@/features/outbound/controller/actions";
 import { outboundApi } from "@/features/outbound/model/api";
 import { defaultSalesOrderEditValues, defaultShipmentCreateValues, mapSalesOrderToEditValues } from "@/features/outbound/model/mappers";
-import type { PickTaskRecord, SalesOrderEditValues, SalesOrderRecord, ScanPickValues, ScanShipValues, ShipmentCreateValues, ShipmentRecord } from "@/features/outbound/model/types";
+import type {
+  DockLoadVerificationRecord,
+  PickTaskRecord,
+  SalesOrderEditValues,
+  SalesOrderRecord,
+  ScanPickValues,
+  ScanShipValues,
+  ShipmentCreateValues,
+  ShipmentRecord,
+  ShortPickRecord,
+} from "@/features/outbound/model/types";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
@@ -35,6 +53,8 @@ export function useOutboundController() {
     viewKey: `outbound.sales-orders.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
       order_number__icontains: "",
+      requested_ship_date__gte: "",
+      requested_ship_date__lte: "",
       status: "",
     },
     pageSize: 8,
@@ -55,6 +75,14 @@ export function useOutboundController() {
     },
     pageSize: 8,
   });
+  const dockLoadView = useDataView({
+    viewKey: `outbound.dock-load.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      search: "",
+      status: "",
+    },
+    pageSize: 8,
+  });
 
   const createShipmentMutation = useMutation({
     mutationFn: (values: ShipmentCreateValues) => runShipmentCreate(values),
@@ -69,21 +97,79 @@ export function useOutboundController() {
     },
   });
 
+  const resolveShortPickMutation = useMutation({
+    mutationFn: (shortPickId: number) => runShortPickResolve(shortPickId),
+    onSuccess: async (shortPick) => {
+      setShipmentErrorMessage(null);
+      setShipmentSuccessMessage(`Short-pick ${shortPick.order_number} / ${shortPick.goods_code} marked resolved.`);
+      await invalidateOutboundQueries(queryClient, true);
+    },
+    onError: (error) => {
+      setShipmentSuccessMessage(null);
+      setShipmentErrorMessage(parseApiError(error));
+    },
+  });
+
   return {
     activeWarehouse,
     createShipmentMutation,
     defaultShipmentCreateValues,
-    shortPickProxyQuery: usePaginatedResource<SalesOrderRecord>(
-      ["outbound", "sales-orders", "ship-risk"],
-      outboundApi.salesOrders,
+    resolveShortPickMutation,
+    shortPicksQuery: usePaginatedResource<ShortPickRecord>(
+      ["outbound", "short-picks", "exceptions"],
+      outboundApi.shortPicks,
       1,
       25,
       {
         warehouse: activeWarehouseId ?? undefined,
-        requested_ship_date__lte: new Date().toISOString().slice(0, 10),
+        status: "OPEN",
       },
     ),
     salesOrdersView,
+    salesOrderStatusCounts: {
+      all: usePaginatedResource<SalesOrderRecord>(
+        ["outbound", "sales-orders", "count", "all"],
+        outboundApi.salesOrders,
+        1,
+        1,
+        { warehouse: activeWarehouseId ?? undefined },
+      ),
+      open: usePaginatedResource<SalesOrderRecord>(
+        ["outbound", "sales-orders", "count", "open"],
+        outboundApi.salesOrders,
+        1,
+        1,
+        { warehouse: activeWarehouseId ?? undefined, status: "OPEN" },
+      ),
+      allocated: usePaginatedResource<SalesOrderRecord>(
+        ["outbound", "sales-orders", "count", "allocated"],
+        outboundApi.salesOrders,
+        1,
+        1,
+        { warehouse: activeWarehouseId ?? undefined, status: "ALLOCATED" },
+      ),
+      picked: usePaginatedResource<SalesOrderRecord>(
+        ["outbound", "sales-orders", "count", "picked"],
+        outboundApi.salesOrders,
+        1,
+        1,
+        { warehouse: activeWarehouseId ?? undefined, status: "PICKED" },
+      ),
+      shipped: usePaginatedResource<SalesOrderRecord>(
+        ["outbound", "sales-orders", "count", "shipped"],
+        outboundApi.salesOrders,
+        1,
+        1,
+        { warehouse: activeWarehouseId ?? undefined, status: "SHIPPED" },
+      ),
+      cancelled: usePaginatedResource<SalesOrderRecord>(
+        ["outbound", "sales-orders", "count", "cancelled"],
+        outboundApi.salesOrders,
+        1,
+        1,
+        { warehouse: activeWarehouseId ?? undefined, status: "CANCELLED" },
+      ),
+    },
     salesOrdersQuery: usePaginatedResource<SalesOrderRecord>(
       ["outbound", "sales-orders"],
       outboundApi.salesOrders,
@@ -106,6 +192,17 @@ export function useOutboundController() {
       },
     ),
     shipmentsView,
+    dockLoadView,
+    dockLoadVerificationsQuery: usePaginatedResource<DockLoadVerificationRecord>(
+      ["outbound", "dock-load-verifications"],
+      outboundApi.dockLoadVerifications,
+      dockLoadView.page,
+      dockLoadView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...dockLoadView.queryFilters,
+      },
+    ),
     shipmentsQuery: usePaginatedResource<ShipmentRecord>(
       ["outbound", "shipments"],
       outboundApi.shipments,

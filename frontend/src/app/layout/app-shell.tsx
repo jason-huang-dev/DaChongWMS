@@ -21,22 +21,26 @@ import {
 import { alpha } from "@mui/material/styles";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
+import { useWorkspaceTabs } from "@/app/workspace-preferences";
 import { brandColors, brandGradients, brandShadows } from "@/app/brand";
+import { ModuleTopNav } from "@/app/layout/module-top-nav";
 import { navigationItems } from "@/app/layout/navigation-items";
-import { useTenantScope } from "@/app/scope-context";
 import { RouteBreadcrumbs } from "@/app/layout/route-breadcrumbs";
+import { WorkspaceTabsBar } from "@/app/layout/workspace-tabs-bar";
+import { useTenantScope } from "@/app/scope-context";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { BrandLogo } from "@/shared/components/brand-logo";
 import { WorkspaceContextSwitcher } from "@/shared/components/workspace-context-switcher";
 import { hasAnyRole } from "@/shared/utils/permissions";
 
-const drawerWidth = 264;
+const mobileDrawerWidth = 300;
 
 export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const { session, logout } = useAuth();
-  const { company, warehouses, activeWarehouseId, setActiveWarehouseId } = useTenantScope();
+  const { company, memberships, activeMembershipId, switchMembership, warehouses, activeWarehouseId, setActiveWarehouseId } = useTenantScope();
+  const { tabs, activateTab, closeTab, isClosingTab } = useWorkspaceTabs();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
@@ -56,11 +60,20 @@ export function AppShell() {
       }}
     >
       <Toolbar sx={{ alignItems: "flex-start", px: 3, py: 3 }}>
-        <Stack>
-          <BrandLogo kind="lockup" sx={{ mb: 1, width: 150 }} variant="gold" />
+        <Stack spacing={1.5} sx={{ width: "100%" }}>
+          <BrandLogo kind="lockup" sx={{ width: 150 }} variant="gold" />
           <Typography color={alpha(brandColors.inkSoft, 0.7)} variant="body2">
-            Operator console
+            Multi-tenant warehouse command center
           </Typography>
+          <WorkspaceContextSwitcher
+            activeMembershipId={activeMembershipId}
+            activeWarehouseId={activeWarehouseId}
+            company={company}
+            memberships={memberships}
+            onMembershipChange={switchMembership}
+            onWarehouseChange={setActiveWarehouseId}
+            warehouses={warehouses}
+          />
         </Stack>
       </Toolbar>
       <Divider sx={{ borderColor: alpha(brandColors.gold, 0.16) }} />
@@ -81,20 +94,11 @@ export function AppShell() {
                   color: selected ? brandColors.goldLight : alpha(brandColors.inkSoft, 0.76),
                   minWidth: 40,
                 },
-                "& .MuiListItemText-primary": {
-                  fontWeight: selected ? 700 : 500,
-                },
                 "&.Mui-selected": {
                   backgroundColor: alpha(brandColors.gold, 0.12),
                   border: `1px solid ${alpha(brandColors.gold, 0.18)}`,
                   boxShadow: brandShadows.glow,
                   color: brandColors.goldLight,
-                },
-                "&.Mui-selected:hover": {
-                  backgroundColor: alpha(brandColors.gold, 0.16),
-                },
-                "&:hover": {
-                  backgroundColor: alpha(brandColors.gold, 0.08),
                 },
                 borderRadius: 2.5,
                 color: selected ? brandColors.goldLight : alpha(brandColors.inkSoft, 0.86),
@@ -113,19 +117,23 @@ export function AppShell() {
   );
 
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
-      <AppBar color="inherit" elevation={0} position="fixed" sx={{ ml: { md: `${drawerWidth}px` }, width: { md: `calc(100% - ${drawerWidth}px)` } }}>
-        <Toolbar sx={{ gap: 2 }}>
-          <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { md: "none" } }}>
+    <Box sx={{ minHeight: "100vh" }}>
+      <AppBar color="inherit" elevation={0} position="fixed">
+        <Toolbar sx={{ gap: 2, minHeight: 72 }}>
+          <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { lg: "none" } }}>
             <MenuIcon />
           </IconButton>
-          <Box sx={{ flexGrow: 1 }}>
-            <RouteBreadcrumbs />
-          </Box>
+          <Stack direction="row" spacing={1.5} sx={{ minWidth: 0, width: { xs: "auto", lg: 220 } }}>
+            <BrandLogo kind="lockup" sx={{ width: 150 }} variant="gold" />
+          </Stack>
+          <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: "none", xl: "block" } }}>
             <WorkspaceContextSwitcher
+              activeMembershipId={activeMembershipId}
               activeWarehouseId={activeWarehouseId}
               company={company}
+              memberships={memberships}
+              onMembershipChange={switchMembership}
               onWarehouseChange={setActiveWarehouseId}
               warehouses={warehouses}
             />
@@ -161,6 +169,30 @@ export function AppShell() {
             </MenuItem>
           </Menu>
         </Toolbar>
+        <Box sx={{ borderTop: `1px solid ${alpha(brandColors.goldDark, 0.12)}`, px: { xs: 2, lg: 3 }, py: 1 }}>
+          <Stack spacing={1.25}>
+            <Box sx={{ display: { xs: "none", lg: "block" }, minWidth: 0 }}>
+              <ModuleTopNav activePath={location.pathname} items={filteredItems} onNavigate={navigate} />
+            </Box>
+            <Stack alignItems={{ sm: "center" }} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.25}>
+              <Box sx={{ minWidth: 0, overflow: "hidden" }}>
+                <RouteBreadcrumbs />
+              </Box>
+              <Box sx={{ display: { xs: "block", xl: "none" }, width: { xs: "100%", sm: "auto" } }}>
+                <WorkspaceContextSwitcher
+                  activeMembershipId={activeMembershipId}
+                  activeWarehouseId={activeWarehouseId}
+                  company={company}
+                  memberships={memberships}
+                  onMembershipChange={switchMembership}
+                  onWarehouseChange={setActiveWarehouseId}
+                  warehouses={warehouses}
+                />
+              </Box>
+            </Stack>
+            <WorkspaceTabsBar activePath={location.pathname} isClosingTab={isClosingTab} onActivate={activateTab} onClose={closeTab} tabs={tabs} />
+          </Stack>
+        </Box>
       </AppBar>
       <Drawer
         onClose={() => setMobileOpen(false)}
@@ -169,37 +201,15 @@ export function AppShell() {
           "& .MuiDrawer-paper": {
             background: brandGradients.shellDrawer,
             boxSizing: "border-box",
-            width: drawerWidth,
+            width: mobileDrawerWidth,
           },
-          display: { md: "none" },
+          display: { lg: "none" },
         }}
         variant="temporary"
       >
         {drawerContent}
       </Drawer>
-      <Drawer
-        open
-        sx={{
-          "& .MuiDrawer-paper": {
-            background: brandGradients.shellDrawer,
-            boxSizing: "border-box",
-            width: drawerWidth,
-          },
-          display: { xs: "none", md: "block" },
-        }}
-        variant="permanent"
-      >
-        {drawerContent}
-      </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, ml: { md: `${drawerWidth}px` }, p: 3, pt: { xs: 11, md: 12 } }}>
-        <Box sx={{ display: { xs: "block", xl: "none" }, mb: 2 }}>
-          <WorkspaceContextSwitcher
-            activeWarehouseId={activeWarehouseId}
-            company={company}
-            onWarehouseChange={setActiveWarehouseId}
-            warehouses={warehouses}
-          />
-        </Box>
+      <Box component="main" sx={{ p: 3, pt: { xs: 24, md: 22 } }}>
         <Outlet />
       </Box>
     </Box>

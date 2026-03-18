@@ -1,9 +1,10 @@
 import Grid from "@mui/material/Grid";
-import { Stack } from "@mui/material";
+import { Alert, Stack, TextField } from "@mui/material";
 
 import { useCountingController } from "@/features/counting/controller/useCountingController";
 import { CountingTable } from "@/features/counting/view/CountingTable";
 import { ScannerTaskPanel } from "@/features/counting/view/components/ScannerTaskPanel";
+import { BulkActionBar } from "@/shared/components/bulk-action-bar";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { ExceptionLane } from "@/shared/components/exception-lane";
 import { MetricCard } from "@/shared/components/metric-card";
@@ -38,8 +39,21 @@ const assignmentFields: DataViewFieldConfig<{ scanner_task_type: string; scanner
 ];
 
 export function CountingPage() {
-  const { activeWarehouse, assignmentsQuery, assignmentsView, dashboardQuery, nextTaskQuery, queueQuery, queueView } =
-    useCountingController();
+  const {
+    activeWarehouse,
+    assignmentsQuery,
+    assignmentsView,
+    bulkActionErrorMessage,
+    bulkActionSuccessMessage,
+    bulkDecisionMutation,
+    bulkDecisionNotes,
+    dashboardQuery,
+    nextTaskQuery,
+    queueQuery,
+    queueSelection,
+    queueView,
+    setBulkDecisionNotes,
+  } = useCountingController();
 
   return (
     <Stack spacing={3}>
@@ -164,12 +178,63 @@ export function CountingPage() {
           />
         </Grid>
         <Grid size={{ xs: 12 }}>
+          {bulkActionSuccessMessage ? <Alert severity="success">{bulkActionSuccessMessage}</Alert> : null}
+          {bulkActionErrorMessage ? <Alert severity="error">{bulkActionErrorMessage}</Alert> : null}
           <CountingTable
             error={queueQuery.error ? parseApiError(queueQuery.error) : null}
             isLoading={queueQuery.isLoading}
             activeWarehouseName={activeWarehouse?.warehouse_name ?? null}
             dataView={queueView}
             rows={queueQuery.data?.results ?? []}
+            rowSelection={{
+              selectedRowIds: queueSelection.selectedIds,
+              onToggleAll: (rows) => queueSelection.toggleMany(rows.map((row) => row.id)),
+              onToggleRow: (row) => queueSelection.toggleOne(row.id),
+              isRowSelectable: (row) => ["PENDING", "REJECTED"].includes(row.status),
+            }}
+            toolbarContent={
+              <BulkActionBar
+                actions={[
+                  {
+                    key: "approve",
+                    label: "Approve selected",
+                    onClick: () =>
+                      bulkDecisionMutation.mutate({
+                        action: "approve",
+                        approvalIds: queueSelection.selectedIds.map(Number),
+                        notes: bulkDecisionNotes,
+                      }),
+                    disabled: bulkDecisionMutation.isPending,
+                    color: "success",
+                  },
+                  {
+                    key: "reject",
+                    label: "Reject selected",
+                    onClick: () =>
+                      bulkDecisionMutation.mutate({
+                        action: "reject",
+                        approvalIds: queueSelection.selectedIds.map(Number),
+                        notes: bulkDecisionNotes,
+                      }),
+                    disabled: bulkDecisionMutation.isPending,
+                    color: "error",
+                    variant: "outlined",
+                  },
+                ]}
+                extraControls={
+                  <TextField
+                    label="Decision notes"
+                    onChange={(event) => setBulkDecisionNotes(event.target.value)}
+                    placeholder="Optional note applied to every selected approval"
+                    size="small"
+                    value={bulkDecisionNotes}
+                  />
+                }
+                helperText="Apply the same supervisor decision to the selected approval rows."
+                onClear={queueSelection.clearSelection}
+                selectedCount={queueSelection.selectedCount}
+              />
+            }
             total={queueQuery.data?.count ?? 0}
           />
         </Grid>

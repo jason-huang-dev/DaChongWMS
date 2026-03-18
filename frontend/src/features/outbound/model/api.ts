@@ -2,6 +2,7 @@ import { apiGet, apiPatch, apiPost } from "@/lib/http";
 import type { PaginatedResponse } from "@/shared/types/api";
 
 import type {
+  DockLoadVerificationRecord,
   PickTaskRecord,
   SalesOrderRecord,
   SalesOrderUpdatePayload,
@@ -9,12 +10,15 @@ import type {
   ScanShipValues,
   ShipmentCreateValues,
   ShipmentRecord,
+  ShortPickRecord,
 } from "./types";
 
 export const outboundApi = {
   salesOrders: "/api/outbound/sales-orders/",
   pickTasks: "/api/outbound/pick-tasks/",
   shipments: "/api/outbound/shipments/",
+  shortPicks: "/api/outbound/short-picks/",
+  dockLoadVerifications: "/api/outbound/dock-load-verifications/",
 } as const;
 
 export function listSalesOrders(page = 1, pageSize = 8) {
@@ -27,6 +31,14 @@ export function listPickTasks(page = 1, pageSize = 8) {
 
 export function listShipments(page = 1, pageSize = 8) {
   return apiGet<PaginatedResponse<ShipmentRecord>>(outboundApi.shipments, { page, page_size: pageSize });
+}
+
+export function listShortPicks(page = 1, pageSize = 8) {
+  return apiGet<PaginatedResponse<ShortPickRecord>>(outboundApi.shortPicks, { page, page_size: pageSize });
+}
+
+export function listDockLoadVerifications(page = 1, pageSize = 8) {
+  return apiGet<PaginatedResponse<DockLoadVerificationRecord>>(outboundApi.dockLoadVerifications, { page, page_size: pageSize });
 }
 
 export function fetchSalesOrder(salesOrderId: string) {
@@ -58,4 +70,8 @@ export function postScanPick(values: ScanPickValues) {
 
 export function postScanShip(values: ScanShipValues) {
   return apiPost<ShipmentRecord>(`${outboundApi.shipments}scan-ship/`, values);
+}
+
+export function resolveShortPick(shortPickId: number, resolution_notes = "") {
+  return apiPost<ShortPickRecord>(`${outboundApi.shortPicks}${shortPickId}/resolve/`, { resolution_notes });
 }

@@ -19,9 +19,11 @@ import type {
   ScheduledTaskRecord,
   WorkerHeartbeatRecord,
 } from "@/features/automation/model/types";
+import { useBulkSelection } from "@/shared/hooks/use-bulk-selection";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
+import { executeBulkAction } from "@/shared/lib/bulk-actions";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
@@ -32,6 +34,7 @@ async function invalidateAutomationQueries(queryClient: ReturnType<typeof useQue
 export function useAutomationController() {
   const queryClient = useQueryClient();
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
+  const scheduledTaskSelection = useBulkSelection<number>();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const scheduledTasksView = useDataView({
@@ -154,6 +157,34 @@ export function useAutomationController() {
     },
   });
 
+  const bulkRunNowMutation = useMutation({
+    mutationFn: (scheduledTaskIds: number[]) =>
+      executeBulkAction(scheduledTaskIds, (scheduledTaskId) =>
+        runScheduledTaskImmediate(scheduledTaskId),
+      ),
+    onSuccess: async (result) => {
+      setSuccessMessage(
+        result.successCount > 0
+          ? `Queued ${result.successCount} scheduled task run${result.successCount === 1 ? "" : "s"}.`
+          : null,
+      );
+      setErrorMessage(
+        result.failures.length > 0
+          ? `Failed ${result.failures.length} schedule run${result.failures.length === 1 ? "" : "s"}: ${result.failures
+              .slice(0, 3)
+              .map((failure) => `#${failure.item} ${failure.message}`)
+              .join("; ")}`
+          : null,
+      );
+      scheduledTaskSelection.clearSelection();
+      await invalidateAutomationQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+
   const evaluateAlertsMutation = useMutation({
     mutationFn: () => runAutomationAlertEvaluation(),
     onSuccess: async (result) => {
@@ -175,6 +206,7 @@ export function useAutomationController() {
     alertsView,
     backgroundTasksQuery,
     backgroundTasksView,
+    bulkRunNowMutation,
     createScheduledTaskMutation,
     dashboardQuery,
     defaultScheduledTaskCreateValues,
@@ -183,6 +215,7 @@ export function useAutomationController() {
     retryTaskMutation,
     runNowMutation,
     scheduledTasksQuery,
+    scheduledTaskSelection,
     scheduledTasksView,
     successMessage,
     workerHeartbeatsQuery,

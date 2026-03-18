@@ -24,6 +24,7 @@ export function AutomationPage() {
     alertsView,
     backgroundTasksQuery,
     backgroundTasksView,
+    bulkRunNowMutation,
     createScheduledTaskMutation,
     dashboardQuery,
     defaultScheduledTaskCreateValues,
@@ -32,6 +33,7 @@ export function AutomationPage() {
     retryTaskMutation,
     runNowMutation,
     scheduledTasksQuery,
+    scheduledTaskSelection,
     scheduledTasksView,
     successMessage,
     workerHeartbeatsQuery,
@@ -115,9 +117,12 @@ export function AutomationPage() {
         backgroundTasksView={backgroundTasksView}
         isRetryingTask={retryTaskMutation.isPending}
         isRunningNow={runNowMutation.isPending}
+        isRunningSchedulesBulk={bulkRunNowMutation.isPending}
         onRetryTask={(backgroundTaskId) => retryTaskMutation.mutate(backgroundTaskId)}
         onRunNow={(scheduledTaskId) => runNowMutation.mutate(scheduledTaskId)}
+        onRunSchedulesBulk={(scheduledTaskIds) => bulkRunNowMutation.mutate(scheduledTaskIds)}
         scheduledTasksQuery={scheduledTasksQuery}
+        scheduledTaskSelection={scheduledTaskSelection}
         scheduledTasksView={scheduledTasksView}
         workerHeartbeatsQuery={workerHeartbeatsQuery}
         workerHeartbeatsView={workerHeartbeatsView}

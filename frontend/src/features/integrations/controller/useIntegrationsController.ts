@@ -4,7 +4,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useTenantScope } from "@/app/scope-context";
 import {
+  runCarrierBookingCancel,
   runCarrierBookingCreate,
+  runCarrierBookingRebook,
+  runCarrierBookingRetry,
   runCarrierLabelGenerate,
   runIntegrationJobComplete,
   runIntegrationJobCreate,
@@ -28,9 +31,11 @@ import type {
   WebhookEventCreateValues,
   WebhookEventRecord,
 } from "@/features/integrations/model/types";
+import { useBulkSelection } from "@/shared/hooks/use-bulk-selection";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
+import { executeBulkAction } from "@/shared/lib/bulk-actions";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
@@ -41,6 +46,9 @@ async function invalidateIntegrationQueries(queryClient: ReturnType<typeof useQu
 export function useIntegrationsController() {
   const queryClient = useQueryClient();
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
+  const jobSelection = useBulkSelection<number>();
+  const webhookSelection = useBulkSelection<number>();
+  const carrierBookingSelection = useBulkSelection<number>();
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const jobsView = useDataView({
@@ -251,14 +259,134 @@ export function useIntegrationsController() {
     },
   });
 
+  const retryCarrierBookingMutation = useMutation({
+    mutationFn: (bookingId: number) => runCarrierBookingRetry(bookingId),
+    onSuccess: async (booking) => {
+      setErrorMessage(null);
+      setSuccessMessage(`Carrier booking ${booking.booking_number} requeued for recovery.`);
+      await invalidateIntegrationQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+
+  const rebookCarrierBookingMutation = useMutation({
+    mutationFn: (bookingId: number) => runCarrierBookingRebook(bookingId),
+    onSuccess: async (booking) => {
+      setErrorMessage(null);
+      setSuccessMessage(`Carrier booking ${booking.booking_number} rebooked.`);
+      await invalidateIntegrationQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+  const cancelCarrierBookingMutation = useMutation({
+    mutationFn: (bookingId: number) => runCarrierBookingCancel(bookingId),
+    onSuccess: async (booking) => {
+      setErrorMessage(null);
+      setSuccessMessage(`Carrier booking ${booking.booking_number} cancelled.`);
+      await invalidateIntegrationQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+
+  const bulkStartJobsMutation = useMutation({
+    mutationFn: (jobIds: number[]) =>
+      executeBulkAction(jobIds, (jobId) => runIntegrationJobStart(jobId)),
+    onSuccess: async (result) => {
+      setSuccessMessage(
+        result.successCount > 0
+          ? `Retried or started ${result.successCount} integration job${result.successCount === 1 ? "" : "s"}.`
+          : null,
+      );
+      setErrorMessage(
+        result.failures.length > 0
+          ? `Failed ${result.failures.length} integration job${result.failures.length === 1 ? "" : "s"}: ${result.failures
+              .slice(0, 3)
+              .map((failure) => `#${failure.item} ${failure.message}`)
+              .join("; ")}`
+          : null,
+      );
+      jobSelection.clearSelection();
+      await invalidateIntegrationQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+
+  const bulkProcessWebhookMutation = useMutation({
+    mutationFn: (webhookIds: number[]) =>
+      executeBulkAction(webhookIds, (webhookId) => runWebhookEventProcess(webhookId)),
+    onSuccess: async (result) => {
+      setSuccessMessage(
+        result.successCount > 0
+          ? `Processed ${result.successCount} webhook${result.successCount === 1 ? "" : "s"}.`
+          : null,
+      );
+      setErrorMessage(
+        result.failures.length > 0
+          ? `Failed ${result.failures.length} webhook${result.failures.length === 1 ? "" : "s"}: ${result.failures
+              .slice(0, 3)
+              .map((failure) => `#${failure.item} ${failure.message}`)
+              .join("; ")}`
+          : null,
+      );
+      webhookSelection.clearSelection();
+      await invalidateIntegrationQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+
+  const bulkRetryCarrierBookingMutation = useMutation({
+    mutationFn: (bookingIds: number[]) => executeBulkAction(bookingIds, (bookingId) => runCarrierBookingRetry(bookingId)),
+    onSuccess: async (result) => {
+      setSuccessMessage(
+        result.successCount > 0
+          ? `Retried ${result.successCount} carrier booking${result.successCount === 1 ? "" : "s"}.`
+          : null,
+      );
+      setErrorMessage(
+        result.failures.length > 0
+          ? `Failed ${result.failures.length} carrier booking${result.failures.length === 1 ? "" : "s"}: ${result.failures
+              .slice(0, 3)
+              .map((failure) => `#${failure.item} ${failure.message}`)
+              .join("; ")}`
+          : null,
+      );
+      carrierBookingSelection.clearSelection();
+      await invalidateIntegrationQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+
   return {
     activeWarehouse,
+    bulkRetryCarrierBookingMutation,
+    bulkProcessWebhookMutation,
+    bulkStartJobsMutation,
+    carrierBookingSelection,
     carrierBookingsQuery,
     carrierBookingsView,
     completeJobMutation,
     createCarrierBookingMutation,
     createJobMutation,
     createWebhookMutation,
+    cancelCarrierBookingMutation,
     defaultCarrierBookingCreateValues,
     defaultIntegrationJobCreateValues,
     defaultWebhookEventCreateValues,
@@ -268,13 +396,17 @@ export function useIntegrationsController() {
     failedJobsQuery,
     failedWebhooksQuery,
     generateLabelMutation,
+    jobSelection,
     jobsQuery,
     jobsView,
     logsQuery,
     logsView,
     processWebhookMutation,
+    rebookCarrierBookingMutation,
+    retryCarrierBookingMutation,
     startJobMutation,
     successMessage,
+    webhookSelection,
     webhooksQuery,
     webhooksView,
   };

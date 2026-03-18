@@ -10,7 +10,7 @@ Security is foundational for a warehouse management system. This document aligns
 
 ## Permissions Strategy
 
-1. Default reads stay tenant-scoped.
+1. Default reads stay company-scoped through the active `CompanyMembership`.
 2. Mutations require authentication and app-level role checks.
 3. High-risk actions use dedicated permission classes plus service-layer validation.
 
@@ -22,9 +22,10 @@ Security is foundational for a warehouse management system. This document aligns
 - `inventory` config writes (`adjustment-reasons`, `adjustment-rules`) require `Manager`, `Supervisor`, or `StockControl`.
 - `automation` schedule and retry writes require `Manager`, `Supervisor`, or `StockControl`.
 - `automation` alert evaluation and monitoring writes use the same `Manager`, `Supervisor`, or `StockControl` gate; read surfaces remain authenticated and tenant-safe.
+- `access` company-membership provisioning, invite issuance, password-reset issuance, and audit-feed reads require `Manager` or `Supervisor`; self-service membership reads and activation stay authenticated-only.
 - `integrations` job, carrier-booking, and webhook-processing writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`; raw webhook intake is authenticated but does not require `HTTP_OPERATOR`.
 - `operations.inbound` writes require `Manager`, `Supervisor`, `Inbound`, or `StockControl`.
-- `operations.outbound` writes require `Manager`, `Supervisor`, `Outbound`, or `StockControl`.
+- `operations.outbound` writes require `Manager`, `Supervisor`, `Outbound`, or `StockControl`; short-pick resolution follows the same gate.
 - `operations.counting` write endpoints require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`; approval queue/export actions are further limited to `Manager`, `Supervisor`, or `StockControl`.
 - `operations.transfers` writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
 - `operations.returns` writes require `Manager`, `Supervisor`, `Inbound`, `Outbound`, or `StockControl`.
@@ -45,9 +46,24 @@ Security is foundational for a warehouse management system. This document aligns
 - Django admin uses the same auth backend and should be treated as a privileged surface.
 - Mutation endpoints must stamp resolved operator names into audit fields rather than trusting client-supplied values.
 - Tokens should map to real users or service identities so background and operational actions remain attributable.
+
+## Company Membership Model
+
+- The SPA token is the `userprofile.Users.token`, not the company `openid`.
+- The active company comes from the selected `CompanyMembership`.
+- `utils.auth` resolves the browser token into a membership and exposes:
+  - `profile_token`
+  - `membership_id`
+  - `company_id`
+  - `openid` for company/tenant scoping
+- Browser users can switch companies through `/api/access/my-memberships/{id}/activate/` without re-authenticating.
+- Legacy handheld-style flows still work because the resolved principal exposes the current company `openid` to downstream apps.
+- Invite acceptance and password-reset completion intentionally bypass API auth and rely on signed random tokens instead.
+
 ## Signup and MFA
 
 - Self-serve signup creates a Django auth user, a `userprofile.Users` row, and a matching `staff.ListModel` manager record.
+- Signup and test-system bootstrap now also create the default `Company` and `CompanyMembership` records for the new browser identity.
 - Signup now requires an email address and returns `mfa_enrollment_required=true` so the SPA can route the operator into TOTP enrollment immediately.
 - Password login stays first-factor only until a verified MFA enrollment exists. Once a user has a verified enrollment, `POST /api/login/` returns `202` with an MFA challenge payload instead of issuing the normal tenant session payload.
 - `POST /api/mfa/challenges/verify/` completes the login challenge with either a TOTP code or a one-time recovery code and then returns the normal auth payload.

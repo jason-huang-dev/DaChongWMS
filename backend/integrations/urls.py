@@ -37,4 +37,7 @@ urlpatterns: List[URLPattern] = [
         _action(CarrierBookingViewSet, {"post": "generate_label"}),
         name="carrier-booking-generate-label",
     ),
+    re_path(r"^carrier-bookings/(?P<pk>\d+)/retry/$", _action(CarrierBookingViewSet, {"post": "retry"}), name="carrier-booking-retry"),
+    re_path(r"^carrier-bookings/(?P<pk>\d+)/rebook/$", _action(CarrierBookingViewSet, {"post": "rebook"}), name="carrier-booking-rebook"),
+    re_path(r"^carrier-bookings/(?P<pk>\d+)/cancel/$", _action(CarrierBookingViewSet, {"post": "cancel"}), name="carrier-booking-cancel"),
 ]

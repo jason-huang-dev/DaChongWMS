@@ -73,10 +73,14 @@ class TOTPEnrollmentCreateView(APIView):
         serializer = TOTPEnrollmentCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         operator = get_request_operator(request)
-        identity = resolve_workspace_identity(auth_user=_get_authenticated_auth_user(request))
+        identity = resolve_workspace_identity(
+            auth_user=_get_authenticated_auth_user(request),
+            company_openid=getattr(request.auth, "openid", None),
+            profile_token=getattr(request.auth, "profile_token", None),
+        )
         setup = issue_totp_enrollment(
             auth_user=identity.auth_user,
-            openid=identity.profile.openid,
+            openid=identity.company.openid,
             creator=operator.staff_name,
             email=getattr(identity.auth_user, "email", ""),
             label=serializer.validated_data.get("label", "Authenticator app"),
@@ -150,7 +154,7 @@ def verify_challenge(request: HttpRequest, *args: Any, **kwargs: Any) -> JsonRes
         return JsonResponse(response, status=400)
 
     response = FBMsg.ret()
-    identity = resolve_workspace_identity(auth_user=result.auth_user)
+    identity = resolve_workspace_identity(auth_user=result.auth_user, company_openid=result.openid)
     response["data"] = build_auth_response_data(
         identity=identity,
         mfa_enrollment_required=False,

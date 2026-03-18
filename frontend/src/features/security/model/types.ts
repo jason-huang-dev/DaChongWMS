@@ -1,6 +1,17 @@
-import type { StaffRecord } from "@/shared/types/domain";
+import type {
+  AccessAuditEventRecord,
+  CompanyInviteRecord,
+  CompanyMembershipRecord,
+  CompanyPasswordResetRecord,
+  StaffRecord,
+} from "@/shared/types/domain";
+import type { z } from "zod";
+
+import type { accessInviteFormSchema, companyMembershipFormSchema, staffFormSchema } from "./validators";
 
 export type { StaffRecord };
+export type { CompanyMembershipRecord };
+export type { CompanyInviteRecord, CompanyPasswordResetRecord, AccessAuditEventRecord };
 
 export interface StaffTypeRecord {
   id: number;
@@ -32,3 +43,7 @@ export interface StaffFormValues {
   check_code: number;
   is_lock: boolean;
 }
+
+export type CompanyMembershipFormValues = z.infer<typeof companyMembershipFormSchema>;
+export type AccessInviteFormValues = z.infer<typeof accessInviteFormSchema>;
+export type StaffFormValuesSchema = z.infer<typeof staffFormSchema>;

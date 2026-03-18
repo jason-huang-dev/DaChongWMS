@@ -14,7 +14,18 @@ from staff.models import ListModel as Staff
 from utils import datasolve
 from warehouse.models import Warehouse
 
-from .models import DockLoadVerification, PickTask, PickTaskStatus, SalesOrder, SalesOrderLine, SalesOrderStatus, Shipment, ShipmentLine
+from .models import (
+    DockLoadVerification,
+    PickTask,
+    PickTaskStatus,
+    SalesOrder,
+    SalesOrderLine,
+    SalesOrderStatus,
+    Shipment,
+    ShipmentLine,
+    ShortPickReason,
+    ShortPickRecord,
+)
 
 
 class SalesOrderLineSerializer(serializers.ModelSerializer):
@@ -208,6 +219,14 @@ class PickTaskCompleteSerializer(serializers.Serializer):
     to_location = serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(is_delete=False), allow_null=True, required=False)
 
 
+class PickTaskShortPickReportSerializer(serializers.Serializer):
+    short_qty = serializers.DecimalField(max_digits=18, decimal_places=4, min_value=Decimal("0.0001"))
+    picked_qty = serializers.DecimalField(max_digits=18, decimal_places=4, min_value=Decimal("0.0000"), required=False)
+    reason_code = serializers.ChoiceField(choices=ShortPickReason.choices)
+    to_location = serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(is_delete=False), allow_null=True, required=False)
+    notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+
+
 class ShipmentLineSerializer(serializers.ModelSerializer):
     goods_code = serializers.CharField(source="goods.goods_code", read_only=True)
     sales_order_line_number = serializers.IntegerField(source="sales_order_line.line_number", read_only=True)
@@ -364,3 +383,56 @@ class DockLoadVerificationSerializer(serializers.ModelSerializer):
             "update_time",
         ]
         read_only_fields = fields
+
+
+class ShortPickRecordSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source="sales_order.order_number", read_only=True)
+    warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
+    goods_code = serializers.CharField(source="goods.goods_code", read_only=True)
+    from_location_code = serializers.CharField(source="from_location.location_code", read_only=True)
+    to_location_code = serializers.CharField(source="to_location.location_code", read_only=True)
+    reported_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    resolved_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    create_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    update_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+
+    class Meta:
+        model = ShortPickRecord
+        fields = [
+            "id",
+            "warehouse",
+            "warehouse_name",
+            "sales_order",
+            "order_number",
+            "sales_order_line",
+            "pick_task",
+            "goods",
+            "goods_code",
+            "from_location",
+            "from_location_code",
+            "to_location",
+            "to_location_code",
+            "requested_qty",
+            "picked_qty",
+            "short_qty",
+            "stock_status",
+            "lot_number",
+            "serial_number",
+            "reason_code",
+            "status",
+            "notes",
+            "reported_by",
+            "reported_at",
+            "resolved_by",
+            "resolved_at",
+            "resolution_notes",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+        read_only_fields = fields
+
+
+class ShortPickResolveSerializer(serializers.Serializer):
+    resolution_notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
