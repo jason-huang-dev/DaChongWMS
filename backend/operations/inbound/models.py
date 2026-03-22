@@ -10,6 +10,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from inventory.models import InventoryMovement, InventoryStatus
+from operations.order_types import OperationOrderType
 
 
 class TenantAuditModel(models.Model):
@@ -56,6 +57,13 @@ class AdvanceShipmentNoticeStatus(models.TextChoices):
     CANCELLED = "CANCELLED", "Cancelled"
 
 
+class InboundImportBatchStatus(models.TextChoices):
+    PROCESSING = "PROCESSING", "Processing"
+    COMPLETED = "COMPLETED", "Completed"
+    COMPLETED_WITH_ERRORS = "COMPLETED_WITH_ERRORS", "Completed With Errors"
+    FAILED = "FAILED", "Failed"
+
+
 class PurchaseOrder(TenantAuditModel):
     warehouse = models.ForeignKey(
         "warehouse.Warehouse",
@@ -68,6 +76,12 @@ class PurchaseOrder(TenantAuditModel):
         on_delete=models.PROTECT,
         related_name="purchase_orders",
         verbose_name="Supplier",
+    )
+    order_type = models.CharField(
+        max_length=32,
+        choices=OperationOrderType.choices,
+        default=OperationOrderType.STANDARD,
+        verbose_name="Order Type",
     )
     po_number = models.CharField(max_length=64, verbose_name="Purchase Order Number")
     expected_arrival_date = models.DateField(blank=True, null=True, verbose_name="Expected Arrival Date")
@@ -115,6 +129,12 @@ class AdvanceShipmentNotice(TenantAuditModel):
         on_delete=models.PROTECT,
         related_name="advance_shipment_notices",
         verbose_name="Supplier",
+    )
+    order_type = models.CharField(
+        max_length=32,
+        choices=OperationOrderType.choices,
+        default=OperationOrderType.STANDARD,
+        verbose_name="Order Type",
     )
     asn_number = models.CharField(max_length=64, verbose_name="ASN Number")
     expected_arrival_date = models.DateField(blank=True, null=True, verbose_name="Expected Arrival Date")
@@ -275,6 +295,52 @@ class PurchaseOrderLine(TenantAuditModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.purchase_order.po_number}#{self.line_number}"
+
+
+class InboundSigningRecord(TenantAuditModel):
+    asn = models.ForeignKey(
+        AdvanceShipmentNotice,
+        on_delete=models.PROTECT,
+        related_name="signing_records",
+        blank=True,
+        null=True,
+        verbose_name="Advance Shipment Notice",
+    )
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.PROTECT,
+        related_name="signing_records",
+        verbose_name="Purchase Order",
+    )
+    warehouse = models.ForeignKey(
+        "warehouse.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="inbound_signing_records",
+        verbose_name="Warehouse",
+    )
+    signing_number = models.CharField(max_length=64, verbose_name="Signing Number")
+    reference_code = models.CharField(max_length=64, blank=True, default="", verbose_name="Reference Code")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+    carrier_name = models.CharField(max_length=255, blank=True, default="", verbose_name="Carrier Name")
+    vehicle_plate = models.CharField(max_length=64, blank=True, default="", verbose_name="Vehicle Plate")
+    signed_by = models.CharField(max_length=255, verbose_name="Signed By")
+    signed_at = models.DateTimeField(default=timezone.now, verbose_name="Signed At")
+
+    class Meta:
+        db_table = "inbound_signing_record"
+        verbose_name = "Inbound Signing Record"
+        verbose_name_plural = "Inbound Signing Records"
+        ordering = ["-signed_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "signing_number"],
+                condition=Q(is_delete=False),
+                name="inbound_signing_number_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.signing_number
 
 
 class Receipt(TenantAuditModel):
@@ -518,3 +584,37 @@ class PutawayTask(TenantAuditModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return self.task_number
+
+
+class InboundImportBatch(TenantAuditModel):
+    batch_number = models.CharField(max_length=64, verbose_name="Batch Number")
+    file_name = models.CharField(max_length=255, verbose_name="File Name")
+    status = models.CharField(
+        max_length=32,
+        choices=InboundImportBatchStatus.choices,
+        default=InboundImportBatchStatus.PROCESSING,
+        verbose_name="Status",
+    )
+    total_rows = models.PositiveIntegerField(default=0, verbose_name="Total Rows")
+    success_rows = models.PositiveIntegerField(default=0, verbose_name="Successful Rows")
+    failed_rows = models.PositiveIntegerField(default=0, verbose_name="Failed Rows")
+    summary = models.TextField(blank=True, default="", verbose_name="Summary")
+    failure_rows = models.JSONField(default=list, blank=True, verbose_name="Failure Rows")
+    imported_by = models.CharField(max_length=255, verbose_name="Imported By")
+    imported_at = models.DateTimeField(default=timezone.now, verbose_name="Imported At")
+
+    class Meta:
+        db_table = "inbound_import_batch"
+        verbose_name = "Inbound Import Batch"
+        verbose_name_plural = "Inbound Import Batches"
+        ordering = ["-imported_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "batch_number"],
+                condition=Q(is_delete=False),
+                name="inbound_import_batch_number_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.batch_number

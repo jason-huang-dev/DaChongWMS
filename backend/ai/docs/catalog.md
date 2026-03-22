@@ -1,36 +1,105 @@
-# Catalog Data Models
+# Catalog Domains
 
-The catalog domain captures every SKU and the metadata required to validate inbound uploads. The apps now live under the `backend/catalog/` package and are implemented via the following Django apps:
+The backend has two different "catalog" concepts and they should not be mixed together.
 
-| App | Model | Purpose |
-| --- | --- | --- |
-| `goods` | `ListModel` | Authoritative record for each SKU, including physical dimensions, cost/price, and owning tenant (`openid`). |
-| `goodsunit` | `ListModel` | Master data for stocking/ordering units of measure. |
-| `goodsclass` | `ListModel` | Logical classifications (commodity groups). |
-| `goodsbrand` | `ListModel` | Brand registry tied to the tenant. |
-| `goodscolor`/`goodsshape`/`goodsspecs`/`goodsorigin` | `ListModel` variants | Attribute vocabularies for color/shape/specification/origin fields referenced by goods rows. |
+## 1. Product Catalog
 
-## Business Rules
+The typed product-management domain now lives under `backend/apps/products/`.
 
-- All catalog tables scope records by `openid` for multi-tenant isolation. Upload endpoints enforce this via request auth.
-- `goods.ListModel.goods_code` is unique and acts as the SKU identifier referenced by inventory, ASN, and DN flows.
-- Attribute tables (`goodsunit`, etc.) are de-duplicated; uploads either create missing rows or reuse existing ones, ensuring referential consistency without foreign-key constraints.
-- Soft deletes (`is_delete`) preserve history. API layers should filter `is_delete=False`.
+Core models:
 
-## API & Workflows
+| Model | Purpose |
+| --- | --- |
+| `Product` | Organization-scoped product master with SKU, barcode, UOM, category, brand, description, and active state. |
+| `DistributionProduct` | Client-account-specific distribution mapping for external SKU/name/channel plus dropship and inbound rights. |
+| `ProductSerialConfig` | Serial-number policy for a product, including tracking mode, capture points, uniqueness, and optional pattern. |
+| `ProductPackaging` | Unit/carton/pallet/custom packaging specs with dimensions, weight, and default-pack flag. |
+| `ProductMark` | Handling/compliance/operator-facing marks such as fragile, battery, temperature, or custom labels. |
 
-- Bulk creation happens through `uploadfile.views.GoodlistfileViewSet` and `GoodlistfileAddViewSet`, which normalize spreadsheet headers (see `uploadfile` docs) and fan out into the tables above.
-- Future CRUD endpoints should use DRF viewsets with tenant- scoped querysets, pagination, and ordering on `create_time`/`update_time`.
-- Any API that mutates goods MUST recompute barcode hashes (`utils.md5.Md5`) to keep scanner data consistent.
+The old `backend/catalog/` package is still present as legacy data-modeling material, but new browser-facing product work should target `apps/products`.
 
-## Validation & Edge Cases
+Rules for the new module:
 
-- `goods_unit`, `goods_class`, etc. default to safe placeholder strings to avoid null text when upstream spreadsheets omit values.
-- Dimensions default to zero but should be validated for non-negative ranges before enabling advanced storage algorithms.
-- `goods.goods_code` uniqueness is enforced at the model/database level; uploads catch duplicates and return a descriptive failure.
+- Product rows are organization-scoped through `Product.organization`.
+- `Product.sku` is the stable warehouse SKU identifier used by downstream workflows.
+- Distribution products link the warehouse SKU to a client-facing SKU/channel instead of duplicating the core product row.
+- Serial settings, packaging, and marks are separated into dedicated sub-resources so product management stays modular.
+- The new API surface lives under `/api/v1/organizations/<organization_id>/products/...`.
 
-## Security & Auditability
+Frontend guidance:
 
-- Treat catalog changes as sensitive: incorrect dimensions or supplier data can break downstream picking and freight rating.
-- Log user/`staff_name` for every upload (handled in uploadfile views) and persist `creator` for audit trails.
-- Deny cross-tenant reads/writes by always filtering on `request.auth.openid`.
+- The product-management route is `/products`.
+- Select a product first, then manage:
+  - distribution products
+  - serial number management
+  - packaging
+  - product marks
+
+## 2. Order Catalog / Package Board
+
+The order catalog is the operational package board used by fulfillment teams. It lives in `backend/operations/outbound/` and is implemented on top of `SalesOrder`.
+
+`SalesOrder` is no longer just a thin order header. It now carries the metadata needed for the board shown in the package console:
+
+- warehouse
+- customer
+- staging location
+- logistics provider
+- shipping method
+- tracking number
+- waybill number and print state
+- deliverer and receiver details
+- package count, type, weight, and dimensions
+- order time, create time, picking timestamps, packed time, and expiration time
+- operational status
+- fulfillment stage bucket
+- anomaly / interception state
+
+### Fulfillment stage buckets
+
+`SalesOrder.fulfillment_stage` powers the package-board buckets:
+
+- `GET_TRACKING_NO`
+- `TO_MOVE`
+- `IN_PROCESS`
+- `TO_SHIP`
+- `SHIPPED`
+- `CANCELLED`
+
+Expected meaning:
+
+- `GET_TRACKING_NO`: order exists but no tracking / waybill data has been prepared yet
+- `TO_MOVE`: tracking or waybill data exists, but warehouse work has not started
+- `IN_PROCESS`: allocation, picking, or packing work is in progress
+- `TO_SHIP`: packed and ready to dispatch
+- `SHIPPED`: shipment has posted
+
+### Anomaly states
+
+`SalesOrder.exception_state` is separate from the operational status so abnormal and intercepted orders can still move through the board:
+
+- `NORMAL`
+- `ABNORMAL_PACKAGE`
+- `ORDER_INTERCEPTION`
+
+Behavior:
+
+- open short-picks mark the order as `ABNORMAL_PACKAGE`
+- resolving the last open short-pick returns the order to `NORMAL`
+- manual interception should use `ORDER_INTERCEPTION` and should not be overwritten by normal fulfillment refreshes
+
+## API expectations
+
+For outbound order APIs:
+
+- `SalesOrder.status` remains the low-level workflow state (`OPEN`, `ALLOCATED`, `PICKING`, `PICKED`, `SHIPPED`, `CANCELLED`)
+- `SalesOrder.fulfillment_stage` is the UI-facing queue bucket
+- `packed_at` is writable from the order header because a separate packing task model does not exist yet
+- `picking_started_at` and `picking_completed_at` are system-managed from allocation / pick completion
+- `waybill_printed_at` is system-managed from the `waybill_printed` flag
+
+## Design guidance
+
+- Do not add receiver / tracking / logistics fields to `Product`; they belong to outbound order headers.
+- Do not treat supplier or customer master data as auth or account records; those remain partner records.
+- If the frontend says "catalog" but is showing packages or orders, back it with `operations.outbound.SalesOrder`, not the SKU catalog apps.

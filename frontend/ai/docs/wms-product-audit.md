@@ -215,7 +215,7 @@ This means the product audit priorities now extend beyond filling isolated CRUD 
 
 ### Domain coverage
 
-- client and product modules need first-class route treatment
+- client and product modules now have first-class route treatment
 - logistics should grow beyond integration records into an operator-facing logistics workbench
 - fee/billing flows need a workbench model closer to JF's finance/fees posture
 - reporting/statistics need explicit role-oriented routes rather than being implied by dashboard cards

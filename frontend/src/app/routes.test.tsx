@@ -62,7 +62,7 @@ test("redirects unauthorized users away from finance routes", async () => {
   expect(router.state.location.pathname).toBe("/not-authorized");
 });
 
-test("renders inventory balances for authorized operators", async () => {
+test("renders the inventory operations workbench for authorized operators", async () => {
   saveStoredSession({
     username: "manager",
     openid: "tenant-openid",
@@ -106,12 +106,13 @@ test("renders inventory balances for authorized operators", async () => {
     return undefined;
   });
 
-  renderWithRouter(["/inventory/balances"]);
+  renderWithRouter(["/inventory"]);
 
-  expect(await screen.findByText("Inventory balances")).toBeInTheDocument();
-  expect(await screen.findByText("SKU-001")).toBeInTheDocument();
-  expect(screen.getByText("A-01-01")).toBeInTheDocument();
-  expect(screen.getByText("Main WH")).toBeInTheDocument();
+  expect(await screen.findByText("Inventory operations")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Inventory Information" })).toBeInTheDocument();
+  expect((await screen.findAllByText("SKU-001")).length).toBeGreaterThan(0);
+  expect(screen.getAllByText("A-01-01").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Main WH").length).toBeGreaterThan(0);
 });
 
 test("renders the MFA enrollment page for authenticated operators", async () => {
@@ -210,6 +211,535 @@ test("renders security access management for managers", async () => {
   expect(screen.getByText("Manage my MFA")).toBeInTheDocument();
 });
 
+test("renders client management for authorized operators", async () => {
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/access/my-memberships/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            company_id: 1,
+            company_name: "DaChong WMS",
+            company_code: "DCWMS",
+            company_openid: "tenant-openid",
+            company_description: "Primary workspace",
+            staff_id: 11,
+            staff_name: "Route Tester",
+            staff_type: "Manager",
+            username: "manager",
+            email: "manager@example.com",
+            profile_token: "token-1",
+            check_code: 8888,
+            is_lock: false,
+            default_warehouse: null,
+            default_warehouse_name: "",
+            is_company_admin: true,
+            can_manage_users: true,
+            is_active: true,
+            last_selected_at: "2026-03-21T00:00:00Z",
+            is_current: true,
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
+    if (url.pathname === "/api/v1/organizations/1/customer-accounts/") {
+      return jsonResponse([
+        {
+          id: 1,
+          organization_id: 1,
+          name: "Acme Retail",
+          code: "ACM-1",
+          contact_name: "Store Ops",
+          contact_email: "ops@acme.example",
+          contact_phone: "+1-555-0100",
+          billing_email: "billing@acme.example",
+          shipping_method: "Express",
+          allow_dropshipping_orders: true,
+          allow_inbound_goods: true,
+          notes: "Primary client",
+          is_active: true,
+        },
+      ]);
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/clients"]);
+
+  expect(await screen.findByText("Client management")).toBeInTheDocument();
+  expect(await screen.findByText("Acme Retail")).toBeInTheDocument();
+  expect(screen.getByText("ACM-1")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Create client account" })).toBeInTheDocument();
+});
+
+test("renders product management for authorized operators", async () => {
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/access/my-memberships/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            company_id: 1,
+            company_name: "DaChong WMS",
+            company_code: "DCWMS",
+            company_openid: "tenant-openid",
+            company_description: "Primary workspace",
+            staff_id: 11,
+            staff_name: "Route Tester",
+            staff_type: "Manager",
+            username: "manager",
+            email: "manager@example.com",
+            profile_token: "token-1",
+            check_code: 8888,
+            is_lock: false,
+            default_warehouse: null,
+            default_warehouse_name: "",
+            is_company_admin: true,
+            can_manage_users: true,
+            is_active: true,
+            last_selected_at: "2026-03-21T00:00:00Z",
+            is_current: true,
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
+    if (url.pathname === "/api/v1/organizations/1/products/") {
+      return jsonResponse([
+        {
+          id: 10,
+          organization_id: 1,
+          sku: "SKU-001",
+          name: "Bluetooth Scanner",
+          barcode: "1234567890",
+          unit_of_measure: "EA",
+          category: "Devices",
+          brand: "DaChong",
+          description: "Handheld scanner",
+          is_active: true,
+        },
+      ]);
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/products"]);
+
+  expect(await screen.findByText("Product management")).toBeInTheDocument();
+  expect(await screen.findByText("Bluetooth Scanner")).toBeInTheDocument();
+  expect(screen.getByText("SKU-001")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "Create product" })).toBeInTheDocument();
+});
+
+test("renders fees management for authorized finance operators", async () => {
+  saveStoredSession({
+    username: "finance-manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Finance"));
+    }
+    if (url.pathname === "/api/access/my-memberships/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            company_id: 1,
+            company_name: "DaChong WMS",
+            company_code: "DCWMS",
+            company_openid: "tenant-openid",
+            company_description: "Primary workspace",
+            staff_id: 11,
+            staff_name: "Route Tester",
+            staff_type: "Finance",
+            username: "finance-manager",
+            email: "finance@example.com",
+            profile_token: "token-1",
+            check_code: 8888,
+            is_lock: false,
+            default_warehouse: null,
+            default_warehouse_name: "",
+            is_company_admin: true,
+            can_manage_users: true,
+            is_active: true,
+            last_selected_at: "2026-03-21T00:00:00Z",
+            is_current: true,
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/finance"]);
+
+  expect(await screen.findByText("Fees management")).toBeInTheDocument();
+  expect(screen.getAllByRole("heading", { name: "Recharge / Deduction" }).length).toBeGreaterThan(0);
+  expect(screen.getAllByRole("heading", { name: "Voucher Management" }).length).toBeGreaterThan(0);
+});
+
+test("renders statistics for authorized operators", async () => {
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+    membershipId: 1,
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/access/my-memberships/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            company_id: 1,
+            company_name: "DaChong WMS",
+            company_code: "DCWMS",
+            company_openid: "tenant-openid",
+            company_description: "Primary workspace",
+            staff_id: 11,
+            staff_name: "Route Tester",
+            staff_type: "Manager",
+            username: "manager",
+            email: "manager@example.com",
+            profile_token: "token-1",
+            check_code: 8888,
+            is_lock: false,
+            default_warehouse: 1,
+            default_warehouse_name: "Main WH",
+            is_company_admin: true,
+            can_manage_users: true,
+            is_active: true,
+            last_selected_at: "2026-03-21T00:00:00Z",
+            is_current: true,
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse_name: "Main WH",
+            warehouse_city: "New York",
+            warehouse_address: "1 Dock Way",
+            warehouse_contact: "Dock Lead",
+            warehouse_manager: "Ops Manager",
+            creator: "Route Tester",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/statistics"]);
+
+  expect(await screen.findByRole("heading", { name: "Statistics" })).toBeInTheDocument();
+  expect(screen.getAllByRole("heading", { name: "Stock In&Out" }).length).toBeGreaterThan(0);
+  expect(screen.getByRole("heading", { name: "Standard Stock-in" })).toBeInTheDocument();
+  expect(screen.getAllByText("Main WH").length).toBeGreaterThan(0);
+});
+
+test("renders B2B operations for authorized operators", async () => {
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse_name: "Main WH",
+            warehouse_city: "New York",
+            warehouse_address: "1 Dock Way",
+            warehouse_contact: "Dock Lead",
+            warehouse_manager: "Ops Manager",
+            creator: "Route Tester",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/inbound/purchase-orders/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse_name: "Main WH",
+            supplier_name: "Supplier A",
+            po_number: "PO-B2B-1001",
+            expected_arrival_date: "2026-03-20T08:00:00Z",
+            status: "OPEN",
+            reference_code: "",
+            notes: "",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/inbound/advance-shipment-notices/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 2,
+            purchase_order: 1,
+            purchase_order_number: "PO-B2B-1001",
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            supplier_name: "Supplier A",
+            asn_number: "ASN-B2B-1001",
+            expected_arrival_date: "2026-03-20T09:00:00Z",
+            status: "OPEN",
+            notes: "",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/inbound/receipts/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 3,
+            purchase_order: 1,
+            purchase_order_number: "PO-B2B-1001",
+            asn_number: "ASN-B2B-1001",
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            receipt_number: "RCPT-B2B-1001",
+            receipt_location_code: "RCV-01",
+            received_by: "Route Tester",
+            received_at: "2026-03-20T10:00:00Z",
+            status: "POSTED",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/inbound/signing-records/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 4,
+            purchase_order: 1,
+            purchase_order_number: "PO-B2B-1001",
+            asn_number: "ASN-B2B-1001",
+            signing_number: "SIGN-B2B-1001",
+            carrier_name: "DHL",
+            vehicle_plate: "粤B12345",
+            signed_by: "Dock Lead",
+            signed_at: "2026-03-20T08:30:00Z",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/inbound/putaway-tasks/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 5,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            task_number: "PT-B2B-1001",
+            goods_code: "SKU-B2B-1",
+            from_location_code: "RCV-01",
+            to_location_code: "A-01-01",
+            status: "OPEN",
+            assigned_to_name: "",
+            completed_by: "",
+            completed_at: null,
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/outbound/sales-orders/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 6,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            customer: 99,
+            customer_name: "Acme Retail",
+            order_number: "SO-B2B-1001",
+            requested_ship_date: "2026-03-21T08:00:00Z",
+            status: "ALLOCATED",
+            fulfillment_stage: "IN_PROCESS",
+            exception_state: "NORMAL",
+            package_count: 2,
+            shipping_method: "Ground",
+            tracking_number: "",
+            waybill_printed: false,
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/outbound/pick-tasks/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 7,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            sales_order: 6,
+            order_number: "SO-B2B-1001",
+            task_number: "PICK-B2B-1001",
+            goods_code: "SKU-B2B-1",
+            from_location_code: "A-01-01",
+            to_location_code: "STAGE-01",
+            requested_qty: "2.0000",
+            picked_qty: "0.0000",
+            status: "OPEN",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/outbound/package-executions/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 8,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            sales_order: 6,
+            order_number: "SO-B2B-1001",
+            shipment: null,
+            shipment_number: "",
+            wave: null,
+            wave_number: "",
+            record_number: "RELABEL-B2B-1001",
+            step_type: "RELABEL",
+            execution_status: "SUCCESS",
+            package_number: "PKG-B2B-1001",
+            scan_code: "LBL-1001",
+            weight: null,
+            notes: "",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/outbound/shipments/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 9,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            sales_order: 6,
+            order_number: "SO-B2B-1001",
+            shipment_number: "SHP-B2B-1001",
+            staging_location_code: "STAGE-01",
+            status: "OPEN",
+            shipped_at: null,
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/outbound/waves/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 10,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            wave_number: "WAVE-B2B-1001",
+            status: "OPEN",
+            order_count: 1,
+            notes: "",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:00:00",
+          },
+        ]),
+      );
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/b2b"]);
+
+  expect(await screen.findByText("B2B operations")).toBeInTheDocument();
+  expect(await screen.findByRole("link", { name: "PO-B2B-1001" })).toHaveAttribute("href", "/inbound/purchase-orders/1");
+  expect(await screen.findByRole("link", { name: "SO-B2B-1001" })).toHaveAttribute("href", "/outbound/sales-orders/6");
+  expect(screen.getByRole("link", { name: "Scan and Relabel" })).toHaveAttribute("href", "#scan-and-relabel");
+});
+
 test("renders inbound scan panels and inbound records for authorized operators", async () => {
   saveStoredSession({
     username: "inbound",
@@ -299,7 +829,7 @@ test("renders inbound scan panels and inbound records for authorized operators",
 
   renderWithRouter(["/inbound"]);
 
-  expect(await screen.findByText("Inbound operations", undefined, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByText("Stock-in operations", undefined, { timeout: 5000 })).toBeInTheDocument();
   expect((await screen.findAllByText("PO-1001", undefined, { timeout: 5000 })).length).toBeGreaterThan(0);
   expect(screen.getByText("Scan receive")).toBeInTheDocument();
   expect(screen.getByText("Scan putaway")).toBeInTheDocument();

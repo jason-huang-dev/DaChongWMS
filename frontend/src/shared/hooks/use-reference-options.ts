@@ -9,6 +9,7 @@ import type {
   IntegrationJobRecord,
   InventoryBalanceRecord,
   LocationRecord,
+  OutboundWaveRecord,
   PurchaseOrderRecord,
   ReturnOrderRecord,
   ReturnReceiptRecord,
@@ -141,9 +142,9 @@ export function useInventoryBalanceReferenceOptions(warehouseId?: number | null)
   );
 }
 
-export function usePurchaseOrderReferenceOptions(warehouseId?: number | null) {
+export function usePurchaseOrderReferenceOptions(warehouseId?: number | null, orderType?: string | null) {
   return useReferenceList<PurchaseOrderRecord>(
-    ["references", "purchase-orders", warehouseId ?? "all"],
+    ["references", "purchase-orders", warehouseId ?? "all", orderType ?? "all"],
     "/api/inbound/purchase-orders/",
     (purchaseOrder) => ({
       value: purchaseOrder.id,
@@ -151,13 +152,13 @@ export function usePurchaseOrderReferenceOptions(warehouseId?: number | null) {
       description: `${purchaseOrder.supplier_name} · ${purchaseOrder.status}`,
       record: purchaseOrder,
     }),
-    warehouseId ? { warehouse: warehouseId } : undefined,
+    warehouseId || orderType ? { warehouse: warehouseId ?? undefined, order_type: orderType ?? undefined } : undefined,
   );
 }
 
-export function useSalesOrderReferenceOptions(warehouseId?: number | null) {
+export function useSalesOrderReferenceOptions(warehouseId?: number | null, orderType?: string | null) {
   return useReferenceList<SalesOrderRecord>(
-    ["references", "sales-orders", warehouseId ?? "all"],
+    ["references", "sales-orders", warehouseId ?? "all", orderType ?? "all"],
     "/api/outbound/sales-orders/",
     (salesOrder) => ({
       value: salesOrder.id,
@@ -165,7 +166,7 @@ export function useSalesOrderReferenceOptions(warehouseId?: number | null) {
       description: `${salesOrder.customer_name} · ${salesOrder.status}`,
       record: salesOrder,
     }),
-    warehouseId ? { warehouse: warehouseId } : undefined,
+    warehouseId || orderType ? { warehouse: warehouseId ?? undefined, order_type: orderType ?? undefined } : undefined,
   );
 }
 
@@ -197,9 +198,9 @@ export function useReturnReceiptReferenceOptions(warehouseId?: number | null) {
   );
 }
 
-export function useShipmentReferenceOptions(warehouseId?: number | null) {
+export function useShipmentReferenceOptions(warehouseId?: number | null, orderType?: string | null) {
   return useReferenceList<ShipmentRecord>(
-    ["references", "shipments", warehouseId ?? "all"],
+    ["references", "shipments", warehouseId ?? "all", orderType ?? "all"],
     "/api/outbound/shipments/",
     (shipment) => ({
       value: shipment.id,
@@ -207,7 +208,21 @@ export function useShipmentReferenceOptions(warehouseId?: number | null) {
       description: `${shipment.order_number} · ${shipment.status}`,
       record: shipment,
     }),
-    warehouseId ? { warehouse: warehouseId } : undefined,
+    warehouseId || orderType ? { warehouse: warehouseId ?? undefined, order_type: orderType ?? undefined } : undefined,
+  );
+}
+
+export function useWaveReferenceOptions(warehouseId?: number | null, orderType?: string | null) {
+  return useReferenceList<OutboundWaveRecord>(
+    ["references", "outbound-waves", warehouseId ?? "all", orderType ?? "all"],
+    "/api/outbound/waves/",
+    (wave) => ({
+      value: wave.id,
+      label: wave.wave_number,
+      description: `${wave.order_count} orders · ${wave.status}`,
+      record: wave,
+    }),
+    warehouseId || orderType ? { warehouse: warehouseId ?? undefined, order_type: orderType ?? undefined } : undefined,
   );
 }
 

@@ -1,6 +1,7 @@
 import { Box, Stack, Typography } from "@mui/material";
 
 import { brandGradients } from "@/app/brand";
+import { useI18n } from "@/app/ui-preferences";
 import type { ReactNode } from "react";
 
 interface PageHeaderProps {
@@ -10,6 +11,8 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, description, actions }: PageHeaderProps) {
+  const { translateText } = useI18n();
+
   return (
     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
       <Stack spacing={0.75}>
@@ -22,10 +25,10 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
             width: 68,
           }}
         />
-        <Typography variant="h4">{title}</Typography>
+        <Typography variant="h4">{translateText(title)}</Typography>
         {description ? (
           <Typography color="text.secondary" variant="body1">
-            {description}
+            {translateText(description)}
           </Typography>
         ) : null}
       </Stack>

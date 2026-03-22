@@ -10,6 +10,7 @@ import {
 import { FormProvider, useForm } from "react-hook-form";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import type { SignupFormValues } from "@/features/auth/model/types";
 import { signupSchema } from "@/features/auth/model/validators";
@@ -19,6 +20,7 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function SignupPage() {
   const navigate = useNavigate();
+  const { translateText } = useI18n();
   const { signup } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const form = useForm<SignupFormValues>({
@@ -59,10 +61,10 @@ export function SignupPage() {
             <FormTextField autoComplete="new-password" label="Confirm password" name="password2" type="password" />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button disabled={form.formState.isSubmitting} size="large" type="submit" variant="contained">
-                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : "Create account"}
+                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : translateText("Create account")}
               </Button>
               <Button component={RouterLink} size="large" to="/login" variant="outlined">
-                Back to login
+                {translateText("Back to login")}
               </Button>
             </Stack>
           </Stack>

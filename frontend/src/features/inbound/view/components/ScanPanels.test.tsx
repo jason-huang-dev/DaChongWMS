@@ -4,6 +4,7 @@ import { expect, test, vi } from "vitest";
 
 import { ScanPutawayPanel } from "@/features/inbound/view/components/ScanPutawayPanel";
 import { ScanReceivePanel } from "@/features/inbound/view/components/ScanReceivePanel";
+import { ScanSignPanel } from "@/features/inbound/view/components/ScanSignPanel";
 import { installFetchMock, jsonResponse } from "@/test/fetch";
 import { renderWithProviders } from "@/test/render";
 
@@ -126,4 +127,55 @@ test("posts scan putaway payloads and shows a success message", async () => {
 
   expect(await screen.findByText("Putaway task PT-3001 completed to A-01-01.")).toBeInTheDocument();
   await waitFor(() => expect(invalidateSpy).toHaveBeenCalledTimes(3));
+});
+
+test("posts scan sign payloads and shows a success message", async () => {
+  const user = userEvent.setup();
+  const { queryClient } = renderWithProviders(<ScanSignPanel />);
+  const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+
+  installFetchMock((url, init) => {
+    if (url.pathname === "/api/inbound/signing-records/scan-sign/") {
+      expect(init?.method).toBe("POST");
+      expect(parseJsonBody(init)).toMatchObject({
+        purchase_order_number: "PO-SIGN-01",
+        signing_number: "SIGN-01",
+        carrier_name: "Linehaul Carrier",
+        vehicle_plate: "TRK-01",
+      });
+      return jsonResponse(
+        {
+          id: 7,
+          asn: null,
+          asn_number: null,
+          purchase_order: 9,
+          purchase_order_number: "PO-SIGN-01",
+          warehouse: 1,
+          warehouse_name: "Inbound WH",
+          signing_number: "SIGN-01",
+          reference_code: "",
+          notes: "",
+          carrier_name: "Linehaul Carrier",
+          vehicle_plate: "TRK-01",
+          signed_by: "Tester",
+          signed_at: "2026-03-22T09:00:00Z",
+          creator: "Tester",
+          openid: "tenant-openid",
+          create_time: "2026-03-22 09:00:00",
+          update_time: "2026-03-22 09:00:00",
+        },
+        { status: 201 },
+      );
+    }
+    return undefined;
+  });
+
+  await user.type(screen.getByLabelText(/Purchase order number/i), "PO-SIGN-01");
+  await user.type(screen.getByLabelText(/Signing number/i), "SIGN-01");
+  await user.type(screen.getByLabelText(/Carrier name/i), "Linehaul Carrier");
+  await user.type(screen.getByLabelText(/Vehicle plate/i), "TRK-01");
+  await user.click(screen.getByRole("button", { name: /capture sign-off/i }));
+
+  expect(await screen.findByText("Signing record SIGN-01 captured for PO-SIGN-01.")).toBeInTheDocument();
+  await waitFor(() => expect(invalidateSpy).toHaveBeenCalledTimes(2));
 });

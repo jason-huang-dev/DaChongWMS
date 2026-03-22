@@ -1,7 +1,9 @@
 import { Autocomplete, TextField, type TextFieldProps } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import { Controller, useFormContext } from "react-hook-form";
 import { useEffect, useRef, type UIEvent } from "react";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { ReferenceOption } from "@/shared/types/options";
 
 export interface FormAutocompleteProps<TValue extends string | number>
@@ -31,6 +33,8 @@ export function FormAutocomplete<TValue extends string | number>({
   ...props
 }: FormAutocompleteProps<TValue>) {
   const { control } = useFormContext();
+  const { translateText } = useI18n();
+  const theme = useTheme();
   const optionCacheRef = useRef(new Map<TValue, ReferenceOption<TValue>>());
 
   useEffect(() => {
@@ -65,8 +69,8 @@ export function FormAutocomplete<TValue extends string | number>({
             inputValue={searchText}
             isOptionEqualToValue={(option, value) => option.value === value.value}
             loading={loading || isLoadingMore}
-            loadingText={isLoadingMore ? "Loading more..." : "Loading..."}
-            noOptionsText={emptyText}
+            loadingText={translateText(isLoadingMore ? "Loading more..." : "Loading...")}
+            noOptionsText={translateText(emptyText)}
             onChange={(_event, option) => field.onChange(option?.value ?? null)}
             onInputChange={(_event, value, reason) => {
               if (!onSearchTextChange) {
@@ -82,8 +86,9 @@ export function FormAutocomplete<TValue extends string | number>({
                 {...params}
                 {...props}
                 error={fieldState.invalid}
-                helperText={fieldState.error?.message ?? helperText}
+                helperText={fieldState.error?.message ?? (typeof helperText === "string" ? translateText(helperText) : helperText)}
                 fullWidth={props.fullWidth ?? true}
+                label={typeof props.label === "string" ? translateText(props.label) : props.label}
               />
             )}
             renderOption={(optionProps, option) => (
@@ -91,7 +96,7 @@ export function FormAutocomplete<TValue extends string | number>({
                 <div>
                   <div>{option.label}</div>
                   {option.description ? (
-                    <div style={{ color: "rgba(0, 0, 0, 0.6)", fontSize: "0.75rem" }}>
+                    <div style={{ color: theme.palette.text.secondary, fontSize: "0.75rem" }}>
                       {option.description}
                     </div>
                   ) : null}

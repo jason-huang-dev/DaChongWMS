@@ -9,6 +9,7 @@ import { formatDateTime, formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
 interface InventoryFilters extends DataViewFilters {
+  search: string;
   stock_status: string;
   lot_number__icontains: string;
   serial_number__icontains: string;
@@ -32,6 +33,11 @@ interface InventoryTableProps {
 }
 
 const inventoryFilterFields: DataViewFieldConfig<InventoryFilters>[] = [
+  {
+    key: "search",
+    label: "Search SKU or location",
+    placeholder: "SKU-1001 or A-01-01",
+  },
   {
     key: "stock_status",
     label: "Stock status",
@@ -95,7 +101,7 @@ export function InventoryTable({
         onPageChange: setPage,
       }}
       rows={balancesQuery.data?.results ?? []}
-      subtitle="Backed by `/api/inventory/balances/`"
+      subtitle="Live inventory positions from the stock ledger."
       title="Inventory positions"
       toolbar={
         <DataViewToolbar

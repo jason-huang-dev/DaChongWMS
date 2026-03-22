@@ -19,39 +19,60 @@ import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
+interface ReportingControllerOptions {
+  initialInvoiceFilters?: {
+    invoice_number__icontains?: string;
+    status?: string;
+    "finance_approval__status"?: string;
+  };
+  initialSettlementFilters?: {
+    status?: string;
+  };
+  initialDisputeFilters?: {
+    status?: string;
+    status__in?: string;
+    reason_code?: string;
+  };
+  initialExportFilters?: {
+    status?: string;
+  };
+}
+
 async function invalidateFinanceQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await invalidateQueryGroups(queryClient, [["finance"], ["dashboard"]]);
 }
 
-export function useReportingController() {
+export function useReportingController(options: ReportingControllerOptions = {}) {
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const invoicesView = useDataView({
     viewKey: `finance.invoices.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      invoice_number__icontains: "",
-      status: "",
+      invoice_number__icontains: options.initialInvoiceFilters?.invoice_number__icontains ?? "",
+      status: options.initialInvoiceFilters?.status ?? "",
+      "finance_approval__status": options.initialInvoiceFilters?.["finance_approval__status"] ?? "",
     },
     pageSize: 8,
   });
   const settlementsView = useDataView({
     viewKey: `finance.settlements.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      status: "",
+      status: options.initialSettlementFilters?.status ?? "",
     },
     pageSize: 8,
   });
   const disputesView = useDataView({
     viewKey: `finance.disputes.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      status: "",
-      reason_code: "",
+      status: options.initialDisputeFilters?.status ?? "",
+      status__in: options.initialDisputeFilters?.status__in ?? "",
+      reason_code: options.initialDisputeFilters?.reason_code ?? "",
     },
     pageSize: 8,
   });
   const exportsView = useDataView({
     viewKey: `finance.exports.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      status: "",
+      status: options.initialExportFilters?.status ?? "",
     },
     pageSize: 8,
   });
@@ -76,6 +97,7 @@ export function useReportingController() {
       settlementsView.page,
       settlementsView.pageSize,
       {
+        invoice__warehouse: activeWarehouseId ?? undefined,
         ...settlementsView.queryFilters,
       },
     ),
@@ -86,6 +108,7 @@ export function useReportingController() {
       disputesView.page,
       disputesView.pageSize,
       {
+        invoice__warehouse: activeWarehouseId ?? undefined,
         ...disputesView.queryFilters,
       },
     ),

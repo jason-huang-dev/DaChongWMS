@@ -5,6 +5,7 @@ MUI provides the base component set for the app. Adhering to shared patterns kee
 ## Theming
 
 - Define a custom theme under `src/app/theme.ts` with brand colors, typography, and spacing tuned for dense enterprise UIs.
+- Build the theme from app-level UI preferences rather than a single static export; `light` and `dark` modes should both be first-class and should reuse the same brand tokens.
 - Keep the DaChong gold/copper/charcoal palette in `src/app/brand.ts`, then feed those tokens into `src/app/theme.ts` instead of hard-coding ad-hoc values.
 - Store raw logo assets under `src/assets/logo/` and consume them through reusable wrappers like `BrandLogo` instead of importing individual files all over the app.
 
@@ -14,6 +15,7 @@ MUI provides the base component set for the app. Adhering to shared patterns kee
 - Tables: use `DataGrid` or custom `Table` with sticky headers, row highlighting, and keyboard navigation.
 - Queue tables should expose shared controls through reusable wrappers like `DataViewToolbar` and `ResourceTable` instead of embedding ad-hoc filter rows into each screen.
 - Forms: use `TextField`, `Select`, `Autocomplete`, but wrap them with custom components that integrate validation + helper text consistently.
+- Shared field wrappers should also be the first place locale-aware label/help-text translation is applied so forms do not each invent their own i18n behavior.
 
 ## Layout
 
@@ -35,6 +37,7 @@ MUI provides the base component set for the app. Adhering to shared patterns kee
 
 - Centralize overrides in the theme rather than scattered `sx` props. If a pattern repeats more than twice, wrap it in a shared component.
 - Auth-specific full-screen layouts should use a shared wrapper like `AuthShell` so branding, spacing, and responsive behavior stay consistent across login, signup, and MFA challenge screens.
+- Global shell controls such as locale switching and theme mode toggles should live in shared controls like `UiPreferencesControls`, not be reimplemented per route.
 - Tenant/workspace and warehouse switching should go through a shared control such as `WorkspaceContextSwitcher`, not page-specific selects in each route.
 
 ## JF-Inspired Enterprise Density Patterns

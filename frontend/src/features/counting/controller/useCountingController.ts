@@ -30,11 +30,22 @@ import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
+interface CountingControllerOptions {
+  initialAssignmentsFilters?: {
+    scanner_task_type?: string;
+    scanner_task_status?: string;
+  };
+  initialQueueFilters?: {
+    status?: string;
+    requested_by__icontains?: string;
+  };
+}
+
 async function invalidateCountingQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await invalidateQueryGroups(queryClient, [["counting"], ["dashboard"], ["inventory"]]);
 }
 
-export function useCountingController() {
+export function useCountingController(options: CountingControllerOptions = {}) {
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const queueSelection = useBulkSelection<number>();
   const queryClient = useQueryClient();
@@ -44,16 +55,16 @@ export function useCountingController() {
   const assignmentsView = useDataView({
     viewKey: `counting.assignments.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      scanner_task_type: "",
-      scanner_task_status: "",
+      scanner_task_type: options.initialAssignmentsFilters?.scanner_task_type ?? "",
+      scanner_task_status: options.initialAssignmentsFilters?.scanner_task_status ?? "",
     },
     pageSize: 10,
   });
   const queueView = useDataView({
     viewKey: `counting.approvals.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      status: "",
-      requested_by__icontains: "",
+      status: options.initialQueueFilters?.status ?? "",
+      requested_by__icontains: options.initialQueueFilters?.requested_by__icontains ?? "",
     },
     pageSize: 10,
   });

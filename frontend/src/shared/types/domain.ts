@@ -228,6 +228,83 @@ export interface InventoryBalanceRecord {
   update_time: string;
 }
 
+export interface InventoryMovementRecord {
+  id: number;
+  warehouse: number;
+  warehouse_name: string;
+  goods: number;
+  goods_code: string;
+  from_location: number | null;
+  from_location_code: string;
+  to_location: number | null;
+  to_location_code: string;
+  movement_type: string;
+  stock_status: string;
+  lot_number: string;
+  serial_number: string;
+  quantity: string;
+  unit_cost: string;
+  reference_code: string;
+  reason: string;
+  performed_by: string;
+  creator: string;
+  openid: string;
+  occurred_at: string;
+  resulting_from_qty: string | null;
+  resulting_to_qty: string | null;
+  create_time: string;
+  update_time: string;
+}
+
+export interface InventoryHoldRecord {
+  id: number;
+  inventory_balance: number;
+  goods_code: string;
+  location_code: string;
+  quantity: string;
+  reason: string;
+  reference_code: string;
+  notes: string;
+  held_by: string;
+  released_by: string;
+  released_at: string | null;
+  is_active: boolean;
+  creator: string;
+  openid: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface InventoryAdjustmentReasonRecord {
+  id: number;
+  code: string;
+  name: string;
+  description: string;
+  direction: string;
+  requires_approval: boolean;
+  is_active: boolean;
+  creator: string;
+  openid: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface InventoryAdjustmentApprovalRuleRecord {
+  id: number;
+  adjustment_reason: number;
+  adjustment_reason_code: string;
+  warehouse: number | null;
+  warehouse_name: string;
+  minimum_variance_qty: string;
+  approver_role: string;
+  is_active: boolean;
+  notes: string;
+  creator: string;
+  openid: string;
+  create_time: string;
+  update_time: string;
+}
+
 export interface PurchaseOrderLineRecord {
   id: number;
   line_number: number;
@@ -246,6 +323,7 @@ export interface PurchaseOrderRecord {
   warehouse_name: string;
   supplier: number;
   supplier_name: string;
+  order_type?: string;
   po_number: string;
   expected_arrival_date: string | null;
   status: string;
@@ -253,6 +331,71 @@ export interface PurchaseOrderRecord {
   notes: string;
   lines: PurchaseOrderLineRecord[];
   creator: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface AdvanceShipmentNoticeRecord {
+  id: number;
+  purchase_order: number;
+  purchase_order_number: string;
+  warehouse: number;
+  warehouse_name: string;
+  supplier: number;
+  supplier_name: string;
+  order_type?: string;
+  asn_number: string;
+  expected_arrival_date: string | null;
+  status: string;
+  reference_code: string;
+  notes: string;
+  creator: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface InboundSigningRecord {
+  id: number;
+  asn: number | null;
+  asn_number: string | null;
+  purchase_order: number;
+  purchase_order_number: string;
+  order_type?: string;
+  warehouse: number;
+  warehouse_name: string;
+  signing_number: string;
+  reference_code: string;
+  notes: string;
+  carrier_name: string;
+  vehicle_plate: string;
+  signed_by: string;
+  signed_at: string;
+  creator: string;
+  openid: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface InboundImportBatchFailureRecord {
+  row_number: number;
+  receipt_number?: string;
+  message: string;
+}
+
+export interface InboundImportBatchRecord {
+  id: number;
+  batch_number: string;
+  file_name: string;
+  status: string;
+  total_rows: number;
+  success_rows: number;
+  failed_rows: number;
+  summary: string;
+  failure_rows: InboundImportBatchFailureRecord[];
+  imported_by: string;
+  imported_at: string;
+  creator: string;
+  openid: string;
   create_time: string;
   update_time: string;
 }
@@ -282,6 +425,7 @@ export interface ReceiptRecord {
   asn_number: string | null;
   purchase_order: number;
   purchase_order_number: string;
+  order_type?: string;
   warehouse: number;
   warehouse_name: string;
   receipt_location: number;
@@ -301,6 +445,7 @@ export interface PutawayTaskRecord {
   id: number;
   receipt_line: number;
   receipt_number: string;
+  order_type?: string;
   warehouse: number;
   warehouse_name: string;
   goods: number;
@@ -349,9 +494,40 @@ export interface SalesOrderRecord {
   customer_name: string;
   staging_location: number;
   staging_location_code: string;
+  order_type?: string;
   order_number: string;
+  order_time?: string | null;
   requested_ship_date: string | null;
+  expires_at?: string | null;
   status: string;
+  fulfillment_stage?: string;
+  exception_state?: string;
+  package_count?: number;
+  package_type?: string;
+  package_weight?: string;
+  package_length?: string;
+  package_width?: string;
+  package_height?: string;
+  package_volume?: string;
+  logistics_provider?: string;
+  shipping_method?: string;
+  tracking_number?: string;
+  waybill_number?: string;
+  waybill_printed?: boolean;
+  waybill_printed_at?: string | null;
+  deliverer_name?: string;
+  deliverer_phone?: string;
+  receiver_name?: string;
+  receiver_phone?: string;
+  receiver_country?: string;
+  receiver_state?: string;
+  receiver_city?: string;
+  receiver_address?: string;
+  receiver_postal_code?: string;
+  picking_started_at?: string | null;
+  picking_completed_at?: string | null;
+  packed_at?: string | null;
+  exception_notes?: string;
   reference_code: string;
   notes: string;
   lines: SalesOrderLineRecord[];
@@ -365,6 +541,7 @@ export interface PickTaskRecord {
   id: number;
   sales_order_line: number;
   order_number: string;
+  order_type?: string;
   warehouse: number;
   warehouse_name: string;
   goods: number;
@@ -470,6 +647,7 @@ export interface ShipmentRecord {
   id: number;
   sales_order: number;
   order_number: string;
+  order_type?: string;
   warehouse: number;
   warehouse_name: string;
   staging_location: number;
@@ -481,6 +659,99 @@ export interface ShipmentRecord {
   lines: ShipmentLineRecord[];
   shipped_by: string;
   shipped_at: string | null;
+  create_time: string;
+  update_time: string;
+}
+
+export interface OutboundWaveOrderRecord {
+  id: number;
+  sales_order: number;
+  order_number: string;
+  sort_sequence: number;
+  sales_order_status: string;
+  fulfillment_stage: string;
+  exception_state: string;
+}
+
+export interface OutboundWaveRecord {
+  id: number;
+  warehouse: number;
+  warehouse_name: string;
+  order_type?: string;
+  wave_number: string;
+  status: string;
+  notes: string;
+  generated_by: string;
+  generated_at: string;
+  order_count: number;
+  orders: OutboundWaveOrderRecord[];
+  create_time: string;
+  update_time: string;
+}
+
+export interface PackageExecutionRecord {
+  id: number;
+  warehouse: number;
+  warehouse_name: string;
+  sales_order: number;
+  order_number: string;
+  order_type?: string;
+  shipment: number | null;
+  shipment_number: string;
+  wave: number | null;
+  wave_number: string;
+  record_number: string;
+  step_type: string;
+  execution_status: string;
+  package_number: string;
+  scan_code: string;
+  weight: string | null;
+  notes: string;
+  executed_by: string;
+  executed_at: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface ShipmentDocumentRecord {
+  id: number;
+  warehouse: number;
+  warehouse_name: string;
+  sales_order: number;
+  order_number: string;
+  order_type?: string;
+  shipment: number | null;
+  shipment_number: string;
+  wave: number | null;
+  wave_number: string;
+  document_number: string;
+  document_type: string;
+  reference_code: string;
+  file_name: string;
+  notes: string;
+  generated_by: string;
+  generated_at: string;
+  create_time: string;
+  update_time: string;
+}
+
+export interface LogisticsTrackingEventRecord {
+  id: number;
+  warehouse: number;
+  warehouse_name: string;
+  sales_order: number;
+  order_number: string;
+  order_type?: string;
+  shipment: number | null;
+  shipment_number: string;
+  event_number: string;
+  tracking_number: string;
+  event_code: string;
+  event_status: string;
+  event_location: string;
+  description: string;
+  occurred_at: string;
+  recorded_by: string;
   create_time: string;
   update_time: string;
 }
@@ -737,6 +1008,23 @@ export interface FinanceExportRecord {
   date_to?: string | null;
   period_start?: string | null;
   period_end?: string | null;
+  create_time: string;
+  update_time: string;
+}
+
+export interface OperationalReportExportRecord {
+  id: number;
+  warehouse: number | null;
+  report_type: string;
+  status: string;
+  export_format: string;
+  date_from: string | null;
+  date_to: string | null;
+  parameters: Record<string, unknown>;
+  file_name: string;
+  row_count: number;
+  generated_at: string | null;
+  generated_by: string;
   create_time: string;
   update_time: string;
 }

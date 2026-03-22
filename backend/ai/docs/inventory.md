@@ -13,6 +13,15 @@ The `inventory` app provides the current stock picture and the audit trail behin
 - `operations.returns` also builds on this ledger for return receipts, quarantine moves, restocks, and scrap dispositions.
 - `reporting` reads this ledger to build warehouse KPI snapshots and inventory-aging exports; inventory balances remain the quantitative source of truth for those reports.
 
+## Operator Workbench Expectations
+
+- The frontend inventory module is now expected to surface six operator views from this domain stack: inventory information, stock-count review, internal move monitoring, stock-age reporting, manual inventory adjustment, and inter-warehouse transfer planning.
+- Stock count is still owned by `operations.counting`; inventory only provides the balance state, reason codes, and approval rules consumed by that workflow.
+- Internal move execution is still owned by `operations.transfers`; inventory remains the source of truth for the resulting `TRANSFER` movement and updated balance quantities.
+- Stock-age reporting is fulfilled through `reporting.OperationalReportExport` with `report_type=INVENTORY_AGING`.
+- Manual adjustment posting is fulfilled through `POST /api/inventory/movements/` with `movement_type=ADJUSTMENT_IN|ADJUSTMENT_OUT`.
+- Dedicated warehouse-to-warehouse transfer requests are not implemented yet. The current inventory module can support planning visibility across warehouses, but executable cross-warehouse transfer orchestration still needs a separate transfer-request workflow.
+
 ## Business Rules
 
 - Inventory balances are unique per active `(openid, location, goods, lot_number, serial_number, stock_status)` tuple.

@@ -1,7 +1,8 @@
 import { Box, ButtonBase, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { brandColors } from "@/app/brand";
+import { useI18n } from "@/app/ui-preferences";
 import type { NavigationItem } from "@/app/layout/navigation-items";
 
 interface ModuleTopNavProps {
@@ -11,6 +12,10 @@ interface ModuleTopNavProps {
 }
 
 export function ModuleTopNav({ activePath, items, onNavigate }: ModuleTopNavProps) {
+  const theme = useTheme();
+  const { translateText } = useI18n();
+  const isDark = theme.palette.mode === "dark";
+
   return (
     <Stack direction="row" spacing={1} sx={{ minWidth: 0, overflowX: "auto", pb: 0.5 }}>
       {items.map((item) => {
@@ -24,7 +29,7 @@ export function ModuleTopNav({ activePath, items, onNavigate }: ModuleTopNavProp
               alignItems: "center",
               borderBottom: `2px solid ${isActive ? brandColors.gold : "transparent"}`,
               borderRadius: 0,
-              color: isActive ? brandColors.ink : alpha(brandColors.ink, 0.72),
+              color: isActive ? theme.palette.text.primary : alpha(theme.palette.text.primary, isDark ? 0.76 : 0.72),
               gap: 1,
               minWidth: "max-content",
               px: 1.25,
@@ -33,7 +38,7 @@ export function ModuleTopNav({ activePath, items, onNavigate }: ModuleTopNavProp
           >
             <Icon fontSize="small" />
             <Typography sx={{ fontSize: 13, fontWeight: isActive ? 700 : 600 }} variant="body2">
-              {item.label}
+              {translateText(item.label)}
             </Typography>
           </ButtonBase>
         );

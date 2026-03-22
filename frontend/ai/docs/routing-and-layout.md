@@ -10,7 +10,7 @@ The frontend now uses a guarded application shell that separates login from auth
 - `/security`
 - `/dashboard`
 - `/mfa/enroll`
-- `/inventory/balances`
+- `/inventory`
 - `/inbound`
 - `/inbound/purchase-orders/:purchaseOrderId`
 - `/outbound`
@@ -19,7 +19,13 @@ The frontend now uses a guarded application shell that separates login from auth
 - `/transfers/transfer-orders/:transferOrderId`
 - `/returns`
 - `/returns/return-orders/:returnOrderId`
+- `/clients`
+- `/products`
+- `/logistics`
+- `/work-orders`
+- `/b2b`
 - `/counting`
+- `/statistics`
 - `/counting/approvals/:approvalId`
 - `/automation`
 - `/automation/scheduled-tasks/:scheduledTaskId`
@@ -33,6 +39,16 @@ The frontend now uses a guarded application shell that separates login from auth
 - `/not-authorized`
 
 Route configuration lives in `frontend/src/app/routes.tsx`.
+
+## Module Notes
+
+- `/inbound` is now a stock-in workbench rather than a single receipt table. It includes anchored sections for standard stock-in, stock-in list management, scan-to-sign, scan-to-receive, scan-to-list, import-to-stock-in, import management, returns-to-stock, return order management, and the inbound record queues.
+- `/outbound` is now a package and shipping workbench rather than only sales orders plus shipments. It includes anchored sections for package management, stock-out package execution, interception management, abnormal packages, wave management, secondary picking, shipping management, manifest/photo/scanform records, logistics tracking, short-pick follow-up, and dock-load verification.
+- `/work-orders` is a scheduling workbench. It includes work-order type management for reusable urgency/SLA templates and work-order management for warehouse-scoped prioritization, assignee planning, and fulfillment sequencing.
+- `/logistics` is a logistics configuration and financial-control workbench. It includes online/offline channels, provider masters, customer channel assignments, logistics rules, partition rules, remote-area rules, fuel rules, waybill watermarking, charging strategies, customer-specific charging overrides, operational logistics charges, and carrier-side logistics costs.
+- `/b2b` is a dedicated customer-replenishment workbench built on top of the shared inbound and outbound modules. It includes B2B stock-in list management, scan-to-receive, scan-to-list, B2B stock-out list management, scan-and-relabel, scan-to-pack, and the inbound record tables most relevant to B2B operations.
+- `/finance` is now the operational fees workbench. It includes recharge/deduction review, voucher management, charging items, charging templates, manual charging, fee inquiries, fund flow, rent details, business expenses, receivable bills, and profit calculation. The legacy invoice detail route remains under `/finance/invoices/:invoiceId`.
+- `/statistics` is now a read-only warehouse statistics workbench. It aggregates inbound, outbound, returns, direct-shipping, warehouse-analysis, and staff-performance metrics from the existing operational APIs instead of introducing a separate reporting-only backend domain.
 
 ## Bundle Strategy
 
@@ -54,13 +70,14 @@ Route configuration lives in `frontend/src/app/routes.tsx`.
 - horizontal role-aware module navigation
 - workspace-tab strip backed by persisted membership-scoped tab records
 - top bar with breadcrumbs
+- top bar locale and light/dark mode controls
 - workspace/company and warehouse context switcher
 - operator identity menu and sign-out action
 - responsive drawer behavior for smaller screens
 
 ## Breadcrumbs
 
-Breadcrumbs are derived from route metadata through `handle.crumb` values and rendered in `frontend/src/app/layout/route-breadcrumbs.tsx`.
+Breadcrumbs are derived from route metadata through `handle.crumb` values and rendered in `frontend/src/app/layout/route-breadcrumbs.tsx`. The breadcrumb renderer now passes labels through the shared translation layer so route metadata can remain stable while the UI swaps between English and Simplified Chinese.
 
 ## Current Packaging Rule
 
@@ -76,10 +93,12 @@ Scan-first action panels and selector-driven create panels are packaged as route
 
 ## Current Domain Detail Routes
 
+- Inventory is now a workbench route rather than a single balance screen. It groups inventory information, stock-count escalation, internal moves, stock-age reporting, manual adjustments, and cross-warehouse planning in one warehouse-scoped module page.
 - Inbound purchase-order detail exposes editable header fields and a cancel action.
 - Inbound queue now exposes an overdue-receipts exception lane ahead of the broader purchase-order queue.
 - Outbound sales-order detail exposes editable header fields plus allocation/cancel actions.
-- Outbound queue now exposes a real short-pick exception lane backed by explicit backend short-pick records and resolution actions, plus a dock-load verification table and status-bucket navigation for trailer confirmation follow-up.
+- Outbound queue now exposes wave generation, scan-to-pack, scan-to-inspect, weighing-to-ship, shipping-document generation, logistics-tracking capture, a real short-pick exception lane backed by explicit backend short-pick records and resolution actions, plus dock-load verification and higher-level package-management tables.
+- B2B exposes a cross-cut workbench for replenishment-style flows and now scopes every queue and supported mutation through the backend `order_type=B2B` partition. It still reuses the same inbound/outbound models underneath, but the partition is now enforced server-side rather than only by route semantics.
 - Transfers expose transfer-order detail plus replenishment task actions.
 - Returns expose return-order detail plus receipt/disposition posting panels.
 - Counting approval detail exposes approve/reject actions with count-line context, and the parent counting route surfaces blocked-count exception lanes.
@@ -87,8 +106,13 @@ Scan-first action panels and selector-driven create panels are packaged as route
 - Automation detail routes expose object-level inspection for scheduled tasks and background tasks.
 - Integrations expose job/webhook/carrier booking creation plus execution actions from the same route, along with failed-integration exception lanes.
 - Integration detail routes expose object-level inspection for jobs, webhooks, and carrier bookings.
-- Finance invoice detail exposes finalize and finance-review actions with invoice-line detail.
+- Finance now lands on the fees workbench, while finance invoice detail still exposes finalize and finance-review actions with invoice-line detail on the legacy invoice route.
+- Statistics expose stock in/out, standard stock-in, stock-out throughput, warehouse analysis, staff performance, receiving, listing, picking, packing, after-sales, and direct-shipping views from one route-level workbench.
 - Security exposes company membership provisioning, invite issuance, password-reset issuance, access audit review, staff directory management, role assignment, lock-state control, and a direct path to personal MFA management.
+- Clients exposes customer-account management for dropshipping and inbound-submission workflows.
+- Products exposes product master data plus selected-product management for distribution products, serial-number policy, packaging, and product marks.
+- Logistics exposes provider/channel configuration, customer routing preferences, logistics rules, charging strategy, and logistics cost capture as a first-class routed module under the authenticated shell.
+- Work orders expose type management plus ranked execution scheduling so managers can see which orders need to be fulfilled first.
 
 ## Next Routing Work
 

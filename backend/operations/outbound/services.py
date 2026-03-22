@@ -9,7 +9,7 @@ from typing import Iterable
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
 
 from customer.models import ListModel as Customer
 from inventory.models import InventoryBalance, InventoryStatus, MovementType
@@ -35,13 +35,25 @@ from warehouse.models import Warehouse
 from .models import (
     DockLoadVerification,
     DockLoadVerificationStatus,
+    LogisticsTrackingEvent,
+    LogisticsTrackingStatus,
+    OutboundWave,
+    OutboundWaveOrder,
+    OutboundWaveStatus,
+    PackageExecutionRecord,
+    PackageExecutionStatus,
+    PackageExecutionStep,
     PickTask,
     PickTaskStatus,
     SalesOrder,
+    SalesOrderExceptionState,
+    SalesOrderFulfillmentStage,
     SalesOrderLine,
     SalesOrderLineStatus,
     SalesOrderStatus,
     Shipment,
+    ShipmentDocumentRecord,
+    ShipmentDocumentType,
     ShipmentLine,
     ShortPickRecord,
     ShortPickStatus,
@@ -125,6 +137,49 @@ class ShortPickResolvePayload:
     resolution_notes: str
 
 
+@dataclass(frozen=True)
+class WaveUpdatePayload:
+    status: str
+    notes: str
+
+
+@dataclass(frozen=True)
+class PackageExecutionPayload:
+    shipment: Shipment | None
+    wave: OutboundWave | None
+    record_number: str
+    step_type: str
+    execution_status: str
+    package_number: str
+    scan_code: str
+    weight: Decimal | None
+    notes: str
+    requested_order_type: str = ""
+
+
+@dataclass(frozen=True)
+class ShipmentDocumentPayload:
+    shipment: Shipment | None
+    wave: OutboundWave | None
+    document_number: str
+    document_type: str
+    reference_code: str
+    file_name: str
+    notes: str
+
+
+@dataclass(frozen=True)
+class LogisticsTrackingPayload:
+    shipment: Shipment | None
+    event_number: str
+    tracking_number: str
+    event_code: str
+    event_status: str
+    event_location: str
+    description: str
+    occurred_at: object
+
+
 def _validate_staging_location(location: Location, *, openid: str, warehouse: Warehouse) -> None:
     ensure_tenant_match(location, openid, "Staging location")
     if location.warehouse_id != warehouse.id:
@@ -148,6 +203,26 @@ def _line_status(line: SalesOrderLine) -> str:
     return SalesOrderLineStatus.OPEN
 
 
+def _derive_sales_order_fulfillment_stage(
+    *,
+    sales_order: SalesOrder,
+    active_lines: list[SalesOrderLine],
+) -> str:
+    if sales_order.status == SalesOrderStatus.CANCELLED:
+        return SalesOrderFulfillmentStage.CANCELLED
+    if sales_order.status == SalesOrderStatus.SHIPPED:
+        return SalesOrderFulfillmentStage.SHIPPED
+    if sales_order.packed_at is not None:
+        return SalesOrderFulfillmentStage.TO_SHIP
+    if sales_order.status in {SalesOrderStatus.ALLOCATED, SalesOrderStatus.PICKING, SalesOrderStatus.PICKED}:
+        return SalesOrderFulfillmentStage.IN_PROCESS
+    if any(line.allocated_qty > ZERO or line.picked_qty > ZERO or line.shipped_qty > ZERO for line in active_lines):
+        return SalesOrderFulfillmentStage.IN_PROCESS
+    if sales_order.waybill_printed or sales_order.tracking_number or sales_order.waybill_number:
+        return SalesOrderFulfillmentStage.TO_MOVE
+    return SalesOrderFulfillmentStage.GET_TRACKING_NO
+
+
 def refresh_sales_order_status(sales_order: SalesOrder) -> SalesOrder:
     lines = list(sales_order.lines.filter(is_delete=False))
     active_lines = [line for line in lines if line.status != SalesOrderLineStatus.CANCELLED]
@@ -163,7 +238,28 @@ def refresh_sales_order_status(sales_order: SalesOrder) -> SalesOrder:
         sales_order.status = SalesOrderStatus.ALLOCATED
     else:
         sales_order.status = SalesOrderStatus.OPEN
-    sales_order.save(update_fields=["status", "update_time"])
+    if sales_order.status in {SalesOrderStatus.ALLOCATED, SalesOrderStatus.PICKING, SalesOrderStatus.PICKED, SalesOrderStatus.SHIPPED}:
+        if sales_order.picking_started_at is None and any(
+            line.allocated_qty > ZERO or line.picked_qty > ZERO or line.shipped_qty > ZERO for line in active_lines
+        ):
+            sales_order.picking_started_at = timezone.now()
+    if sales_order.status in {SalesOrderStatus.PICKED, SalesOrderStatus.SHIPPED}:
+        if sales_order.picking_completed_at is None:
+            sales_order.picking_completed_at = timezone.now()
+
+    sales_order.fulfillment_stage = _derive_sales_order_fulfillment_stage(
+        sales_order=sales_order,
+        active_lines=active_lines,
+    )
+    sales_order.save(
+        update_fields=[
+            "status",
+            "fulfillment_stage",
+            "picking_started_at",
+            "picking_completed_at",
+            "update_time",
+        ]
+    )
     return sales_order
 
 
@@ -206,6 +302,20 @@ def _resolve_staging_balance_for_scan(
     return matches[0]
 
 
+def _ensure_shipment_matches_sales_order(*, shipment: Shipment, sales_order: SalesOrder) -> None:
+    if shipment.sales_order_id != sales_order.id:
+        raise APIException({"detail": "Shipment does not belong to the selected sales order"})
+
+
+def _ensure_wave_matches_sales_order(*, wave: OutboundWave, sales_order: SalesOrder) -> None:
+    if wave.warehouse_id != sales_order.warehouse_id:
+        raise APIException({"detail": "Wave warehouse must match the sales order warehouse"})
+    if wave.order_type != sales_order.order_type:
+        raise ValidationError({"detail": "Wave order type must match the sales order order type"})
+    if not wave.orders.filter(sales_order=sales_order, is_delete=False).exists():
+        raise APIException({"detail": "Sales order is not assigned to the selected wave"})
+
+
 @transaction.atomic
 def create_sales_order(
     *,
@@ -214,9 +324,36 @@ def create_sales_order(
     warehouse: Warehouse,
     customer: Customer,
     staging_location: Location,
+    order_type: str,
     order_number: str,
+    order_time,
     requested_ship_date,
+    expires_at,
     reference_code: str,
+    package_count: int,
+    package_type: str,
+    package_weight: Decimal,
+    package_length: Decimal,
+    package_width: Decimal,
+    package_height: Decimal,
+    package_volume: Decimal,
+    logistics_provider: str,
+    shipping_method: str,
+    tracking_number: str,
+    waybill_number: str,
+    waybill_printed: bool,
+    deliverer_name: str,
+    deliverer_phone: str,
+    receiver_name: str,
+    receiver_phone: str,
+    receiver_country: str,
+    receiver_state: str,
+    receiver_city: str,
+    receiver_address: str,
+    receiver_postal_code: str,
+    packed_at,
+    exception_state: str,
+    exception_notes: str,
     notes: str,
     line_items: Iterable[SalesOrderLinePayload],
 ) -> SalesOrder:
@@ -231,9 +368,37 @@ def create_sales_order(
         warehouse=warehouse,
         customer=customer,
         staging_location=staging_location,
+        order_type=order_type,
         order_number=order_number,
+        order_time=order_time or timezone.now(),
         requested_ship_date=requested_ship_date,
+        expires_at=expires_at,
         reference_code=reference_code,
+        package_count=package_count,
+        package_type=package_type,
+        package_weight=package_weight,
+        package_length=package_length,
+        package_width=package_width,
+        package_height=package_height,
+        package_volume=package_volume,
+        logistics_provider=logistics_provider,
+        shipping_method=shipping_method,
+        tracking_number=tracking_number,
+        waybill_number=waybill_number,
+        waybill_printed=waybill_printed,
+        waybill_printed_at=timezone.now() if waybill_printed else None,
+        deliverer_name=deliverer_name,
+        deliverer_phone=deliverer_phone,
+        receiver_name=receiver_name,
+        receiver_phone=receiver_phone,
+        receiver_country=receiver_country,
+        receiver_state=receiver_state,
+        receiver_city=receiver_city,
+        receiver_address=receiver_address,
+        receiver_postal_code=receiver_postal_code,
+        packed_at=packed_at,
+        exception_state=exception_state,
+        exception_notes=exception_notes,
         notes=notes,
         creator=operator_name,
         openid=openid,
@@ -254,6 +419,7 @@ def create_sales_order(
             creator=operator_name,
             openid=openid,
         )
+    refresh_sales_order_status(sales_order)
     return sales_order
 
 
@@ -265,8 +431,34 @@ def update_sales_order(
     warehouse: Warehouse,
     customer: Customer,
     staging_location: Location,
+    order_time,
     requested_ship_date,
+    expires_at,
     reference_code: str,
+    package_count: int,
+    package_type: str,
+    package_weight: Decimal,
+    package_length: Decimal,
+    package_width: Decimal,
+    package_height: Decimal,
+    package_volume: Decimal,
+    logistics_provider: str,
+    shipping_method: str,
+    tracking_number: str,
+    waybill_number: str,
+    waybill_printed: bool,
+    deliverer_name: str,
+    deliverer_phone: str,
+    receiver_name: str,
+    receiver_phone: str,
+    receiver_country: str,
+    receiver_state: str,
+    receiver_city: str,
+    receiver_address: str,
+    receiver_postal_code: str,
+    packed_at,
+    exception_state: str,
+    exception_notes: str,
     notes: str,
     status: str,
 ) -> SalesOrder:
@@ -282,6 +474,10 @@ def update_sales_order(
             raise APIException({"detail": "Warehouse and customer cannot change after outbound work exists"})
         if staging_location.id != sales_order.staging_location_id:
             raise APIException({"detail": "Staging location cannot change after pick tasks exist"})
+    if packed_at is not None:
+        active_lines = sales_order.lines.filter(is_delete=False).exclude(status=SalesOrderLineStatus.CANCELLED)
+        if active_lines.exists() and not all(line.picked_qty + line.shipped_qty >= line.ordered_qty for line in active_lines):
+            raise APIException({"detail": "Orders can only be marked packed after every active line is picked"})
     if status == SalesOrderStatus.CANCELLED:
         if has_work or has_shipments:
             raise APIException({"detail": "Sales orders with pick tasks or shipments cannot be cancelled"})
@@ -293,16 +489,74 @@ def update_sales_order(
     sales_order.warehouse = warehouse
     sales_order.customer = customer
     sales_order.staging_location = staging_location
+    sales_order.order_time = order_time
     sales_order.requested_ship_date = requested_ship_date
+    sales_order.expires_at = expires_at
     sales_order.reference_code = reference_code
+    sales_order.package_count = package_count
+    sales_order.package_type = package_type
+    sales_order.package_weight = package_weight
+    sales_order.package_length = package_length
+    sales_order.package_width = package_width
+    sales_order.package_height = package_height
+    sales_order.package_volume = package_volume
+    sales_order.logistics_provider = logistics_provider
+    sales_order.shipping_method = shipping_method
+    sales_order.tracking_number = tracking_number
+    sales_order.waybill_number = waybill_number
+    sales_order.waybill_printed = waybill_printed
+    sales_order.waybill_printed_at = (
+        sales_order.waybill_printed_at or timezone.now()
+        if waybill_printed
+        else None
+    )
+    sales_order.deliverer_name = deliverer_name
+    sales_order.deliverer_phone = deliverer_phone
+    sales_order.receiver_name = receiver_name
+    sales_order.receiver_phone = receiver_phone
+    sales_order.receiver_country = receiver_country
+    sales_order.receiver_state = receiver_state
+    sales_order.receiver_city = receiver_city
+    sales_order.receiver_address = receiver_address
+    sales_order.receiver_postal_code = receiver_postal_code
+    sales_order.packed_at = packed_at
+    sales_order.exception_state = exception_state
+    sales_order.exception_notes = exception_notes
     sales_order.notes = notes
     sales_order.save(
         update_fields=[
             "warehouse",
             "customer",
             "staging_location",
+            "order_time",
             "requested_ship_date",
+            "expires_at",
             "reference_code",
+            "package_count",
+            "package_type",
+            "package_weight",
+            "package_length",
+            "package_width",
+            "package_height",
+            "package_volume",
+            "logistics_provider",
+            "shipping_method",
+            "tracking_number",
+            "waybill_number",
+            "waybill_printed",
+            "waybill_printed_at",
+            "deliverer_name",
+            "deliverer_phone",
+            "receiver_name",
+            "receiver_phone",
+            "receiver_country",
+            "receiver_state",
+            "receiver_city",
+            "receiver_address",
+            "receiver_postal_code",
+            "packed_at",
+            "exception_state",
+            "exception_notes",
             "notes",
             "status",
             "update_time",
@@ -651,6 +905,9 @@ def report_short_pick(
         creator=operator_name,
         openid=openid,
     )
+    if line.sales_order.exception_state != SalesOrderExceptionState.ORDER_INTERCEPTION:
+        line.sales_order.exception_state = SalesOrderExceptionState.ABNORMAL_PACKAGE
+        line.sales_order.save(update_fields=["exception_state", "update_time"])
     refresh_sales_order_status(line.sales_order)
     return short_pick
 
@@ -672,6 +929,15 @@ def resolve_short_pick_record(
     record.resolved_at = timezone.now()
     record.resolution_notes = payload.resolution_notes
     record.save(update_fields=["status", "resolved_by", "resolved_at", "resolution_notes", "update_time"])
+    if record.sales_order.exception_state == SalesOrderExceptionState.ABNORMAL_PACKAGE:
+        remaining_open_short_picks = record.sales_order.short_pick_records.filter(
+            is_delete=False,
+            status=ShortPickStatus.OPEN,
+        ).exclude(pk=record.pk)
+        if not remaining_open_short_picks.exists():
+            record.sales_order.exception_state = SalesOrderExceptionState.NORMAL
+            record.sales_order.save(update_fields=["exception_state", "update_time"])
+    refresh_sales_order_status(record.sales_order)
     return record
 
 
@@ -793,6 +1059,228 @@ def create_shipment(
         ),
     )
     return shipment
+
+
+@transaction.atomic
+def create_outbound_wave(
+    *,
+    openid: str,
+    operator_name: str,
+    warehouse: Warehouse,
+    wave_number: str,
+    sales_orders: Iterable[SalesOrder],
+    notes: str,
+) -> OutboundWave:
+    ensure_tenant_match(warehouse, openid, "Warehouse")
+    sales_orders = list(sales_orders)
+    if not sales_orders:
+        raise APIException({"detail": "Waves require at least one sales order"})
+    wave_order_type = sales_orders[0].order_type
+
+    wave = OutboundWave.objects.create(
+        warehouse=warehouse,
+        order_type=wave_order_type,
+        wave_number=wave_number,
+        status=OutboundWaveStatus.OPEN,
+        notes=notes,
+        generated_by=operator_name,
+        creator=operator_name,
+        openid=openid,
+    )
+
+    seen_ids: set[int] = set()
+    for index, sales_order in enumerate(sales_orders, start=1):
+        ensure_tenant_match(sales_order, openid, "Sales order")
+        if sales_order.id in seen_ids:
+            raise APIException({"detail": "Wave sales orders must be unique"})
+        seen_ids.add(sales_order.id)
+        if sales_order.warehouse_id != warehouse.id:
+            raise APIException({"detail": "Wave sales orders must belong to the selected warehouse"})
+        if sales_order.order_type != wave_order_type:
+            raise ValidationError({"detail": "Waves cannot mix sales order types"})
+        if sales_order.status in {SalesOrderStatus.CANCELLED, SalesOrderStatus.SHIPPED}:
+            raise APIException({"detail": "Cancelled or shipped sales orders cannot be added to a wave"})
+        existing_active_wave = sales_order.wave_assignments.filter(
+            is_delete=False,
+            wave__is_delete=False,
+        ).exclude(wave__status=OutboundWaveStatus.CANCELLED)
+        if existing_active_wave.exists():
+            raise APIException({"detail": f"Sales order {sales_order.order_number} is already assigned to an active wave"})
+
+        OutboundWaveOrder.objects.create(
+            wave=wave,
+            sales_order=sales_order,
+            sort_sequence=index,
+            creator=operator_name,
+            openid=openid,
+        )
+    return wave
+
+
+@transaction.atomic
+def update_outbound_wave(*, openid: str, wave: OutboundWave, payload: WaveUpdatePayload) -> OutboundWave:
+    ensure_tenant_match(wave, openid, "Outbound wave")
+    wave.status = payload.status
+    wave.notes = payload.notes
+    wave.save(update_fields=["status", "notes", "update_time"])
+    return wave
+
+
+@transaction.atomic
+def record_package_execution(
+    *,
+    openid: str,
+    operator_name: str,
+    warehouse: Warehouse,
+    sales_order: SalesOrder,
+    payload: PackageExecutionPayload,
+) -> PackageExecutionRecord:
+    ensure_tenant_match(warehouse, openid, "Warehouse")
+    ensure_tenant_match(sales_order, openid, "Sales order")
+    if sales_order.warehouse_id != warehouse.id:
+        raise APIException({"detail": "Package execution warehouse must match the sales order warehouse"})
+    if payload.requested_order_type and sales_order.order_type != payload.requested_order_type:
+        raise ValidationError({"detail": f"Sales order does not belong to the {payload.requested_order_type} partition"})
+    if payload.step_type == PackageExecutionStep.WEIGH and payload.weight is None:
+        raise APIException({"detail": "Weight is required for weighing records"})
+    if payload.shipment is not None:
+        ensure_tenant_match(payload.shipment, openid, "Shipment")
+        _ensure_shipment_matches_sales_order(shipment=payload.shipment, sales_order=sales_order)
+        if payload.shipment.warehouse_id != warehouse.id:
+            raise APIException({"detail": "Shipment warehouse must match the selected warehouse"})
+    if payload.wave is not None:
+        ensure_tenant_match(payload.wave, openid, "Wave")
+        _ensure_wave_matches_sales_order(wave=payload.wave, sales_order=sales_order)
+
+    record = PackageExecutionRecord.objects.create(
+        warehouse=warehouse,
+        sales_order=sales_order,
+        shipment=payload.shipment,
+        wave=payload.wave,
+        record_number=payload.record_number,
+        step_type=payload.step_type,
+        execution_status=payload.execution_status,
+        package_number=payload.package_number,
+        scan_code=payload.scan_code,
+        weight=payload.weight,
+        notes=payload.notes,
+        executed_by=operator_name,
+        creator=operator_name,
+        openid=openid,
+    )
+
+    update_fields: list[str] = []
+    if payload.weight is not None and sales_order.package_weight != payload.weight:
+        sales_order.package_weight = payload.weight
+        update_fields.append("package_weight")
+    if payload.step_type in {PackageExecutionStep.PACK, PackageExecutionStep.WEIGH} and sales_order.packed_at is None:
+        sales_order.packed_at = record.executed_at
+        update_fields.append("packed_at")
+    if payload.execution_status == PackageExecutionStatus.FLAGGED and sales_order.exception_state != SalesOrderExceptionState.ORDER_INTERCEPTION:
+        sales_order.exception_state = SalesOrderExceptionState.ABNORMAL_PACKAGE
+        update_fields.append("exception_state")
+        if payload.notes:
+            sales_order.exception_notes = payload.notes
+            update_fields.append("exception_notes")
+    if update_fields:
+        sales_order.save(update_fields=[*update_fields, "update_time"])
+    refresh_sales_order_status(sales_order)
+    return record
+
+
+@transaction.atomic
+def create_shipment_document(
+    *,
+    openid: str,
+    operator_name: str,
+    warehouse: Warehouse,
+    sales_order: SalesOrder,
+    payload: ShipmentDocumentPayload,
+) -> ShipmentDocumentRecord:
+    ensure_tenant_match(warehouse, openid, "Warehouse")
+    ensure_tenant_match(sales_order, openid, "Sales order")
+    if sales_order.warehouse_id != warehouse.id:
+        raise APIException({"detail": "Document warehouse must match the sales order warehouse"})
+    if payload.shipment is not None:
+        ensure_tenant_match(payload.shipment, openid, "Shipment")
+        _ensure_shipment_matches_sales_order(shipment=payload.shipment, sales_order=sales_order)
+    if payload.wave is not None:
+        ensure_tenant_match(payload.wave, openid, "Wave")
+        _ensure_wave_matches_sales_order(wave=payload.wave, sales_order=sales_order)
+
+    document = ShipmentDocumentRecord.objects.create(
+        warehouse=warehouse,
+        sales_order=sales_order,
+        shipment=payload.shipment,
+        wave=payload.wave,
+        document_number=payload.document_number,
+        document_type=payload.document_type,
+        reference_code=payload.reference_code,
+        file_name=payload.file_name,
+        notes=payload.notes,
+        generated_by=operator_name,
+        creator=operator_name,
+        openid=openid,
+    )
+
+    if payload.document_type == ShipmentDocumentType.SCANFORM:
+        sales_order.waybill_printed = True
+        sales_order.waybill_printed_at = sales_order.waybill_printed_at or document.generated_at
+        sales_order.save(update_fields=["waybill_printed", "waybill_printed_at", "update_time"])
+        refresh_sales_order_status(sales_order)
+    return document
+
+
+@transaction.atomic
+def record_logistics_tracking_event(
+    *,
+    openid: str,
+    operator_name: str,
+    warehouse: Warehouse,
+    sales_order: SalesOrder,
+    payload: LogisticsTrackingPayload,
+) -> LogisticsTrackingEvent:
+    ensure_tenant_match(warehouse, openid, "Warehouse")
+    ensure_tenant_match(sales_order, openid, "Sales order")
+    if sales_order.warehouse_id != warehouse.id:
+        raise APIException({"detail": "Tracking warehouse must match the sales order warehouse"})
+    if payload.shipment is not None:
+        ensure_tenant_match(payload.shipment, openid, "Shipment")
+        _ensure_shipment_matches_sales_order(shipment=payload.shipment, sales_order=sales_order)
+
+    tracking_number = payload.tracking_number or sales_order.tracking_number
+    if not tracking_number:
+        raise APIException({"detail": "Tracking number is required for logistics tracking"})
+
+    event = LogisticsTrackingEvent.objects.create(
+        warehouse=warehouse,
+        sales_order=sales_order,
+        shipment=payload.shipment,
+        event_number=payload.event_number,
+        tracking_number=tracking_number,
+        event_code=payload.event_code,
+        event_status=payload.event_status,
+        event_location=payload.event_location,
+        description=payload.description,
+        occurred_at=payload.occurred_at or timezone.now(),
+        recorded_by=operator_name,
+        creator=operator_name,
+        openid=openid,
+    )
+
+    update_fields: list[str] = []
+    if sales_order.tracking_number != tracking_number:
+        sales_order.tracking_number = tracking_number
+        update_fields.append("tracking_number")
+    if payload.event_status == LogisticsTrackingStatus.EXCEPTION and sales_order.exception_state != SalesOrderExceptionState.ORDER_INTERCEPTION:
+        sales_order.exception_state = SalesOrderExceptionState.ABNORMAL_PACKAGE
+        update_fields.append("exception_state")
+        if payload.description:
+            sales_order.exception_notes = payload.description
+            update_fields.append("exception_notes")
+    if update_fields:
+        sales_order.save(update_fields=[*update_fields, "update_time"])
+    return event
 
 
 def _record_dock_load_verification(

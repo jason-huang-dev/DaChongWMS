@@ -2,6 +2,10 @@
 
 `reporting` packages warehouse KPIs, operational CSV exports, storage accruals, contract rating, invoice generation, finance review, settlement/remittance, disputes, credit notes, external remittance ingestion, and the billing-event ledger.
 
+Operational fee management now lives separately in `apps.fees`. That modular app owns recharge/deduction requests, vouchers, charge items/templates, manual charges, rent details, business expenses, receivable bills, fund flow, and profit snapshots. `reporting` remains the invoice-centric legacy domain.
+
+The new `/statistics` frontend workbench currently reads directly from the operational inbound, outbound, returns, and inventory APIs. It is intentionally not backed by a separate modular `apps.statistics` service yet, because the core execution models still live in the legacy operational domains.
+
 ## Scope
 
 - `WarehouseKpiSnapshot`: point-in-time warehouse metrics derived from operational tables.

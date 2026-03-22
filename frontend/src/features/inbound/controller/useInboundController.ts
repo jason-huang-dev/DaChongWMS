@@ -3,15 +3,73 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useTenantScope } from "@/app/scope-context";
-import { runPurchaseOrderCancel, runPurchaseOrderUpdate, runReceiptCreate, runScanPutaway, runScanReceive } from "@/features/inbound/controller/actions";
+import {
+  runPurchaseOrderCancel,
+  runPurchaseOrderUpdate,
+  runReceiptCreate,
+  runScanPutaway,
+  runScanReceive,
+  runScanSign,
+  runStockInImport,
+} from "@/features/inbound/controller/actions";
 import { defaultPurchaseOrderEditValues, defaultReceiptCreateValues, mapPurchaseOrderToEditValues } from "@/features/inbound/model/mappers";
-import type { PurchaseOrderEditValues, PurchaseOrderRecord, PutawayTaskRecord, ReceiptCreateValues, ReceiptRecord, ScanPutawayValues, ScanReceiveValues } from "@/features/inbound/model/types";
 import { inboundApi } from "@/features/inbound/model/api";
+import type {
+  AdvanceShipmentNoticeRecord,
+  InboundImportBatchRecord,
+  InboundSigningRecord,
+  PurchaseOrderEditValues,
+  PurchaseOrderRecord,
+  PutawayTaskRecord,
+  ReceiptCreateValues,
+  ReceiptRecord,
+  ScanPutawayValues,
+  ScanReceiveValues,
+  ScanSignValues,
+} from "@/features/inbound/model/types";
+import { returnsApi } from "@/features/returns/model/api";
+import type { ReturnOrderRecord, ReturnReceiptRecord } from "@/features/returns/model/types";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
 import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
+
+interface InboundControllerOptions {
+  scopeOrderType?: string;
+  initialAdvanceShipmentNoticeFilters?: {
+    asn_number__icontains?: string;
+    status?: string;
+    status__in?: string;
+  };
+  initialPurchaseOrderFilters?: {
+    po_number__icontains?: string;
+    status?: string;
+    status__in?: string;
+  };
+  initialReceiptFilters?: {
+    receipt_number__icontains?: string;
+    status?: string;
+  };
+  initialSigningRecordFilters?: {
+    signing_number__icontains?: string;
+    carrier_name__icontains?: string;
+  };
+  initialImportBatchFilters?: {
+    batch_number__icontains?: string;
+    status?: string;
+  };
+  initialPutawayTaskFilters?: {
+    task_number__icontains?: string;
+    status?: string;
+    status__in?: string;
+  };
+  initialReturnOrderFilters?: {
+    return_number__icontains?: string;
+    status?: string;
+    status__in?: string;
+  };
+}
 
 async function invalidateInboundQueries(
   queryClient: ReturnType<typeof useQueryClient>,
@@ -24,34 +82,79 @@ async function invalidateInboundQueries(
   ]);
 }
 
-export function useInboundController() {
+export function useInboundController(options: InboundControllerOptions = {}) {
   const queryClient = useQueryClient();
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
+  const scopedOrderType = options.scopeOrderType ?? undefined;
+  const scopeViewKey = scopedOrderType ?? "all";
+  const scopedQuery = {
+    warehouse: activeWarehouseId ?? undefined,
+    ...(scopedOrderType ? { order_type: scopedOrderType } : {}),
+  };
   const [receiptSuccessMessage, setReceiptSuccessMessage] = useState<string | null>(null);
   const [receiptErrorMessage, setReceiptErrorMessage] = useState<string | null>(null);
-  const purchaseOrdersView = useDataView({
-    viewKey: `inbound.purchase-orders.${company?.openid ?? "anonymous"}`,
+  const [importBatchSuccessMessage, setImportBatchSuccessMessage] = useState<string | null>(null);
+  const [importBatchErrorMessage, setImportBatchErrorMessage] = useState<string | null>(null);
+
+  const advanceShipmentNoticesView = useDataView({
+    viewKey: `inbound.asns.${company?.openid ?? "anonymous"}.${scopeViewKey}`,
     defaultFilters: {
-      po_number__icontains: "",
-      status: "",
+      asn_number__icontains: options.initialAdvanceShipmentNoticeFilters?.asn_number__icontains ?? "",
+      status: options.initialAdvanceShipmentNoticeFilters?.status ?? "",
+      status__in: options.initialAdvanceShipmentNoticeFilters?.status__in ?? "",
+    },
+    pageSize: 8,
+  });
+  const purchaseOrdersView = useDataView({
+    viewKey: `inbound.purchase-orders.${company?.openid ?? "anonymous"}.${scopeViewKey}`,
+    defaultFilters: {
+      po_number__icontains: options.initialPurchaseOrderFilters?.po_number__icontains ?? "",
+      status: options.initialPurchaseOrderFilters?.status ?? "",
+      status__in: options.initialPurchaseOrderFilters?.status__in ?? "",
     },
     pageSize: 8,
   });
   const receiptsView = useDataView({
-    viewKey: `inbound.receipts.${company?.openid ?? "anonymous"}`,
+    viewKey: `inbound.receipts.${company?.openid ?? "anonymous"}.${scopeViewKey}`,
     defaultFilters: {
-      receipt_number__icontains: "",
-      status: "",
+      receipt_number__icontains: options.initialReceiptFilters?.receipt_number__icontains ?? "",
+      status: options.initialReceiptFilters?.status ?? "",
+    },
+    pageSize: 8,
+  });
+  const signingRecordsView = useDataView({
+    viewKey: `inbound.signing-records.${company?.openid ?? "anonymous"}.${scopeViewKey}`,
+    defaultFilters: {
+      signing_number__icontains: options.initialSigningRecordFilters?.signing_number__icontains ?? "",
+      carrier_name__icontains: options.initialSigningRecordFilters?.carrier_name__icontains ?? "",
+    },
+    pageSize: 8,
+  });
+  const importBatchesView = useDataView({
+    viewKey: `inbound.import-batches.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      batch_number__icontains: options.initialImportBatchFilters?.batch_number__icontains ?? "",
+      status: options.initialImportBatchFilters?.status ?? "",
     },
     pageSize: 8,
   });
   const putawayTasksView = useDataView({
-    viewKey: `inbound.putaway-tasks.${company?.openid ?? "anonymous"}`,
+    viewKey: `inbound.putaway-tasks.${company?.openid ?? "anonymous"}.${scopeViewKey}`,
     defaultFilters: {
-      task_number__icontains: "",
-      status: "",
+      task_number__icontains: options.initialPutawayTaskFilters?.task_number__icontains ?? "",
+      status: options.initialPutawayTaskFilters?.status ?? "",
+      status__in: options.initialPutawayTaskFilters?.status__in ?? "",
     },
     pageSize: 8,
+  });
+  const returnOrdersView = useDataView({
+    viewKey: `inbound.return-orders.${company?.openid ?? "anonymous"}`,
+    defaultFilters: {
+      return_number__icontains: options.initialReturnOrderFilters?.return_number__icontains ?? "",
+      status: options.initialReturnOrderFilters?.status ?? "",
+      status__in: options.initialReturnOrderFilters?.status__in ?? "",
+    },
+    pageSize: 6,
   });
 
   const createReceiptMutation = useMutation({
@@ -67,55 +170,121 @@ export function useInboundController() {
     },
   });
 
+  const importBatchMutation = useMutation({
+    mutationFn: (file: File) => runStockInImport(file),
+    onSuccess: async (batch) => {
+      setImportBatchErrorMessage(null);
+      setImportBatchSuccessMessage(`${batch.batch_number}: ${batch.summary}`);
+      await invalidateInboundQueries(queryClient, true);
+    },
+    onError: (error) => {
+      setImportBatchSuccessMessage(null);
+      setImportBatchErrorMessage(parseApiError(error));
+    },
+  });
+
   return {
     activeWarehouse,
+    advanceShipmentNoticesQuery: usePaginatedResource<AdvanceShipmentNoticeRecord>(
+      ["inbound", "advance-shipment-notices"],
+      inboundApi.advanceShipmentNotices,
+      advanceShipmentNoticesView.page,
+      advanceShipmentNoticesView.pageSize,
+      {
+        ...scopedQuery,
+        ...advanceShipmentNoticesView.queryFilters,
+      },
+    ),
+    advanceShipmentNoticesView,
     createReceiptMutation,
     defaultReceiptCreateValues,
+    importBatchErrorMessage,
+    importBatchMutation,
+    importBatchSuccessMessage,
+    importBatchesQuery: usePaginatedResource<InboundImportBatchRecord>(
+      ["inbound", "import-batches"],
+      inboundApi.importBatches,
+      importBatchesView.page,
+      importBatchesView.pageSize,
+      importBatchesView.queryFilters,
+    ),
+    importBatchesView,
     overduePurchaseOrdersQuery: usePaginatedResource<PurchaseOrderRecord>(
       ["inbound", "purchase-orders", "overdue"],
       inboundApi.purchaseOrders,
       1,
       25,
       {
-        warehouse: activeWarehouseId ?? undefined,
+        ...scopedQuery,
         expected_arrival_date__lte: new Date().toISOString().slice(0, 10),
       },
     ),
-    purchaseOrdersView,
     purchaseOrdersQuery: usePaginatedResource<PurchaseOrderRecord>(
       ["inbound", "purchase-orders"],
       inboundApi.purchaseOrders,
       purchaseOrdersView.page,
       purchaseOrdersView.pageSize,
       {
-        warehouse: activeWarehouseId ?? undefined,
+        ...scopedQuery,
         ...purchaseOrdersView.queryFilters,
       },
     ),
-    receiptsView,
-    receiptsQuery: usePaginatedResource<ReceiptRecord>(
-      ["inbound", "receipts"],
-      inboundApi.receipts,
-      receiptsView.page,
-      receiptsView.pageSize,
-      {
-        warehouse: activeWarehouseId ?? undefined,
-        ...receiptsView.queryFilters,
-      },
-    ),
-    putawayTasksView,
+    purchaseOrdersView,
     putawayTasksQuery: usePaginatedResource<PutawayTaskRecord>(
       ["inbound", "putaway-tasks"],
       inboundApi.putawayTasks,
       putawayTasksView.page,
       putawayTasksView.pageSize,
       {
-        warehouse: activeWarehouseId ?? undefined,
+        ...scopedQuery,
         ...putawayTasksView.queryFilters,
       },
     ),
+    putawayTasksView,
     receiptErrorMessage,
     receiptSuccessMessage,
+    receiptsQuery: usePaginatedResource<ReceiptRecord>(
+      ["inbound", "receipts"],
+      inboundApi.receipts,
+      receiptsView.page,
+      receiptsView.pageSize,
+      {
+        ...scopedQuery,
+        ...receiptsView.queryFilters,
+      },
+    ),
+    receiptsView,
+    returnOrdersQuery: usePaginatedResource<ReturnOrderRecord>(
+      ["inbound", "return-orders"],
+      returnsApi.returnOrders,
+      returnOrdersView.page,
+      returnOrdersView.pageSize,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+        ...returnOrdersView.queryFilters,
+      },
+    ),
+    returnOrdersView,
+    returnReceiptsQuery: usePaginatedResource<ReturnReceiptRecord>(
+      ["inbound", "return-receipts"],
+      returnsApi.receipts,
+      1,
+      5,
+      {
+        warehouse: activeWarehouseId ?? undefined,
+      },
+    ),
+    signingRecordsQuery: usePaginatedResource<InboundSigningRecord>(
+      ["inbound", "signing-records"],
+      inboundApi.signingRecords,
+      signingRecordsView.page,
+      signingRecordsView.pageSize,
+      {
+        ...scopedQuery,
+        ...signingRecordsView.queryFilters,
+      },
+    ),
+    signingRecordsView,
   };
 }
 
@@ -165,12 +334,12 @@ export function usePurchaseOrderDetailController(purchaseOrderId: string | undef
   });
 
   return {
-    purchaseOrderQuery,
-    updateMutation,
     cancelMutation,
-    successMessage,
-    errorMessage,
     defaultValues: purchaseOrderQuery.data ? mapPurchaseOrderToEditValues(purchaseOrderQuery.data) : defaultPurchaseOrderEditValues,
+    errorMessage,
+    purchaseOrderQuery,
+    successMessage,
+    updateMutation,
   };
 }
 
@@ -191,7 +360,27 @@ export function useScanReceiveController() {
     },
   });
 
-  return { mutation, successMessage, errorMessage };
+  return { errorMessage, mutation, successMessage };
+}
+
+export function useScanSignController() {
+  const queryClient = useQueryClient();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const mutation = useMutation({
+    mutationFn: (values: ScanSignValues) => runScanSign(values),
+    onSuccess: async (signingRecord) => {
+      setErrorMessage(null);
+      setSuccessMessage(`Signing record ${signingRecord.signing_number} captured for ${signingRecord.purchase_order_number}.`);
+      await invalidateInboundQueries(queryClient);
+    },
+    onError: (error) => {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+    },
+  });
+
+  return { errorMessage, mutation, successMessage };
 }
 
 export function useScanPutawayController() {
@@ -211,5 +400,5 @@ export function useScanPutawayController() {
     },
   });
 
-  return { mutation, successMessage, errorMessage };
+  return { errorMessage, mutation, successMessage };
 }

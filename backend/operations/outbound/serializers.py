@@ -14,14 +14,28 @@ from staff.models import ListModel as Staff
 from utils import datasolve
 from warehouse.models import Warehouse
 
+from operations.order_types import OperationOrderType
+
 from .models import (
     DockLoadVerification,
+    LogisticsTrackingEvent,
+    LogisticsTrackingStatus,
+    OutboundWave,
+    OutboundWaveOrder,
+    OutboundWaveStatus,
+    PackageExecutionRecord,
+    PackageExecutionStatus,
+    PackageExecutionStep,
     PickTask,
     PickTaskStatus,
     SalesOrder,
+    SalesOrderExceptionState,
+    SalesOrderFulfillmentStage,
     SalesOrderLine,
     SalesOrderStatus,
     Shipment,
+    ShipmentDocumentRecord,
+    ShipmentDocumentType,
     ShipmentLine,
     ShortPickReason,
     ShortPickRecord,
@@ -66,14 +80,42 @@ class SalesOrderLineWriteSerializer(serializers.Serializer):
 class SalesOrderSerializer(serializers.ModelSerializer):
     create_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
     update_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    order_time = serializers.DateTimeField(required=False, allow_null=True, format="%Y-%m-%d %H:%M:%S")
+    expires_at = serializers.DateTimeField(required=False, allow_null=True, format="%Y-%m-%d %H:%M:%S")
+    waybill_printed_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    picking_started_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    picking_completed_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    packed_at = serializers.DateTimeField(required=False, allow_null=True, format="%Y-%m-%d %H:%M:%S")
     warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.filter(is_delete=False))
     customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.filter(is_delete=False))
     staging_location = serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(is_delete=False))
     warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
     customer_name = serializers.CharField(source="customer.customer_name", read_only=True)
     staging_location_code = serializers.CharField(source="staging_location.location_code", read_only=True)
+    order_type = serializers.ChoiceField(choices=OperationOrderType.choices, required=False, default=OperationOrderType.DROPSHIP)
     order_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
+    fulfillment_stage = serializers.ChoiceField(choices=SalesOrderFulfillmentStage.choices, read_only=True)
+    exception_state = serializers.ChoiceField(
+        choices=SalesOrderExceptionState.choices,
+        required=False,
+        default=SalesOrderExceptionState.NORMAL,
+    )
     reference_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    package_type = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    logistics_provider = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    shipping_method = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    tracking_number = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    waybill_number = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    deliverer_name = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    deliverer_phone = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    receiver_name = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    receiver_phone = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    receiver_country = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    receiver_state = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    receiver_city = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    receiver_address = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    receiver_postal_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
+    exception_notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
     notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
     lines = SalesOrderLineSerializer(many=True, read_only=True)
     line_items = SalesOrderLineWriteSerializer(many=True, write_only=True, required=False)
@@ -89,10 +131,41 @@ class SalesOrderSerializer(serializers.ModelSerializer):
             "customer_name",
             "staging_location",
             "staging_location_code",
+            "order_type",
             "order_number",
+            "order_time",
             "requested_ship_date",
+            "expires_at",
             "reference_code",
             "status",
+            "fulfillment_stage",
+            "exception_state",
+            "package_count",
+            "package_type",
+            "package_weight",
+            "package_length",
+            "package_width",
+            "package_height",
+            "package_volume",
+            "logistics_provider",
+            "shipping_method",
+            "tracking_number",
+            "waybill_number",
+            "waybill_printed",
+            "waybill_printed_at",
+            "deliverer_name",
+            "deliverer_phone",
+            "receiver_name",
+            "receiver_phone",
+            "receiver_country",
+            "receiver_state",
+            "receiver_city",
+            "receiver_address",
+            "receiver_postal_code",
+            "picking_started_at",
+            "picking_completed_at",
+            "packed_at",
+            "exception_notes",
             "notes",
             "lines",
             "line_items",
@@ -106,6 +179,10 @@ class SalesOrderSerializer(serializers.ModelSerializer):
             "warehouse_name",
             "customer_name",
             "staging_location_code",
+            "fulfillment_stage",
+            "waybill_printed_at",
+            "picking_started_at",
+            "picking_completed_at",
             "lines",
             "creator",
             "openid",
@@ -119,10 +196,14 @@ class SalesOrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"line_items": "Sales orders require at least one line item"})
         if action == "create" and attrs.get("status") not in {None, SalesOrderStatus.OPEN}:
             raise serializers.ValidationError({"status": "Sales orders must start in OPEN status"})
+        if action == "create" and attrs.get("packed_at") is not None:
+            raise serializers.ValidationError({"packed_at": "Orders cannot be marked packed before picking completes"})
         if action in {"update", "partial_update"} and "line_items" in attrs:
             raise serializers.ValidationError({"line_items": "Sales order lines cannot be changed through header updates"})
         if action in {"update", "partial_update"} and "order_number" in attrs and self.instance and attrs["order_number"] != self.instance.order_number:
             raise serializers.ValidationError({"order_number": "Sales order numbers are immutable once created"})
+        if action in {"update", "partial_update"} and "order_type" in attrs and self.instance and attrs["order_type"] != self.instance.order_type:
+            raise serializers.ValidationError({"order_type": "Sales order type is immutable once created"})
         if action in {"update", "partial_update"} and attrs.get("status") in {SalesOrderStatus.ALLOCATED, SalesOrderStatus.PICKING, SalesOrderStatus.PICKED, SalesOrderStatus.SHIPPED}:
             raise serializers.ValidationError({"status": "Sales order status is system-managed beyond cancellation"})
         return attrs
@@ -141,6 +222,7 @@ class PickTaskSerializer(serializers.ModelSerializer):
     from_location_code = serializers.CharField(source="from_location.location_code", read_only=True)
     to_location_code = serializers.CharField(source="to_location.location_code", read_only=True)
     warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
+    order_type = serializers.CharField(source="sales_order_line.sales_order.order_type", read_only=True)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=Staff.objects.filter(is_delete=False), allow_null=True, required=False)
     assigned_to_name = serializers.CharField(source="assigned_to.staff_name", read_only=True)
     to_location = serializers.PrimaryKeyRelatedField(queryset=Location.objects.filter(is_delete=False), allow_null=True, required=False)
@@ -155,6 +237,7 @@ class PickTaskSerializer(serializers.ModelSerializer):
             "id",
             "sales_order_line",
             "order_number",
+            "order_type",
             "warehouse",
             "warehouse_name",
             "goods",
@@ -274,6 +357,7 @@ class ShipmentSerializer(serializers.ModelSerializer):
     reference_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
     notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
     order_number = serializers.CharField(source="sales_order.order_number", read_only=True)
+    order_type = serializers.CharField(source="sales_order.order_type", read_only=True)
     warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
     staging_location_code = serializers.CharField(source="staging_location.location_code", read_only=True)
     lines = ShipmentLineSerializer(many=True, read_only=True)
@@ -287,6 +371,7 @@ class ShipmentSerializer(serializers.ModelSerializer):
             "id",
             "sales_order",
             "order_number",
+            "order_type",
             "warehouse",
             "warehouse_name",
             "staging_location",
@@ -324,6 +409,284 @@ class ShipmentSerializer(serializers.ModelSerializer):
         if action == "create" and not attrs.get("line_items"):
             raise serializers.ValidationError({"line_items": "Shipments require at least one shipment line"})
         return attrs
+
+
+class OutboundWaveOrderSerializer(serializers.ModelSerializer):
+    order_number = serializers.CharField(source="sales_order.order_number", read_only=True)
+    sales_order_status = serializers.CharField(source="sales_order.status", read_only=True)
+    fulfillment_stage = serializers.CharField(source="sales_order.fulfillment_stage", read_only=True)
+    exception_state = serializers.CharField(source="sales_order.exception_state", read_only=True)
+
+    class Meta:
+        model = OutboundWaveOrder
+        fields = [
+            "id",
+            "sales_order",
+            "order_number",
+            "sort_sequence",
+            "sales_order_status",
+            "fulfillment_stage",
+            "exception_state",
+        ]
+        read_only_fields = fields
+
+
+class OutboundWaveSerializer(serializers.ModelSerializer):
+    create_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    update_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    generated_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.filter(is_delete=False))
+    warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
+    order_type = serializers.ChoiceField(choices=OperationOrderType.choices, read_only=True)
+    wave_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
+    status = serializers.ChoiceField(choices=OutboundWaveStatus.choices, required=False, default=OutboundWaveStatus.OPEN)
+    notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    generated_by = serializers.CharField(read_only=True)
+    orders = OutboundWaveOrderSerializer(many=True, read_only=True)
+    order_count = serializers.SerializerMethodField()
+    sales_order_ids = serializers.PrimaryKeyRelatedField(
+        queryset=SalesOrder.objects.filter(is_delete=False),
+        many=True,
+        write_only=True,
+        required=False,
+    )
+
+    class Meta:
+        model = OutboundWave
+        fields = [
+            "id",
+            "warehouse",
+            "warehouse_name",
+            "order_type",
+            "wave_number",
+            "status",
+            "notes",
+            "generated_by",
+            "generated_at",
+            "order_count",
+            "orders",
+            "sales_order_ids",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+        read_only_fields = [
+            "id",
+            "warehouse_name",
+            "generated_by",
+            "generated_at",
+            "order_count",
+            "orders",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+
+    def get_order_count(self, obj: OutboundWave) -> int:
+        return obj.orders.filter(is_delete=False).count()
+
+    def validate(self, attrs):
+        action = getattr(self.context.get("view"), "action", None)
+        if action == "create" and not attrs.get("sales_order_ids"):
+            raise serializers.ValidationError({"sales_order_ids": "Waves require at least one sales order"})
+        if action in {"update", "partial_update"} and "sales_order_ids" in attrs:
+            raise serializers.ValidationError({"sales_order_ids": "Wave assignments are immutable after creation"})
+        return attrs
+
+
+class PackageExecutionRecordSerializer(serializers.ModelSerializer):
+    create_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    update_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    executed_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.filter(is_delete=False))
+    sales_order = serializers.PrimaryKeyRelatedField(queryset=SalesOrder.objects.filter(is_delete=False))
+    shipment = serializers.PrimaryKeyRelatedField(queryset=Shipment.objects.filter(is_delete=False), allow_null=True, required=False)
+    wave = serializers.PrimaryKeyRelatedField(queryset=OutboundWave.objects.filter(is_delete=False), allow_null=True, required=False)
+    warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
+    order_number = serializers.CharField(source="sales_order.order_number", read_only=True)
+    order_type = serializers.CharField(source="sales_order.order_type", read_only=True)
+    shipment_number = serializers.CharField(source="shipment.shipment_number", read_only=True)
+    wave_number = serializers.CharField(source="wave.wave_number", read_only=True)
+    record_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
+    step_type = serializers.ChoiceField(choices=PackageExecutionStep.choices)
+    execution_status = serializers.ChoiceField(
+        choices=PackageExecutionStatus.choices,
+        required=False,
+        default=PackageExecutionStatus.SUCCESS,
+    )
+    package_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
+    scan_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    weight = serializers.DecimalField(max_digits=18, decimal_places=4, min_value=Decimal("0.0000"), allow_null=True, required=False)
+    notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    requested_order_type = serializers.ChoiceField(
+        choices=OperationOrderType.choices,
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        default="",
+    )
+    executed_by = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = PackageExecutionRecord
+        fields = [
+            "id",
+            "warehouse",
+            "warehouse_name",
+            "sales_order",
+            "order_number",
+            "order_type",
+            "shipment",
+            "shipment_number",
+            "wave",
+            "wave_number",
+            "record_number",
+            "step_type",
+            "execution_status",
+            "package_number",
+            "scan_code",
+            "weight",
+            "notes",
+            "requested_order_type",
+            "executed_by",
+            "executed_at",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+        read_only_fields = [
+            "id",
+            "warehouse_name",
+            "order_number",
+            "shipment_number",
+            "wave_number",
+            "executed_by",
+            "executed_at",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+
+
+class ShipmentDocumentRecordSerializer(serializers.ModelSerializer):
+    create_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    update_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    generated_at = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.filter(is_delete=False))
+    sales_order = serializers.PrimaryKeyRelatedField(queryset=SalesOrder.objects.filter(is_delete=False))
+    shipment = serializers.PrimaryKeyRelatedField(queryset=Shipment.objects.filter(is_delete=False), allow_null=True, required=False)
+    wave = serializers.PrimaryKeyRelatedField(queryset=OutboundWave.objects.filter(is_delete=False), allow_null=True, required=False)
+    warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
+    order_number = serializers.CharField(source="sales_order.order_number", read_only=True)
+    order_type = serializers.CharField(source="sales_order.order_type", read_only=True)
+    shipment_number = serializers.CharField(source="shipment.shipment_number", read_only=True)
+    wave_number = serializers.CharField(source="wave.wave_number", read_only=True)
+    document_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
+    document_type = serializers.ChoiceField(choices=ShipmentDocumentType.choices)
+    reference_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    file_name = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    generated_by = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = ShipmentDocumentRecord
+        fields = [
+            "id",
+            "warehouse",
+            "warehouse_name",
+            "sales_order",
+            "order_number",
+            "order_type",
+            "shipment",
+            "shipment_number",
+            "wave",
+            "wave_number",
+            "document_number",
+            "document_type",
+            "reference_code",
+            "file_name",
+            "notes",
+            "generated_by",
+            "generated_at",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+        read_only_fields = [
+            "id",
+            "warehouse_name",
+            "order_number",
+            "shipment_number",
+            "wave_number",
+            "generated_by",
+            "generated_at",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+
+
+class LogisticsTrackingEventSerializer(serializers.ModelSerializer):
+    create_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    update_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
+    occurred_at = serializers.DateTimeField(required=False, allow_null=True, format="%Y-%m-%d %H:%M:%S")
+    warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.filter(is_delete=False))
+    sales_order = serializers.PrimaryKeyRelatedField(queryset=SalesOrder.objects.filter(is_delete=False))
+    shipment = serializers.PrimaryKeyRelatedField(queryset=Shipment.objects.filter(is_delete=False), allow_null=True, required=False)
+    warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
+    order_number = serializers.CharField(source="sales_order.order_number", read_only=True)
+    order_type = serializers.CharField(source="sales_order.order_type", read_only=True)
+    shipment_number = serializers.CharField(source="shipment.shipment_number", read_only=True)
+    event_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
+    tracking_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    event_code = serializers.CharField(max_length=32, validators=[datasolve.data_validate])
+    event_status = serializers.ChoiceField(choices=LogisticsTrackingStatus.choices)
+    event_location = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    description = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    recorded_by = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = LogisticsTrackingEvent
+        fields = [
+            "id",
+            "warehouse",
+            "warehouse_name",
+            "sales_order",
+            "order_number",
+            "order_type",
+            "shipment",
+            "shipment_number",
+            "event_number",
+            "tracking_number",
+            "event_code",
+            "event_status",
+            "event_location",
+            "description",
+            "occurred_at",
+            "recorded_by",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+        read_only_fields = [
+            "id",
+            "warehouse_name",
+            "order_number",
+            "order_type",
+            "shipment_number",
+            "recorded_by",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
 
 
 class ScanPickSerializer(serializers.Serializer):

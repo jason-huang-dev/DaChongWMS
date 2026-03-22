@@ -7,7 +7,14 @@ from django.urls import path, re_path
 from django.urls.resolvers import URLPattern
 from rest_framework.viewsets import ViewSet
 
-from .views import AdvanceShipmentNoticeViewSet, PurchaseOrderViewSet, PutawayTaskViewSet, ReceiptViewSet
+from .views import (
+    AdvanceShipmentNoticeViewSet,
+    InboundImportBatchViewSet,
+    InboundSigningRecordViewSet,
+    PurchaseOrderViewSet,
+    PutawayTaskViewSet,
+    ReceiptViewSet,
+)
 
 app_name = "inbound"
 
@@ -46,6 +53,12 @@ urlpatterns: List[URLPattern] = [
     path("receipts/", _action(ReceiptViewSet, {"get": "list", "post": "create"}), name="receipt-list"),
     path("receipts/scan-receive/", _action(ReceiptViewSet, {"post": "scan_receive"}), name="receipt-scan-receive"),
     re_path(r"^receipts/(?P<pk>\d+)/$", _action(ReceiptViewSet, {"get": "retrieve"}), name="receipt-detail"),
+    path("signing-records/", _action(InboundSigningRecordViewSet, {"get": "list"}), name="signing-record-list"),
+    path("signing-records/scan-sign/", _action(InboundSigningRecordViewSet, {"post": "scan_sign"}), name="signing-record-scan-sign"),
+    re_path(r"^signing-records/(?P<pk>\d+)/$", _action(InboundSigningRecordViewSet, {"get": "retrieve"}), name="signing-record-detail"),
+    path("import-batches/", _action(InboundImportBatchViewSet, {"get": "list"}), name="import-batch-list"),
+    path("import-batches/upload/", _action(InboundImportBatchViewSet, {"post": "upload"}), name="import-batch-upload"),
+    re_path(r"^import-batches/(?P<pk>\d+)/$", _action(InboundImportBatchViewSet, {"get": "retrieve"}), name="import-batch-detail"),
     path("putaway-tasks/", _action(PutawayTaskViewSet, {"get": "list"}), name="putaway-task-list"),
     path("putaway-tasks/scan-complete/", _action(PutawayTaskViewSet, {"post": "scan_complete"}), name="putaway-task-scan-complete"),
     re_path(

@@ -29,13 +29,55 @@ export function installFetchMock(...handlers: FetchHandler[]) {
       return jsonResponse(buildPaginatedResponse([]));
     }
     if (
+      /^\/api\/v1\/organizations\/\d+\/customer-accounts\/$/.test(url.pathname) ||
+      /^\/api\/v1\/organizations\/\d+\/warehouses\/$/.test(url.pathname) ||
+      /^\/api\/v1\/organizations\/\d+\/fees\/[^/]+\/$/.test(url.pathname)
+    ) {
+      return jsonResponse([]);
+    }
+    if (
       url.pathname === "/api/access/company-invites/" ||
       url.pathname === "/api/access/password-resets/" ||
       url.pathname === "/api/access/audit-events/" ||
       url.pathname === "/api/access/workspace-tabs/" ||
-      url.pathname === "/api/outbound/dock-load-verifications/"
+      url.pathname === "/api/counting/approvals/queue/" ||
+      url.pathname === "/api/inbound/advance-shipment-notices/" ||
+      url.pathname === "/api/inbound/purchase-orders/" ||
+      url.pathname === "/api/inbound/receipts/" ||
+      url.pathname === "/api/inbound/signing-records/" ||
+      url.pathname === "/api/inbound/putaway-tasks/" ||
+      url.pathname === "/api/inventory/adjustment-reasons/" ||
+      url.pathname === "/api/inventory/adjustment-rules/" ||
+      url.pathname === "/api/inventory/balances/" ||
+      url.pathname === "/api/inventory/movements/" ||
+      url.pathname === "/api/outbound/dock-load-verifications/" ||
+      url.pathname === "/api/outbound/package-executions/" ||
+      url.pathname === "/api/outbound/pick-tasks/" ||
+      url.pathname === "/api/outbound/sales-orders/" ||
+      url.pathname === "/api/outbound/shipments/" ||
+      url.pathname === "/api/reporting/report-exports/" ||
+      url.pathname === "/api/reporting/invoice-settlements/" ||
+      url.pathname === "/api/reporting/invoice-disputes/" ||
+      url.pathname === "/api/reporting/finance-exports/" ||
+      url.pathname === "/api/returns/dispositions/" ||
+      url.pathname === "/api/returns/receipts/" ||
+      url.pathname === "/api/returns/return-orders/" ||
+      url.pathname === "/api/transfers/replenishment-tasks/" ||
+      url.pathname === "/api/transfers/transfer-orders/"
     ) {
       return jsonResponse(buildPaginatedResponse([]));
+    }
+    if (url.pathname === "/api/counting/approvals/dashboard/") {
+      return jsonResponse({
+        pending_sla_hours: 24,
+        recount_sla_hours: 12,
+        pending_total: 0,
+        pending_sla_breach_count: 0,
+        pending_age_buckets: {},
+        pending_oldest_items: [],
+        recount_sla_breach_count: 0,
+        recount_items: [],
+      });
     }
     if (url.pathname === "/api/access/workspace-tabs/sync/") {
       return jsonResponse({

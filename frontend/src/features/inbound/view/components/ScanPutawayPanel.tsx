@@ -14,19 +14,24 @@ const defaultValues: ScanPutawayValues = {
   to_location_barcode: "",
   goods_barcode: "",
   lpn_barcode: "",
+  order_type: "",
 };
 
-export function ScanPutawayPanel() {
+interface ScanPutawayPanelProps {
+  orderType?: string;
+}
+
+export function ScanPutawayPanel({ orderType }: ScanPutawayPanelProps) {
   const { mutation, successMessage, errorMessage } = useScanPutawayController();
   const form = useForm<ScanPutawayValues>({
-    defaultValues,
+    defaultValues: { ...defaultValues, order_type: orderType ?? "" },
     resolver: zodResolver(scanPutawaySchema),
   });
 
   const handleSubmit = form.handleSubmit((values) =>
     mutation.mutate(values, {
       onSuccess: () => {
-        form.reset(defaultValues);
+        form.reset({ ...defaultValues, order_type: orderType ?? "" });
       },
     }),
   );

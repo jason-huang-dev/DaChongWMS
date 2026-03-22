@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useMatches, useNavigate } from "react-router-dom";
 
 import { useTenantScope } from "@/app/scope-context";
+import { useI18n } from "@/app/ui-preferences";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/http";
 import type { PaginatedResponse } from "@/shared/types/api";
 import type { WorkspaceTabPreferenceRecord, WorkbenchPreferenceRecord } from "@/shared/types/domain";
@@ -77,6 +78,7 @@ export function useWorkspaceTabs() {
   const matches = useMatches();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { locale, translateText } = useI18n();
   const { activeMembershipId, activeWarehouseId, company } = useTenantScope();
 
   const tabsQuery = useQuery({
@@ -110,13 +112,13 @@ export function useWorkspaceTabs() {
     if (!activeMembershipId) {
       return;
     }
-    if (!["/dashboard", "/inventory/balances", "/inbound", "/outbound", "/transfers", "/returns", "/counting", "/automation", "/integrations", "/finance", "/security", "/mfa/enroll"].some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`))) {
+    if (!["/dashboard", "/inventory", "/inventory/balances", "/inbound", "/outbound", "/transfers", "/returns", "/counting", "/automation", "/integrations", "/finance", "/security", "/mfa/enroll"].some((path) => location.pathname === path || location.pathname.startsWith(`${path}/`))) {
       return;
     }
     syncMutation.mutate({
       route_key: buildRouteKey(location.pathname),
       route_path: location.pathname,
-      title: buildTabTitle(location.pathname, matches),
+      title: translateText(buildTabTitle(location.pathname, matches)),
       is_active: true,
       context_payload: {
         company_id: company?.id ?? null,
@@ -125,7 +127,7 @@ export function useWorkspaceTabs() {
     });
     // The tab state should track route changes only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeMembershipId, activeWarehouseId, company?.id, location.pathname]);
+  }, [activeMembershipId, activeWarehouseId, company?.id, locale, location.pathname]);
 
   return {
     tabsQuery,

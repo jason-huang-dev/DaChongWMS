@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Alert, Button, CircularProgress, Divider, Stack, Typography } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { config } from "@/lib/config";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import type { LoginFormValues } from "@/features/auth/model/types";
@@ -15,6 +16,7 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const { translateText } = useI18n();
   const { login, bootstrap } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
@@ -69,10 +71,10 @@ export function LoginPage() {
             <FormTextField autoComplete="current-password" label="Password" name="password" type="password" />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button disabled={form.formState.isSubmitting} size="large" type="submit" variant="contained">
-                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : "Sign in"}
+                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : translateText("Sign in")}
               </Button>
               <Button component={RouterLink} size="large" to="/signup" variant="outlined">
-                Sign up
+                {translateText("Sign up")}
               </Button>
             </Stack>
           </Stack>
@@ -81,12 +83,12 @@ export function LoginPage() {
           <>
             <Divider />
             <Stack spacing={1.5}>
-              <Typography variant="subtitle2">Developer bootstrap</Typography>
+              <Typography variant="subtitle2">{translateText("Developer bootstrap")}</Typography>
               <Typography color="text.secondary" variant="body2">
-                Use the backend test-system module to seed a demo tenant, then continue straight into the app.
+                {translateText("Use the backend test-system module to seed a demo tenant, then continue straight into the app.")}
               </Typography>
               <Button disabled={isBootstrapping} onClick={handleBootstrap} variant="outlined">
-                {isBootstrapping ? <CircularProgress color="inherit" size={20} /> : "Create demo workspace"}
+                {isBootstrapping ? <CircularProgress color="inherit" size={20} /> : translateText("Create demo workspace")}
               </Button>
             </Stack>
           </>

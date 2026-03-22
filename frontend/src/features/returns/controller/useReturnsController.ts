@@ -34,6 +34,22 @@ import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
+interface ReturnsControllerOptions {
+  initialReturnOrderFilters?: {
+    return_number__icontains?: string;
+    status?: string;
+    status__in?: string;
+  };
+  initialReceiptFilters?: {
+    receipt_number__icontains?: string;
+    stock_status?: string;
+  };
+  initialDispositionFilters?: {
+    disposition_number__icontains?: string;
+    disposition_type?: string;
+  };
+}
+
 async function invalidateReturnsQueries(queryClient: ReturnType<typeof useQueryClient>) {
   await invalidateQueryGroups(queryClient, [
     ["returns"],
@@ -43,7 +59,7 @@ async function invalidateReturnsQueries(queryClient: ReturnType<typeof useQueryC
   ]);
 }
 
-export function useReturnsController() {
+export function useReturnsController(options: ReturnsControllerOptions = {}) {
   const queryClient = useQueryClient();
   const { company, activeWarehouse, activeWarehouseId } = useTenantScope();
   const [returnOrderSuccessMessage, setReturnOrderSuccessMessage] = useState<string | null>(null);
@@ -55,24 +71,25 @@ export function useReturnsController() {
   const returnOrdersView = useDataView({
     viewKey: `returns.return-orders.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      return_number__icontains: "",
-      status: "",
+      return_number__icontains: options.initialReturnOrderFilters?.return_number__icontains ?? "",
+      status: options.initialReturnOrderFilters?.status ?? "",
+      status__in: options.initialReturnOrderFilters?.status__in ?? "",
     },
     pageSize: 8,
   });
   const receiptsView = useDataView({
     viewKey: `returns.receipts.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      receipt_number__icontains: "",
-      stock_status: "",
+      receipt_number__icontains: options.initialReceiptFilters?.receipt_number__icontains ?? "",
+      stock_status: options.initialReceiptFilters?.stock_status ?? "",
     },
     pageSize: 8,
   });
   const dispositionsView = useDataView({
     viewKey: `returns.dispositions.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      disposition_number__icontains: "",
-      disposition_type: "",
+      disposition_number__icontains: options.initialDispositionFilters?.disposition_number__icontains ?? "",
+      disposition_type: options.initialDispositionFilters?.disposition_type ?? "",
     },
     pageSize: 8,
   });

@@ -8,23 +8,37 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, status, viewsets
 from rest_framework.exceptions import APIException
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 
 from utils.operator import get_request_operator
 from utils.page import MyPageNumberPagination
 
-from .filter import AdvanceShipmentNoticeFilter, PurchaseOrderFilter, PutawayTaskFilter, ReceiptFilter
-from .models import AdvanceShipmentNotice, PurchaseOrder, PutawayTask, PutawayTaskStatus, Receipt
+from operations.order_types import OperationOrderType
+
+from .filter import (
+    AdvanceShipmentNoticeFilter,
+    InboundImportBatchFilter,
+    InboundSigningRecordFilter,
+    PurchaseOrderFilter,
+    PutawayTaskFilter,
+    ReceiptFilter,
+)
+from .models import AdvanceShipmentNotice, InboundImportBatch, InboundSigningRecord, PurchaseOrder, PutawayTask, PutawayTaskStatus, Receipt
 from .permissions import CanManageInboundRecords
 from .serializers import (
     AdvanceShipmentNoticeSerializer,
+    InboundImportBatchSerializer,
+    InboundImportBatchUploadSerializer,
+    InboundSigningRecordSerializer,
     PurchaseOrderSerializer,
     PutawayTaskCompleteSerializer,
     PutawayTaskSerializer,
     ReceiptSerializer,
     ScanPutawaySerializer,
     ScanReceiptSerializer,
+    ScanSigningSerializer,
 )
 from .services import (
     AdvanceShipmentNoticeLinePayload,
@@ -35,14 +49,17 @@ from .services import (
     complete_putaway_task,
     create_advance_shipment_notice,
     create_purchase_order,
+    import_stock_in_manifest,
     record_receipt,
     scan_complete_putaway_task,
     scan_receive_goods,
+    scan_sign_inbound,
     update_advance_shipment_notice,
     update_purchase_order,
     update_putaway_task,
     ScanPutawayPayload,
     ScanReceiptPayload,
+    ScanSignPayload,
 )
 
 
@@ -91,6 +108,7 @@ class PurchaseOrderViewSet(
             operator_name=operator.staff_name,
             warehouse=serializer.validated_data["warehouse"],
             supplier=serializer.validated_data["supplier"],
+            order_type=serializer.validated_data.get("order_type", OperationOrderType.STANDARD),
             po_number=serializer.validated_data["po_number"],
             expected_arrival_date=serializer.validated_data.get("expected_arrival_date"),
             reference_code=serializer.validated_data.get("reference_code", ""),
@@ -294,3 +312,58 @@ class PutawayTaskViewSet(
             payload=ScanPutawayPayload(**serializer.validated_data),
         )
         return Response(self.get_serializer(task).data, status=status.HTTP_200_OK)
+
+
+class InboundSigningRecordViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    TenantScopedViewSet,
+):
+    queryset = InboundSigningRecord.objects.select_related("asn", "purchase_order", "warehouse")
+    serializer_class = InboundSigningRecordSerializer
+    filterset_class = InboundSigningRecordFilter
+    ordering_fields = ["id", "signed_at", "create_time"]
+    search_fields = [
+        "signing_number",
+        "reference_code",
+        "carrier_name",
+        "vehicle_plate",
+        "signed_by",
+        "purchase_order__po_number",
+        "asn__asn_number",
+    ]
+
+    def scan_sign(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        serializer = ScanSigningSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        signing_record = scan_sign_inbound(
+            openid=self._current_openid(),
+            operator=operator,
+            payload=ScanSignPayload(**serializer.validated_data),
+        )
+        return Response(self.get_serializer(signing_record).data, status=status.HTTP_201_CREATED)
+
+
+class InboundImportBatchViewSet(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    TenantScopedViewSet,
+):
+    queryset = InboundImportBatch.objects.all()
+    serializer_class = InboundImportBatchSerializer
+    filterset_class = InboundImportBatchFilter
+    ordering_fields = ["id", "imported_at", "create_time"]
+    parser_classes = [MultiPartParser, FormParser]
+    search_fields = ["batch_number", "file_name", "imported_by", "summary"]
+
+    def upload(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        serializer = InboundImportBatchUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operator = get_request_operator(request)
+        batch = import_stock_in_manifest(
+            openid=self._current_openid(),
+            operator=operator,
+            uploaded_file=serializer.validated_data["file"],
+        )
+        return Response(self.get_serializer(batch).data, status=status.HTTP_201_CREATED)

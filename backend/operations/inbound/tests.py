@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 from django.urls import resolve, reverse
 from rest_framework.test import APIRequestFactory, force_authenticate
@@ -18,8 +19,30 @@ from supplier.models import ListModel as Supplier
 from userprofile.models import Users
 from warehouse.models import Warehouse
 
-from .models import AdvanceShipmentNotice, AdvanceShipmentNoticeLine, PurchaseOrder, PurchaseOrderLine, PurchaseOrderLineStatus, PurchaseOrderStatus, PutawayTask, PutawayTaskStatus
-from .views import AdvanceShipmentNoticeViewSet, PurchaseOrderViewSet, PutawayTaskViewSet, ReceiptViewSet
+from operations.order_types import OperationOrderType
+
+from .models import (
+    AdvanceShipmentNotice,
+    AdvanceShipmentNoticeLine,
+    InboundImportBatch,
+    InboundImportBatchStatus,
+    InboundSigningRecord,
+    PurchaseOrder,
+    PurchaseOrderLine,
+    PurchaseOrderLineStatus,
+    PurchaseOrderStatus,
+    PutawayTask,
+    PutawayTaskStatus,
+    Receipt,
+)
+from .views import (
+    AdvanceShipmentNoticeViewSet,
+    InboundImportBatchViewSet,
+    InboundSigningRecordViewSet,
+    PurchaseOrderViewSet,
+    PutawayTaskViewSet,
+    ReceiptViewSet,
+)
 
 
 def create_user_profile(**overrides: Any) -> Users:
@@ -279,6 +302,53 @@ class InboundApiTests(TestCase):
         self.assertEqual(purchase_order.lines.count(), 1)
         self.assertEqual(purchase_order.lines.first().ordered_qty, Decimal("15.0000"))
 
+    def test_purchase_order_create_accepts_b2b_partition_and_list_filters_it(self) -> None:
+        create_view = PurchaseOrderViewSet.as_view({"post": "create"})
+        create_request = self.factory.post(
+            "/api/inbound/purchase-orders/",
+            {
+                "warehouse": self.warehouse.pk,
+                "supplier": self.supplier.pk,
+                "order_type": OperationOrderType.B2B,
+                "po_number": "PO-B2B-1001",
+                "line_items": [
+                    {
+                        "line_number": 1,
+                        "goods": self.goods.pk,
+                        "ordered_qty": "5.0000",
+                        "unit_cost": "3.5000",
+                    }
+                ],
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(create_request, user=self.user, token=self.auth)
+        create_response = create_view(create_request)
+        self.assertEqual(create_response.status_code, 201)
+        self.assertEqual(create_response.data["order_type"], OperationOrderType.B2B)
+
+        create_purchase_order(
+            warehouse=self.warehouse,
+            supplier=self.supplier,
+            po_number="PO-STANDARD-1001",
+            order_type=OperationOrderType.STANDARD,
+        )
+
+        list_view = PurchaseOrderViewSet.as_view({"get": "list"})
+        list_request = self.factory.get(
+            "/api/inbound/purchase-orders/",
+            {"order_type": OperationOrderType.B2B},
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(list_request, user=self.user, token=self.auth)
+        list_response = list_view(list_request)
+
+        self.assertEqual(list_response.status_code, 200)
+        self.assertEqual(list_response.data["count"], 1)
+        self.assertEqual(list_response.data["results"][0]["po_number"], "PO-B2B-1001")
+        self.assertEqual(list_response.data["results"][0]["order_type"], OperationOrderType.B2B)
+
     def test_receipt_create_updates_inventory_and_putaway_queue(self) -> None:
         purchase_order = create_purchase_order(warehouse=self.warehouse, supplier=self.supplier, po_number="PO-2001")
         line = create_purchase_order_line(purchase_order=purchase_order, goods=self.goods, ordered_qty=Decimal("12.0000"))
@@ -404,6 +474,86 @@ class InboundApiTests(TestCase):
         self.assertEqual(receiving_balance.on_hand_qty, Decimal("0.0000"))
         self.assertEqual(storage_balance.on_hand_qty, Decimal("6.0000"))
 
+    def test_scan_receive_and_putaway_reject_mismatched_order_type_partition(self) -> None:
+        standard_purchase_order = create_purchase_order(
+            warehouse=self.warehouse,
+            supplier=self.supplier,
+            po_number="PO-STANDARD-SCAN",
+            order_type=OperationOrderType.STANDARD,
+        )
+        create_purchase_order_line(
+            purchase_order=standard_purchase_order,
+            goods=self.goods,
+            ordered_qty=Decimal("2.0000"),
+        )
+
+        scan_receive_view = ReceiptViewSet.as_view({"post": "scan_receive"})
+        mismatched_receive_request = self.factory.post(
+            "/api/inbound/receipts/scan-receive/",
+            {
+                "purchase_order_number": standard_purchase_order.po_number,
+                "receipt_number": "RCPT-STANDARD-MISMATCH",
+                "receipt_location_barcode": self.receiving_location.barcode,
+                "goods_barcode": self.goods.bar_code,
+                "received_qty": "1.0000",
+                "order_type": OperationOrderType.B2B,
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(mismatched_receive_request, user=self.user, token=self.auth)
+        mismatched_receive_response = scan_receive_view(mismatched_receive_request)
+        self.assertEqual(mismatched_receive_response.status_code, 400)
+        self.assertIn("B2B partition", str(mismatched_receive_response.data["detail"]))
+
+        b2b_purchase_order = create_purchase_order(
+            warehouse=self.warehouse,
+            supplier=self.supplier,
+            po_number="PO-B2B-SCAN",
+            order_type=OperationOrderType.B2B,
+        )
+        create_purchase_order_line(
+            purchase_order=b2b_purchase_order,
+            goods=self.goods,
+            ordered_qty=Decimal("3.0000"),
+        )
+
+        receive_request = self.factory.post(
+            "/api/inbound/receipts/scan-receive/",
+            {
+                "purchase_order_number": b2b_purchase_order.po_number,
+                "receipt_number": "RCPT-B2B-001",
+                "receipt_location_barcode": self.receiving_location.barcode,
+                "goods_barcode": self.goods.bar_code,
+                "received_qty": "3.0000",
+                "order_type": OperationOrderType.B2B,
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(receive_request, user=self.user, token=self.auth)
+        receive_response = scan_receive_view(receive_request)
+        self.assertEqual(receive_response.status_code, 201)
+
+        task = PutawayTask.objects.get(receipt_line__receipt__receipt_number="RCPT-B2B-001")
+        scan_putaway_view = PutawayTaskViewSet.as_view({"post": "scan_complete"})
+        mismatched_putaway_request = self.factory.post(
+            "/api/inbound/putaway-tasks/scan-complete/",
+            {
+                "task_number": task.task_number,
+                "from_location_barcode": self.receiving_location.barcode,
+                "to_location_barcode": self.storage_location.barcode,
+                "goods_barcode": self.goods.bar_code,
+                "order_type": OperationOrderType.STANDARD,
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(mismatched_putaway_request, user=self.user, token=self.auth)
+        mismatched_putaway_response = scan_putaway_view(mismatched_putaway_request)
+        self.assertEqual(mismatched_putaway_response.status_code, 400)
+        self.assertIn("STANDARD partition", str(mismatched_putaway_response.data["detail"]))
+
     def test_scan_receive_supports_asn_lpn_and_attribute_parsing(self) -> None:
         purchase_order = create_purchase_order(warehouse=self.warehouse, supplier=self.supplier, po_number="PO-ASN-001")
         purchase_order_line = create_purchase_order_line(purchase_order=purchase_order, goods=self.goods, ordered_qty=Decimal("4.0000"))
@@ -488,6 +638,63 @@ class InboundApiTests(TestCase):
         asn_line = AdvanceShipmentNoticeLine.objects.get(asn__asn_number="ASN-1001", line_number=1)
         self.assertEqual(asn_line.received_qty, Decimal("4.0000"))
 
+    def test_scan_sign_creates_signing_record_from_purchase_order_number(self) -> None:
+        purchase_order = create_purchase_order(warehouse=self.warehouse, supplier=self.supplier, po_number="PO-SIGN-001")
+        create_purchase_order_line(purchase_order=purchase_order, goods=self.goods, ordered_qty=Decimal("3.0000"))
+
+        view = InboundSigningRecordViewSet.as_view({"post": "scan_sign"})
+        request = self.factory.post(
+            "/api/inbound/signing-records/scan-sign/",
+            {
+                "purchase_order_number": purchase_order.po_number,
+                "signing_number": "SIGN-001",
+                "carrier_name": "Linehaul Carrier",
+                "vehicle_plate": "NY-TRK-01",
+            },
+            format="json",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(request, user=self.user, token=self.auth)
+        response = view(request)
+
+        self.assertEqual(response.status_code, 201)
+        signing_record = InboundSigningRecord.objects.get(signing_number="SIGN-001")
+        self.assertEqual(signing_record.purchase_order_id, purchase_order.id)
+        self.assertEqual(signing_record.warehouse_id, self.warehouse.id)
+        self.assertEqual(signing_record.signed_by, self.operator.staff_name)
+        self.assertEqual(signing_record.carrier_name, "Linehaul Carrier")
+
+    def test_import_batch_upload_posts_receipts_and_tracks_failures(self) -> None:
+        purchase_order = create_purchase_order(warehouse=self.warehouse, supplier=self.supplier, po_number="PO-IMPORT-001")
+        create_purchase_order_line(purchase_order=purchase_order, goods=self.goods, ordered_qty=Decimal("5.0000"))
+
+        csv_content = "\n".join(
+            [
+                "purchase_order_number,asn_number,receipt_number,receipt_location_barcode,goods_barcode,received_qty,unit_cost",
+                f"{purchase_order.po_number},,RCPT-IMPORT-001,{self.receiving_location.barcode},{self.goods.bar_code},2.0000,4.0000",
+                f"{purchase_order.po_number},,RCPT-IMPORT-002,{self.receiving_location.barcode},UNKNOWN-SKU,1.0000,4.0000",
+            ]
+        )
+        upload = SimpleUploadedFile("stock-in-import.csv", csv_content.encode("utf-8"), content_type="text/csv")
+        view = InboundImportBatchViewSet.as_view({"post": "upload"})
+        request = self.factory.post(
+            "/api/inbound/import-batches/upload/",
+            {"file": upload},
+            format="multipart",
+            HTTP_OPERATOR=str(self.operator.id),
+        )
+        force_authenticate(request, user=self.user, token=self.auth)
+        response = view(request)
+
+        self.assertEqual(response.status_code, 201)
+        batch = InboundImportBatch.objects.get()
+        self.assertEqual(batch.status, InboundImportBatchStatus.COMPLETED_WITH_ERRORS)
+        self.assertEqual(batch.total_rows, 2)
+        self.assertEqual(batch.success_rows, 1)
+        self.assertEqual(batch.failed_rows, 1)
+        self.assertEqual(Receipt.objects.filter(receipt_number="RCPT-IMPORT-001").count(), 1)
+        self.assertEqual(len(batch.failure_rows), 1)
+
     def test_receipt_create_requires_inbound_authorization(self) -> None:
         purchase_order = create_purchase_order(warehouse=self.warehouse, supplier=self.supplier, po_number="PO-4001")
         line = create_purchase_order_line(purchase_order=purchase_order, goods=self.goods)
@@ -530,7 +737,11 @@ class InboundUrlsTests(TestCase):
         self.assertEqual(reverse("inbound:advance-shipment-notice-list"), "/api/inbound/advance-shipment-notices/")
         self.assertEqual(reverse("inbound:purchase-order-list"), "/api/inbound/purchase-orders/")
         self.assertEqual(reverse("inbound:receipt-list"), "/api/inbound/receipts/")
+        self.assertEqual(reverse("inbound:signing-record-list"), "/api/inbound/signing-records/")
+        self.assertEqual(reverse("inbound:import-batch-list"), "/api/inbound/import-batches/")
         self.assertEqual(reverse("inbound:putaway-task-list"), "/api/inbound/putaway-tasks/")
         self.assertEqual(reverse("inbound:receipt-scan-receive"), "/api/inbound/receipts/scan-receive/")
+        self.assertEqual(reverse("inbound:signing-record-scan-sign"), "/api/inbound/signing-records/scan-sign/")
+        self.assertEqual(reverse("inbound:import-batch-upload"), "/api/inbound/import-batches/upload/")
         self.assertEqual(reverse("inbound:putaway-task-scan-complete"), "/api/inbound/putaway-tasks/scan-complete/")
         self.assertEqual(resolve("/api/inbound/purchase-orders/").url_name, "purchase-order-list")

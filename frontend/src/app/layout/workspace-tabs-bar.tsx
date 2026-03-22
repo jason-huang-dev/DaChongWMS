@@ -1,9 +1,10 @@
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import PushPinRoundedIcon from "@mui/icons-material/PushPinRounded";
 import { Box, IconButton, Stack, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 
 import { brandColors } from "@/app/brand";
+import { useI18n } from "@/app/ui-preferences";
 import type { WorkspaceTabPreferenceRecord } from "@/shared/types/domain";
 
 interface WorkspaceTabsBarProps {
@@ -15,6 +16,10 @@ interface WorkspaceTabsBarProps {
 }
 
 export function WorkspaceTabsBar({ activePath, isClosingTab = false, onActivate, onClose, tabs }: WorkspaceTabsBarProps) {
+  const theme = useTheme();
+  const { translateText } = useI18n();
+  const isDark = theme.palette.mode === "dark";
+
   return (
     <Stack direction="row" spacing={1} sx={{ overflowX: "auto", pb: 0.5 }}>
       {tabs.map((tab) => {
@@ -28,10 +33,16 @@ export function WorkspaceTabsBar({ activePath, isClosingTab = false, onActivate,
             onClick={() => onActivate(tab.id, tab.route_path)}
             spacing={0.75}
             sx={{
-              backgroundColor: isActive ? alpha(brandColors.gold, 0.18) : alpha(brandColors.surface, 0.78),
-              border: `1px solid ${isActive ? alpha(brandColors.goldDark, 0.22) : alpha(brandColors.divider, 0.9)}`,
+              backgroundColor: isActive
+                ? alpha(brandColors.gold, isDark ? 0.24 : 0.18)
+                : alpha(theme.palette.background.paper, isDark ? 0.72 : 0.78),
+              border: `1px solid ${
+                isActive
+                  ? alpha(isDark ? brandColors.goldLight : brandColors.goldDark, 0.22)
+                  : alpha(theme.palette.divider, 0.9)
+              }`,
               borderRadius: 999,
-              color: brandColors.ink,
+              color: theme.palette.text.primary,
               cursor: "pointer",
               flex: "0 0 auto",
               minWidth: 0,
@@ -41,7 +52,7 @@ export function WorkspaceTabsBar({ activePath, isClosingTab = false, onActivate,
           >
             {tab.is_pinned ? <PushPinRoundedIcon sx={{ fontSize: 15 }} /> : null}
             <Typography noWrap sx={{ fontSize: 12, fontWeight: isActive ? 700 : 600, maxWidth: 180 }}>
-              {tab.title}
+              {translateText(tab.title)}
             </Typography>
             {tab.route_path !== "/dashboard" ? (
               <IconButton
@@ -62,7 +73,7 @@ export function WorkspaceTabsBar({ activePath, isClosingTab = false, onActivate,
       {tabs.length === 0 ? (
         <Box sx={{ px: 1.5, py: 0.75 }}>
           <Typography color="text.secondary" variant="caption">
-            Open routes are kept here for quick return.
+            {translateText("Open routes are kept here for quick return.")}
           </Typography>
         </Box>
       ) : null}

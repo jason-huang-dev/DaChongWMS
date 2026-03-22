@@ -1,5 +1,6 @@
 import Grid from "@mui/material/Grid";
 import { Stack } from "@mui/material";
+import { useSearchParams } from "react-router-dom";
 
 import { useReturnsController } from "@/features/returns/controller/useReturnsController";
 import { CreateReturnOrderPanel } from "@/features/returns/view/components/CreateReturnOrderPanel";
@@ -7,8 +8,13 @@ import { ReturnsTable } from "@/features/returns/view/ReturnsTable";
 import { ReturnDispositionPanel } from "@/features/returns/view/components/ReturnDispositionPanel";
 import { ReturnReceiptPanel } from "@/features/returns/view/components/ReturnReceiptPanel";
 import { PageHeader } from "@/shared/components/page-header";
+import { useScrollToHash } from "@/shared/hooks/use-scroll-to-hash";
 
 export function ReturnsPage() {
+  const [searchParams] = useSearchParams();
+
+  useScrollToHash();
+
   const {
     activeWarehouse,
     returnOrderErrorMessage,
@@ -26,7 +32,21 @@ export function ReturnsPage() {
     receiptsView,
     returnOrdersQuery,
     returnOrdersView,
-  } = useReturnsController();
+  } = useReturnsController({
+    initialReturnOrderFilters: {
+      return_number__icontains: searchParams.get("returnNumber") ?? "",
+      status: searchParams.get("returnOrderStatus") ?? "",
+      status__in: searchParams.get("returnOrderStatuses") ?? "",
+    },
+    initialReceiptFilters: {
+      receipt_number__icontains: searchParams.get("returnReceiptNumber") ?? "",
+      stock_status: searchParams.get("returnStockStatus") ?? "",
+    },
+    initialDispositionFilters: {
+      disposition_number__icontains: searchParams.get("dispositionNumber") ?? "",
+      disposition_type: searchParams.get("dispositionType") ?? "",
+    },
+  });
 
   return (
     <Stack spacing={3}>

@@ -7,6 +7,7 @@ export const reportingApi = {
   invoiceDisputes: "/api/reporting/invoice-disputes/",
   invoiceSettlements: "/api/reporting/invoice-settlements/",
   invoices: "/api/reporting/invoices/",
+  reportExports: "/api/reporting/report-exports/",
 };
 
 export function postInvoiceAction(

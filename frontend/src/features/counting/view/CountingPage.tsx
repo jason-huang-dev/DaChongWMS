@@ -1,5 +1,6 @@
 import Grid from "@mui/material/Grid";
-import { Alert, Stack, TextField } from "@mui/material";
+import { Alert, Box, Stack, TextField } from "@mui/material";
+import { useSearchParams } from "react-router-dom";
 
 import { useCountingController } from "@/features/counting/controller/useCountingController";
 import { CountingTable } from "@/features/counting/view/CountingTable";
@@ -12,6 +13,7 @@ import { PageHeader } from "@/shared/components/page-header";
 import { RecordLink } from "@/shared/components/record-link";
 import { ResourceTable } from "@/shared/components/resource-table";
 import { StatusChip } from "@/shared/components/status-chip";
+import { useScrollToHash } from "@/shared/hooks/use-scroll-to-hash";
 import { formatDateTime, formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
@@ -39,6 +41,10 @@ const assignmentFields: DataViewFieldConfig<{ scanner_task_type: string; scanner
 ];
 
 export function CountingPage() {
+  const [searchParams] = useSearchParams();
+
+  useScrollToHash();
+
   const {
     activeWarehouse,
     assignmentsQuery,
@@ -53,7 +59,16 @@ export function CountingPage() {
     queueSelection,
     queueView,
     setBulkDecisionNotes,
-  } = useCountingController();
+  } = useCountingController({
+    initialAssignmentsFilters: {
+      scanner_task_type: searchParams.get("scannerTaskType") ?? "",
+      scanner_task_status: searchParams.get("scannerTaskStatus") ?? "",
+    },
+    initialQueueFilters: {
+      status: searchParams.get("approvalStatus") ?? "",
+      requested_by__icontains: searchParams.get("approvalRequester") ?? "",
+    },
+  });
 
   return (
     <Stack spacing={3}>
@@ -81,103 +96,112 @@ export function CountingPage() {
       </Grid>
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12 }}>
-          <ScannerTaskPanel
-            errorMessage={nextTaskQuery.isError ? parseApiError(nextTaskQuery.error) : null}
-            isLoading={nextTaskQuery.isLoading}
-            task={nextTaskQuery.data}
-          />
+          <Box id="scanner-task">
+            <ScannerTaskPanel
+              errorMessage={nextTaskQuery.isError ? parseApiError(nextTaskQuery.error) : null}
+              isLoading={nextTaskQuery.isLoading}
+              task={nextTaskQuery.data}
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 12, xl: 6 }}>
-          <ResourceTable
-            columns={[
-              { header: "Count line", key: "line", render: (row) => `${row.cycle_count}-${row.line_number}` },
-              { header: "Location", key: "location", render: (row) => row.location_code },
-              { header: "SKU", key: "sku", render: (row) => row.goods_code },
-              { header: "Task", key: "task", render: (row) => row.scanner_task_type || "COUNT" },
-              { header: "Task status", key: "taskStatus", render: (row) => <StatusChip status={row.scanner_task_status || row.status} /> },
-              { header: "Counted qty", key: "counted", align: "right", render: (row) => formatNumber(row.counted_qty) },
-            ]}
-            error={assignmentsQuery.error ? parseApiError(assignmentsQuery.error) : null}
-            getRowId={(row) => row.id}
-            isLoading={assignmentsQuery.isLoading}
-            pagination={{
-              page: assignmentsView.page,
-              pageSize: assignmentsView.pageSize,
-              total: assignmentsQuery.data?.count ?? 0,
-              onPageChange: assignmentsView.setPage,
-            }}
-            rows={assignmentsQuery.data?.results ?? []}
-            subtitle="Current counter assignments for the logged-in operator"
-            title="My assignments"
-            toolbar={
-              <DataViewToolbar
-                activeFilterCount={assignmentsView.activeFilterCount}
-                fields={assignmentFields}
-                filters={assignmentsView.filters}
-                onChange={assignmentsView.updateFilter}
-                onReset={assignmentsView.resetFilters}
-                resultCount={assignmentsQuery.data?.count}
-                savedViews={{
-                  items: assignmentsView.savedViews,
-                  selectedId: assignmentsView.selectedSavedViewId,
-                  onApply: assignmentsView.applySavedView,
-                  onDelete: assignmentsView.deleteSavedView,
-                  onSave: assignmentsView.saveCurrentView,
-                }}
-              />
-            }
-          />
+          <Box id="assignments">
+            <ResourceTable
+              columns={[
+                { header: "Count line", key: "line", render: (row) => `${row.cycle_count}-${row.line_number}` },
+                { header: "Location", key: "location", render: (row) => row.location_code },
+                { header: "SKU", key: "sku", render: (row) => row.goods_code },
+                { header: "Task", key: "task", render: (row) => row.scanner_task_type || "COUNT" },
+                { header: "Task status", key: "taskStatus", render: (row) => <StatusChip status={row.scanner_task_status || row.status} /> },
+                { header: "Counted qty", key: "counted", align: "right", render: (row) => formatNumber(row.counted_qty) },
+              ]}
+              error={assignmentsQuery.error ? parseApiError(assignmentsQuery.error) : null}
+              getRowId={(row) => row.id}
+              isLoading={assignmentsQuery.isLoading}
+              pagination={{
+                page: assignmentsView.page,
+                pageSize: assignmentsView.pageSize,
+                total: assignmentsQuery.data?.count ?? 0,
+                onPageChange: assignmentsView.setPage,
+              }}
+              rows={assignmentsQuery.data?.results ?? []}
+              subtitle="Current counter assignments for the logged-in operator"
+              title="My assignments"
+              toolbar={
+                <DataViewToolbar
+                  activeFilterCount={assignmentsView.activeFilterCount}
+                  fields={assignmentFields}
+                  filters={assignmentsView.filters}
+                  onChange={assignmentsView.updateFilter}
+                  onReset={assignmentsView.resetFilters}
+                  resultCount={assignmentsQuery.data?.count}
+                  savedViews={{
+                    items: assignmentsView.savedViews,
+                    selectedId: assignmentsView.selectedSavedViewId,
+                    onApply: assignmentsView.applySavedView,
+                    onDelete: assignmentsView.deleteSavedView,
+                    onSave: assignmentsView.saveCurrentView,
+                  }}
+                />
+              }
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 12, xl: 6 }}>
-          <ExceptionLane
-            columns={[
-              {
-                header: "Count",
-                key: "count",
-                render: (row) => <RecordLink to={`/counting/approvals/${row.approval_id}`}>{row.count_number}</RecordLink>,
-              },
-              { header: "Warehouse", key: "warehouse", render: (row) => row.warehouse_name },
-              { header: "Location", key: "location", render: (row) => row.location_code },
-              { header: "SKU", key: "sku", render: (row) => row.goods_code },
-              { header: "Variance", key: "variance", align: "right", render: (row) => formatNumber(row.variance_qty) },
-              { header: "Required role", key: "role", render: (row) => row.required_role },
-              { header: "Age", key: "age", align: "right", render: (row) => `${row.age_hours.toFixed(1)}h` },
-            ]}
-            error={dashboardQuery.error ? parseApiError(dashboardQuery.error) : null}
-            getRowId={(row) => row.approval_id}
-            isLoading={dashboardQuery.isLoading}
-            rows={dashboardQuery.data?.pending_oldest_items ?? []}
-            severity="warning"
-            subtitle="Oldest pending approvals from the supervisor dashboard."
-            title="Blocked counts: approval breaches"
-          />
+          <Box id="approval-breaches">
+            <ExceptionLane
+              columns={[
+                {
+                  header: "Count",
+                  key: "count",
+                  render: (row) => <RecordLink to={`/counting/approvals/${row.approval_id}`}>{row.count_number}</RecordLink>,
+                },
+                { header: "Warehouse", key: "warehouse", render: (row) => row.warehouse_name },
+                { header: "Location", key: "location", render: (row) => row.location_code },
+                { header: "SKU", key: "sku", render: (row) => row.goods_code },
+                { header: "Variance", key: "variance", align: "right", render: (row) => formatNumber(row.variance_qty) },
+                { header: "Required role", key: "role", render: (row) => row.required_role },
+                { header: "Age", key: "age", align: "right", render: (row) => `${row.age_hours.toFixed(1)}h` },
+              ]}
+              error={dashboardQuery.error ? parseApiError(dashboardQuery.error) : null}
+              getRowId={(row) => row.approval_id}
+              isLoading={dashboardQuery.isLoading}
+              rows={dashboardQuery.data?.pending_oldest_items ?? []}
+              severity="warning"
+              subtitle="Oldest pending approvals from the supervisor dashboard."
+              title="Blocked counts: approval breaches"
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 12, xl: 6 }}>
-          <ExceptionLane
-            columns={[
-              {
-                header: "Count",
-                key: "count",
-                render: (row) => <RecordLink to={`/counting/approvals/${row.approval_id}`}>{row.count_number}</RecordLink>,
-              },
-              { header: "Warehouse", key: "warehouse", render: (row) => row.warehouse_name },
-              { header: "Location", key: "location", render: (row) => row.location_code },
-              { header: "SKU", key: "sku", render: (row) => row.goods_code },
-              { header: "Variance", key: "variance", align: "right", render: (row) => formatNumber(row.variance_qty) },
-              { header: "Assigned recount", key: "assigned", render: (row) => row.recount_assigned_to || "--" },
-              { header: "Age", key: "age", align: "right", render: (row) => `${row.age_hours.toFixed(1)}h` },
-            ]}
-            emptyMessage="No recount SLA breaches."
-            error={dashboardQuery.error ? parseApiError(dashboardQuery.error) : null}
-            getRowId={(row) => `${row.approval_id}-${row.count_number}`}
-            isLoading={dashboardQuery.isLoading}
-            rows={dashboardQuery.data?.recount_items ?? []}
-            severity="error"
-            subtitle="Rejected or reassigned counts that are already beyond the recount SLA."
-            title="Blocked counts: recount breaches"
-          />
+          <Box id="recount-breaches">
+            <ExceptionLane
+              columns={[
+                {
+                  header: "Count",
+                  key: "count",
+                  render: (row) => <RecordLink to={`/counting/approvals/${row.approval_id}`}>{row.count_number}</RecordLink>,
+                },
+                { header: "Warehouse", key: "warehouse", render: (row) => row.warehouse_name },
+                { header: "Location", key: "location", render: (row) => row.location_code },
+                { header: "SKU", key: "sku", render: (row) => row.goods_code },
+                { header: "Variance", key: "variance", align: "right", render: (row) => formatNumber(row.variance_qty) },
+                { header: "Assigned recount", key: "assigned", render: (row) => row.recount_assigned_to || "--" },
+                { header: "Age", key: "age", align: "right", render: (row) => `${row.age_hours.toFixed(1)}h` },
+              ]}
+              emptyMessage="No recount SLA breaches."
+              error={dashboardQuery.error ? parseApiError(dashboardQuery.error) : null}
+              getRowId={(row) => `${row.approval_id}-${row.count_number}`}
+              isLoading={dashboardQuery.isLoading}
+              rows={dashboardQuery.data?.recount_items ?? []}
+              severity="error"
+              subtitle="Rejected or reassigned counts that are already beyond the recount SLA."
+              title="Blocked counts: recount breaches"
+            />
+          </Box>
         </Grid>
         <Grid size={{ xs: 12 }}>
+          <Box id="variance-approvals">
           {bulkActionSuccessMessage ? <Alert severity="success">{bulkActionSuccessMessage}</Alert> : null}
           {bulkActionErrorMessage ? <Alert severity="error">{bulkActionErrorMessage}</Alert> : null}
           <CountingTable
@@ -237,6 +261,7 @@ export function CountingPage() {
             }
             total={queueQuery.data?.count ?? 0}
           />
+          </Box>
         </Grid>
       </Grid>
     </Stack>

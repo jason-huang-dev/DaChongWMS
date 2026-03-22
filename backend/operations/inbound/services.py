@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import csv
+import io
 from dataclasses import dataclass
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Iterable
 
 from django.db import transaction
 from django.utils import timezone
-from rest_framework.exceptions import APIException
+from rest_framework.exceptions import APIException, ValidationError
 
 from inventory.models import InventoryStatus, MovementType
 from inventory.services import ensure_location_usable, ensure_tenant_match, record_inventory_movement
@@ -29,6 +31,9 @@ from .models import (
     AdvanceShipmentNotice,
     AdvanceShipmentNoticeLine,
     AdvanceShipmentNoticeStatus,
+    InboundImportBatch,
+    InboundImportBatchStatus,
+    InboundSigningRecord,
     PurchaseOrder,
     PurchaseOrderLine,
     PurchaseOrderLineStatus,
@@ -98,6 +103,19 @@ class ScanReceiptPayload:
     unit_cost: Decimal
     reference_code: str
     notes: str
+    order_type: str = ""
+
+
+@dataclass(frozen=True)
+class ScanSignPayload:
+    purchase_order_number: str
+    asn_number: str
+    signing_number: str
+    carrier_name: str
+    vehicle_plate: str
+    reference_code: str
+    notes: str
+    order_type: str = ""
 
 
 @dataclass(frozen=True)
@@ -107,6 +125,7 @@ class ScanPutawayPayload:
     to_location_barcode: str
     goods_barcode: str
     lpn_barcode: str
+    order_type: str = ""
 
 
 def _line_status(*, ordered_qty: Decimal, received_qty: Decimal, current_status: str) -> str:
@@ -197,6 +216,71 @@ def _ensure_task_operator(*, task: PutawayTask, operator: Staff) -> None:
         raise APIException({"detail": "This putaway task is assigned to a different operator"})
 
 
+def _resolve_scanned_inbound_documents(
+    *,
+    openid: str,
+    purchase_order_number: str,
+    asn_number: str,
+    expected_order_type: str = "",
+) -> tuple[AdvanceShipmentNotice | None, PurchaseOrder, Warehouse]:
+    if asn_number:
+        asn = AdvanceShipmentNotice.objects.select_related("purchase_order", "warehouse").filter(
+            openid=openid,
+            asn_number=asn_number,
+            is_delete=False,
+        ).first()
+        if asn is None:
+            raise APIException({"detail": "Scanned ASN was not found"})
+        if expected_order_type and asn.order_type != expected_order_type:
+            raise ValidationError({"detail": f"Scanned ASN does not belong to the {expected_order_type} partition"})
+        return asn, asn.purchase_order, asn.warehouse
+
+    purchase_order = PurchaseOrder.objects.select_related("warehouse").filter(
+        openid=openid,
+        po_number=purchase_order_number,
+        is_delete=False,
+    ).first()
+    if purchase_order is None:
+        raise APIException({"detail": "Scanned purchase order was not found"})
+    if expected_order_type and purchase_order.order_type != expected_order_type:
+        raise ValidationError({"detail": f"Scanned purchase order does not belong to the {expected_order_type} partition"})
+    return None, purchase_order, purchase_order.warehouse
+
+
+def _stringify_api_error(error: Exception) -> str:
+    if isinstance(error, APIException):
+        detail = error.detail
+        if isinstance(detail, dict):
+            return "; ".join(f"{key}: {value}" for key, value in detail.items())
+        return str(detail)
+    return str(error)
+
+
+def _build_import_batch_number() -> str:
+    return f"IMP-{timezone.now():%Y%m%d%H%M%S%f}"
+
+
+def _parse_import_decimal(value: str | None, *, field_name: str, minimum: Decimal) -> Decimal:
+    raw_value = (value or "").strip()
+    if not raw_value:
+        raise APIException({"detail": f"{field_name} is required"})
+    try:
+        parsed = Decimal(raw_value)
+    except InvalidOperation as exc:  # pragma: no cover - guarded by tests that assert message
+        raise APIException({"detail": f"{field_name} must be a valid decimal"}) from exc
+    if parsed < minimum:
+        raise APIException({"detail": f"{field_name} must be at least {minimum}"})
+    return parsed
+
+
+def _read_uploaded_file_text(*, uploaded_file) -> str:
+    uploaded_file.seek(0)
+    raw_value = uploaded_file.read()
+    if isinstance(raw_value, bytes):
+        return raw_value.decode("utf-8-sig")
+    return str(raw_value)
+
+
 def _record_receipt_line(
     *,
     openid: str,
@@ -285,6 +369,7 @@ def create_purchase_order(
     operator_name: str,
     warehouse: Warehouse,
     supplier: Supplier,
+    order_type: str,
     po_number: str,
     expected_arrival_date,
     reference_code: str,
@@ -300,6 +385,7 @@ def create_purchase_order(
     purchase_order = PurchaseOrder.objects.create(
         warehouse=warehouse,
         supplier=supplier,
+        order_type=order_type,
         po_number=po_number,
         expected_arrival_date=expected_arrival_date,
         reference_code=reference_code,
@@ -353,6 +439,7 @@ def create_advance_shipment_notice(
         purchase_order=purchase_order,
         warehouse=warehouse,
         supplier=supplier,
+        order_type=purchase_order.order_type,
         asn_number=asn_number,
         expected_arrival_date=expected_arrival_date,
         reference_code=reference_code,
@@ -538,6 +625,194 @@ def record_receipt(
 
 
 @transaction.atomic
+def record_signing(
+    *,
+    openid: str,
+    operator_name: str,
+    purchase_order: PurchaseOrder,
+    warehouse: Warehouse,
+    signing_number: str,
+    asn: AdvanceShipmentNotice | None = None,
+    reference_code: str,
+    notes: str,
+    carrier_name: str,
+    vehicle_plate: str,
+) -> InboundSigningRecord:
+    ensure_tenant_match(purchase_order, openid, "Purchase order")
+    ensure_tenant_match(warehouse, openid, "Warehouse")
+    if purchase_order.warehouse_id != warehouse.id:
+        raise APIException({"detail": "Signing warehouse must match the purchase order warehouse"})
+    if purchase_order.status in {PurchaseOrderStatus.CANCELLED, PurchaseOrderStatus.CLOSED}:
+        raise APIException({"detail": "This purchase order is no longer open for signing"})
+    if asn is not None:
+        ensure_tenant_match(asn, openid, "Advance shipment notice")
+        if asn.purchase_order_id != purchase_order.id:
+            raise APIException({"detail": "Signing ASN must belong to the selected purchase order"})
+        if asn.status == AdvanceShipmentNoticeStatus.CANCELLED:
+            raise APIException({"detail": "Cancelled ASNs cannot be signed"})
+
+    return InboundSigningRecord.objects.create(
+        asn=asn,
+        purchase_order=purchase_order,
+        warehouse=warehouse,
+        signing_number=signing_number,
+        reference_code=reference_code,
+        notes=notes,
+        carrier_name=carrier_name,
+        vehicle_plate=vehicle_plate,
+        signed_by=operator_name,
+        creator=operator_name,
+        openid=openid,
+    )
+
+
+@transaction.atomic
+def scan_sign_inbound(*, openid: str, operator: Staff, payload: ScanSignPayload) -> InboundSigningRecord:
+    ensure_tenant_match(operator, openid, "Operator")
+    if operator.is_lock:
+        raise APIException({"detail": "Assigned operator is locked"})
+
+    asn, purchase_order, warehouse = _resolve_scanned_inbound_documents(
+        openid=openid,
+        purchase_order_number=payload.purchase_order_number,
+        asn_number=payload.asn_number,
+        expected_order_type=payload.order_type,
+    )
+    return record_signing(
+        openid=openid,
+        operator_name=operator.staff_name,
+        purchase_order=purchase_order,
+        warehouse=warehouse,
+        asn=asn,
+        signing_number=payload.signing_number,
+        reference_code=payload.reference_code,
+        notes=payload.notes,
+        carrier_name=payload.carrier_name,
+        vehicle_plate=payload.vehicle_plate,
+    )
+
+
+def import_stock_in_manifest(*, openid: str, operator: Staff, uploaded_file) -> InboundImportBatch:
+    ensure_tenant_match(operator, openid, "Operator")
+    if operator.is_lock:
+        raise APIException({"detail": "Assigned operator is locked"})
+
+    batch = InboundImportBatch.objects.create(
+        batch_number=_build_import_batch_number(),
+        file_name=getattr(uploaded_file, "name", "stock-in-import.csv"),
+        status=InboundImportBatchStatus.PROCESSING,
+        imported_by=operator.staff_name,
+        creator=operator.staff_name,
+        openid=openid,
+    )
+    failure_rows: list[dict[str, object]] = []
+
+    try:
+        csv_text = _read_uploaded_file_text(uploaded_file=uploaded_file)
+        reader = csv.DictReader(io.StringIO(csv_text))
+        if reader.fieldnames is None:
+            raise APIException({"detail": "Import file must include a CSV header row"})
+
+        required_headers = {
+            "purchase_order_number",
+            "asn_number",
+            "receipt_number",
+            "receipt_location_barcode",
+            "goods_barcode",
+            "received_qty",
+        }
+        normalized_headers = {header.strip() for header in reader.fieldnames if header}
+        missing_headers = sorted(required_headers - normalized_headers)
+        if missing_headers:
+            raise APIException({"detail": f"Import file is missing columns: {', '.join(missing_headers)}"})
+
+        rows = [
+            row
+            for row in reader
+            if any(str(value or "").strip() for value in row.values())
+        ]
+        batch.total_rows = len(rows)
+        if not rows:
+            raise APIException({"detail": "Import file does not contain any data rows"})
+
+        for row_number, row in enumerate(rows, start=2):
+            try:
+                purchase_order_number = str(row.get("purchase_order_number", "")).strip()
+                asn_number = str(row.get("asn_number", "")).strip()
+                if not purchase_order_number and not asn_number:
+                    raise APIException({"detail": "purchase_order_number or asn_number is required"})
+
+                stock_status = str(row.get("stock_status", InventoryStatus.AVAILABLE)).strip().upper() or InventoryStatus.AVAILABLE
+                if stock_status not in InventoryStatus.values:
+                    raise APIException({"detail": f"Unsupported stock_status '{stock_status}'"})
+
+                payload = ScanReceiptPayload(
+                    purchase_order_number=purchase_order_number,
+                    asn_number=asn_number,
+                    receipt_number=str(row.get("receipt_number", "")).strip(),
+                    receipt_location_barcode=str(row.get("receipt_location_barcode", "")).strip(),
+                    goods_barcode=str(row.get("goods_barcode", "")).strip(),
+                    lpn_barcode=str(row.get("lpn_barcode", "")).strip(),
+                    attribute_scan=str(row.get("attribute_scan", "")).strip(),
+                    received_qty=_parse_import_decimal(row.get("received_qty"), field_name="received_qty", minimum=Decimal("0.0001")),
+                    stock_status=stock_status,
+                    lot_number=str(row.get("lot_number", "")).strip(),
+                    serial_number=str(row.get("serial_number", "")).strip(),
+                    unit_cost=_parse_import_decimal(row.get("unit_cost", "0"), field_name="unit_cost", minimum=Decimal("0.0000")),
+                    reference_code=str(row.get("reference_code", batch.batch_number)).strip() or batch.batch_number,
+                    notes=str(row.get("notes", "")).strip(),
+                )
+                _, _, warehouse = _resolve_scanned_inbound_documents(
+                    openid=openid,
+                    purchase_order_number=payload.purchase_order_number,
+                    asn_number=payload.asn_number,
+                    expected_order_type=payload.order_type,
+                )
+                scan_receive_goods(
+                    openid=openid,
+                    operator=operator,
+                    warehouse=warehouse,
+                    payload=payload,
+                )
+                batch.success_rows += 1
+            except Exception as error:
+                batch.failed_rows += 1
+                failure_rows.append(
+                    {
+                        "row_number": row_number,
+                        "receipt_number": str(row.get("receipt_number", "")).strip(),
+                        "message": _stringify_api_error(error),
+                    }
+                )
+
+        batch.failure_rows = failure_rows
+        if batch.failed_rows == 0:
+            batch.status = InboundImportBatchStatus.COMPLETED
+        elif batch.success_rows == 0:
+            batch.status = InboundImportBatchStatus.FAILED
+        else:
+            batch.status = InboundImportBatchStatus.COMPLETED_WITH_ERRORS
+        batch.summary = f"Imported {batch.success_rows} of {batch.total_rows} rows."
+    except Exception as error:
+        batch.status = InboundImportBatchStatus.FAILED
+        batch.summary = _stringify_api_error(error)
+        batch.failure_rows = failure_rows or [{"row_number": 1, "message": batch.summary}]
+
+    batch.save(
+        update_fields=[
+            "status",
+            "total_rows",
+            "success_rows",
+            "failed_rows",
+            "summary",
+            "failure_rows",
+            "update_time",
+        ]
+    )
+    return batch
+
+
+@transaction.atomic
 def update_putaway_task(
     *,
     openid: str,
@@ -653,6 +928,8 @@ def scan_receive_goods(
             asn_number=payload.asn_number,
             is_delete=False,
         )
+        if payload.order_type and asn.order_type != payload.order_type:
+            raise ValidationError({"detail": f"Scanned ASN does not belong to the {payload.order_type} partition"})
         if asn.warehouse_id != warehouse.id:
             raise APIException({"detail": "Scanned ASN does not belong to the selected warehouse"})
         purchase_order = asn.purchase_order
@@ -662,6 +939,8 @@ def scan_receive_goods(
             po_number=payload.purchase_order_number,
             is_delete=False,
         )
+        if payload.order_type and purchase_order.order_type != payload.order_type:
+            raise ValidationError({"detail": f"Scanned purchase order does not belong to the {payload.order_type} partition"})
     if purchase_order.warehouse_id != warehouse.id:
         raise APIException({"detail": "Scanned purchase order does not belong to the selected warehouse"})
     if purchase_order.status in {PurchaseOrderStatus.CANCELLED, PurchaseOrderStatus.CLOSED}:
@@ -773,11 +1052,20 @@ def scan_receive_goods(
 @transaction.atomic
 def scan_complete_putaway_task(*, openid: str, operator: Staff, payload: ScanPutawayPayload) -> PutawayTask:
     ensure_tenant_match(operator, openid, "Operator")
-    task = PutawayTask.objects.select_for_update().select_related("warehouse", "from_location", "goods", "assigned_to", "license_plate").get(
+    task = PutawayTask.objects.select_for_update().select_related(
+        "warehouse",
+        "from_location",
+        "goods",
+        "assigned_to",
+        "license_plate",
+        "receipt_line__receipt__purchase_order",
+    ).get(
         openid=openid,
         task_number=payload.task_number,
         is_delete=False,
     )
+    if payload.order_type and task.receipt_line.receipt.purchase_order.order_type != payload.order_type:
+        raise ValidationError({"detail": f"Scanned putaway task does not belong to the {payload.order_type} partition"})
     _ensure_task_operator(task=task, operator=operator)
 
     from_location = resolve_location_by_scan_code(

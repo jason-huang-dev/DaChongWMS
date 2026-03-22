@@ -7,7 +7,17 @@ from django.urls import path, re_path
 from django.urls.resolvers import URLPattern
 from rest_framework.viewsets import ViewSet
 
-from .views import DockLoadVerificationViewSet, PickTaskViewSet, SalesOrderViewSet, ShipmentViewSet, ShortPickRecordViewSet
+from .views import (
+    DockLoadVerificationViewSet,
+    LogisticsTrackingEventViewSet,
+    OutboundWaveViewSet,
+    PackageExecutionRecordViewSet,
+    PickTaskViewSet,
+    SalesOrderViewSet,
+    ShipmentDocumentRecordViewSet,
+    ShipmentViewSet,
+    ShortPickRecordViewSet,
+)
 
 app_name = "outbound"
 
@@ -43,6 +53,30 @@ urlpatterns: List[URLPattern] = [
     path("shipments/", _action(ShipmentViewSet, {"get": "list", "post": "create"}), name="shipment-list"),
     path("shipments/scan-ship/", _action(ShipmentViewSet, {"post": "scan_ship"}), name="shipment-scan-ship"),
     re_path(r"^shipments/(?P<pk>\d+)/$", _action(ShipmentViewSet, {"get": "retrieve"}), name="shipment-detail"),
+    path("waves/", _action(OutboundWaveViewSet, {"get": "list", "post": "create"}), name="wave-list"),
+    re_path(
+        r"^waves/(?P<pk>\d+)/$",
+        _action(OutboundWaveViewSet, {"get": "retrieve", "put": "update", "patch": "partial_update"}),
+        name="wave-detail",
+    ),
+    path("package-executions/", _action(PackageExecutionRecordViewSet, {"get": "list", "post": "create"}), name="package-execution-list"),
+    re_path(
+        r"^package-executions/(?P<pk>\d+)/$",
+        _action(PackageExecutionRecordViewSet, {"get": "retrieve"}),
+        name="package-execution-detail",
+    ),
+    path("shipment-documents/", _action(ShipmentDocumentRecordViewSet, {"get": "list", "post": "create"}), name="shipment-document-list"),
+    re_path(
+        r"^shipment-documents/(?P<pk>\d+)/$",
+        _action(ShipmentDocumentRecordViewSet, {"get": "retrieve"}),
+        name="shipment-document-detail",
+    ),
+    path("tracking-events/", _action(LogisticsTrackingEventViewSet, {"get": "list", "post": "create"}), name="tracking-event-list"),
+    re_path(
+        r"^tracking-events/(?P<pk>\d+)/$",
+        _action(LogisticsTrackingEventViewSet, {"get": "retrieve"}),
+        name="tracking-event-detail",
+    ),
     path("dock-load-verifications/", _action(DockLoadVerificationViewSet, {"get": "list"}), name="dock-load-verification-list"),
     re_path(r"^dock-load-verifications/(?P<pk>\d+)/$", _action(DockLoadVerificationViewSet, {"get": "retrieve"}), name="dock-load-verification-detail"),
     path("short-picks/", _action(ShortPickRecordViewSet, {"get": "list"}), name="short-pick-list"),

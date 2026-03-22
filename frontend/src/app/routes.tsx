@@ -48,11 +48,17 @@ const TransferOrderDetailPage = lazyNamedPage(
   "TransferOrderDetailPage",
 );
 const ReturnsPage = lazyNamedPage(() => import("@/features/returns/view/ReturnsPage"), "ReturnsPage");
+const ClientsPage = lazyNamedPage(() => import("@/features/clients/view/ClientsPage"), "ClientsPage");
+const ProductsPage = lazyNamedPage(() => import("@/features/products/view/ProductsPage"), "ProductsPage");
+const LogisticsPage = lazyNamedPage(() => import("@/features/logistics/view/LogisticsPage"), "LogisticsPage");
+const WorkOrdersPage = lazyNamedPage(() => import("@/features/work-orders/view/WorkOrdersPage"), "WorkOrdersPage");
+const B2BPage = lazyNamedPage(() => import("@/features/b2b/view/B2BPage"), "B2BPage");
 const ReturnOrderDetailPage = lazyNamedPage(
   () => import("@/features/returns/view/ReturnOrderDetailPage"),
   "ReturnOrderDetailPage",
 );
 const CountingPage = lazyNamedPage(() => import("@/features/counting/view/CountingPage"), "CountingPage");
+const StatisticsPage = lazyNamedPage(() => import("@/features/statistics/view/StatisticsPage"), "StatisticsPage");
 const CountApprovalDetailPage = lazyNamedPage(
   () => import("@/features/counting/view/CountApprovalDetailPage"),
   "CountApprovalDetailPage",
@@ -79,7 +85,7 @@ const CarrierBookingDetailPage = lazyNamedPage(
   () => import("@/features/integrations/view/CarrierBookingDetailPage"),
   "CarrierBookingDetailPage",
 );
-const FinancePage = lazyNamedPage(() => import("@/features/reporting/view/FinancePage"), "FinancePage");
+const FeesPage = lazyNamedPage(() => import("@/features/fees/view/FeesPage"), "FeesPage");
 const InvoiceDetailPage = lazyNamedPage(
   () => import("@/features/reporting/view/InvoiceDetailPage"),
   "InvoiceDetailPage",
@@ -134,9 +140,13 @@ export const appRoutes: RouteObject[] = [
             element: <RequireRoles roles={["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"]} />,
             children: [
               {
-                path: "/inventory/balances",
+                path: "/inventory",
                 element: withSuspense(<InventoryBalancesPage />),
                 handle: { crumb: "Inventory" },
+              },
+              {
+                path: "/inventory/balances",
+                element: <Navigate replace to="/inventory" />,
               },
             ],
           },
@@ -174,6 +184,31 @@ export const appRoutes: RouteObject[] = [
             element: <RequireRoles roles={["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"]} />,
             children: [
               {
+                path: "/products",
+                element: withSuspense(<ProductsPage />),
+                handle: { crumb: "Products" },
+              },
+              {
+                path: "/logistics",
+                element: withSuspense(<LogisticsPage />),
+                handle: { crumb: "Logistics" },
+              },
+              {
+                path: "/b2b",
+                element: withSuspense(<B2BPage />),
+                handle: { crumb: "B2B" },
+              },
+              {
+                path: "/work-orders",
+                element: withSuspense(<WorkOrdersPage />),
+                handle: { crumb: "Work orders" },
+              },
+              {
+                path: "/clients",
+                element: withSuspense(<ClientsPage />),
+                handle: { crumb: "Clients" },
+              },
+              {
                 path: "/transfers",
                 element: withSuspense(<TransfersPage />),
                 handle: { crumb: "Transfers" },
@@ -202,6 +237,11 @@ export const appRoutes: RouteObject[] = [
                 path: "/counting",
                 element: withSuspense(<CountingPage />),
                 handle: { crumb: "Counting" },
+              },
+              {
+                path: "/statistics",
+                element: withSuspense(<StatisticsPage />),
+                handle: { crumb: "Statistics" },
               },
               {
                 path: "/counting/approvals/:approvalId",
@@ -260,7 +300,7 @@ export const appRoutes: RouteObject[] = [
             children: [
               {
                 path: "/finance",
-                element: withSuspense(<FinancePage />),
+                element: withSuspense(<FeesPage />),
                 handle: { crumb: "Finance" },
               },
               {

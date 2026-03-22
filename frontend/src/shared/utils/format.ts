@@ -1,3 +1,5 @@
+import { getPreferredAppLocale } from "@/app/ui-preferences-storage";
+
 export function formatDateTime(value?: string | null): string {
   if (!value) {
     return "--";
@@ -6,7 +8,7 @@ export function formatDateTime(value?: string | null): string {
   if (Number.isNaN(parsed.getTime())) {
     return value;
   }
-  return parsed.toLocaleString();
+  return parsed.toLocaleString(getPreferredAppLocale());
 }
 
 export function formatNumber(value?: string | number | null): string {
@@ -17,7 +19,7 @@ export function formatNumber(value?: string | number | null): string {
   if (Number.isNaN(numeric)) {
     return String(value);
   }
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: 4 }).format(numeric);
+  return new Intl.NumberFormat(getPreferredAppLocale(), { maximumFractionDigits: 4 }).format(numeric);
 }
 
 export function formatStatusLabel(value?: string | null): string {

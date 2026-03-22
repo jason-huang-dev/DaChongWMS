@@ -23,19 +23,24 @@ const defaultValues: ScanReceiveValues = {
   unit_cost: 0,
   reference_code: "",
   notes: "",
+  order_type: "",
 };
 
-export function ScanReceivePanel() {
+interface ScanReceivePanelProps {
+  orderType?: string;
+}
+
+export function ScanReceivePanel({ orderType }: ScanReceivePanelProps) {
   const { mutation, successMessage, errorMessage } = useScanReceiveController();
   const form = useForm<ScanReceiveValues>({
-    defaultValues,
+    defaultValues: { ...defaultValues, order_type: orderType ?? "" },
     resolver: zodResolver(scanReceiveSchema),
   });
 
   const handleSubmit = form.handleSubmit((values) =>
     mutation.mutate(values, {
       onSuccess: () => {
-        form.reset(defaultValues);
+        form.reset({ ...defaultValues, order_type: orderType ?? "" });
       },
     }),
   );

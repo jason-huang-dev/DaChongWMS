@@ -12,7 +12,7 @@ class ReturnOrderFilter(FilterSet):
             "customer": ["exact"],
             "sales_order": ["exact", "isnull"],
             "return_number": ["exact", "icontains"],
-            "status": ["exact"],
+            "status": ["exact", "in"],
             "requested_date": ["exact", "gt", "gte", "lt", "lte", "range", "isnull"],
             "create_time": ["gt", "gte", "lt", "lte", "range"],
         }

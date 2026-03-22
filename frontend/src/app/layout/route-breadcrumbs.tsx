@@ -2,11 +2,14 @@ import NavigateNextIcon from "@mui/icons-material/NavigateNext";
 import { Breadcrumbs, Link, Typography } from "@mui/material";
 import { Link as RouterLink, useMatches } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
+
 interface RouteHandle {
   crumb?: string;
 }
 
 export function RouteBreadcrumbs() {
+  const { translateText } = useI18n();
   const matches = useMatches();
   const crumbs = matches
     .map((match) => ({
@@ -22,7 +25,7 @@ export function RouteBreadcrumbs() {
   return (
     <Breadcrumbs aria-label="breadcrumb" separator={<NavigateNextIcon fontSize="small" />}>
       {crumbs.map((crumb, index) => {
-        const label = crumb.handle?.crumb ?? "";
+        const label = translateText(crumb.handle?.crumb ?? "");
         const isLast = index === crumbs.length - 1;
         if (isLast) {
           return (

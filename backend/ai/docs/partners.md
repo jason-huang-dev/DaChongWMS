@@ -1,27 +1,60 @@
 # Partner & Financial Master Data
 
-The partner domain covers suppliers, customers, and transportation partners. Django apps:
+The partner domain covers suppliers, customers, and transportation partners. In the new modular backend this should converge under `apps.partners`, while the legacy `supplier` / `customer` Django apps remain migration sources.
 
-- `supplier.ListModel` – onboarding data for vendors delivering inbound goods.
-- `customer.ListModel` – ship-to parties for outbound orders.
-- `payment.TransportationFeeListModel` – matrix of carrier rates used to price shipments.
-- `capital.ListModel` – tenant-level capital pools for prepaid services or internal accounting.
+## Conceptual split
 
-## Business Rules
+- **Supplier**: a business partner that sends inbound goods. This is not an auth/login concept.
+- **Customer account**: the client account that owns stock, orders, and charges inside the WMS.
+- **Client portal user**: a login identity linked to an organization membership with `membership_type=CLIENT`, then scoped to one or more customer accounts.
 
-- Each record is linked to an `openid` tenant and includes a `creator`. Upload flows (supplier/customer/capital/freight endpoints) must set both fields from the authenticated staff user.
-- Supplier/customer levels default to `0` and may be used later for SLA logic (expedite vs. normal).
-- Transportation fee rows are unique per `(send_city, receiver_city, transportation_supplier)` tuple; uploads de-dupe by clearing tenant data before reimporting a canonical matrix.
-- Capital balances store both quantity and cost, enabling lightweight valuation without a formal ledger.
+## Current modular direction
 
-## API Expectations
+- `apps.partners.CustomerAccount` is the new source of truth for client accounts in the modular backend.
+- `apps.partners.ClientAccountAccess` links a client membership to the customer accounts it may access.
+- IAM scoping for client portal users is done with `AccessScope(scope_type=RESOURCE, resource_type="customer_account")`.
+- `CustomerAccount` should carry operational client metadata needed by the portal and ops team, not just a name/code pair. The current MVP fields should include:
+  - `name`
+  - `code`
+  - `contact_name`
+  - `contact_email`
+  - `contact_phone`
+  - `billing_email`
+  - `shipping_method`
+  - `allow_dropshipping_orders`
+  - `allow_inbound_goods`
+  - `notes`
+  - `is_active`
 
-- Initial CRUD exposure is via the upload endpoints: `SupplierfileViewSet`, `CustomerfileViewSet`, `CapitalfileViewSet`, and `FreightfileViewSet` (plus the `*_add` incremental variants).
-- Future DRF viewsets should support filtering by city, manager, or supplier level, and must enforce `openid` scoping.
-- When integrating with ASN/DN modules, foreign keys can be added referencing these tables; until then, `goods` rows store textual supplier/customer references.
+## Business rules
 
-## Validation & Security
+- Suppliers and customers remain master data, not authentication principals.
+- External portal access should be **customer-account scoped**, not warehouse scoped.
+- A client user should only see:
+  - their inventory
+  - their inbound / outbound activity
+  - their charges and invoices
+- A client user should not see:
+  - warehouse configuration
+  - staffing or admin tools
+  - other customers' data
 
-- Phone numbers (`supplier_contact`, `customer_contact`) are stored as strings to accommodate extensions; upstream uploads should sanitize obvious injection attempts via `utils.datasolve.data_validate`.
-- Freight rows accept zeros, but downstream pricing logic should warn operators if both `weight_fee` and `volume_fee` are zero to avoid free shipments.
-- Capital adjustments should be wrapped in transactions once financial workflows are added to prevent race conditions.
+## Recommended access defaults
+
+- `CLIENT_ADMIN`
+  - manage client users for their customer account scope
+  - view account inventory, orders, and charges
+  - submit dropshipping orders when enabled for the account
+  - optionally submit inbound goods / ASNs
+- `CLIENT_USER`
+  - read-only access to account inventory, orders, and charges
+
+## Frontend contract
+
+- The SPA should expose a dedicated `Clients` route/tab for internal operators.
+- Managers and other authorized operations roles use that page to create and maintain customer accounts before attaching external client memberships.
+- Customer-account records are the right place to store dropshipping-order and inbound-submission capability flags. Do not model those capabilities on the global user.
+
+## Migration note
+
+Legacy `customer.ListModel` and `supplier.ListModel` still exist as old tenant/openid-backed tables. New feature work should target `apps.partners` and only use the legacy tables as migration references until downstream operational domains are moved.

@@ -18,6 +18,8 @@ import {
   Typography,
 } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
+
 interface ColumnDefinition<TRow> {
   key: string;
   header: string;
@@ -66,6 +68,7 @@ export function ResourceTable<TRow>({
   toolbar,
   rowSelection,
 }: ResourceTableProps<TRow>) {
+  const { translateText } = useI18n();
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
     : [];
@@ -79,10 +82,10 @@ export function ResourceTable<TRow>({
       <CardContent>
         <Stack spacing={2}>
           <Box>
-            <Typography variant="h6">{title}</Typography>
+            <Typography variant="h6">{translateText(title)}</Typography>
             {subtitle ? (
               <Typography color="text.secondary" variant="body2">
-                {subtitle}
+                {translateText(subtitle)}
               </Typography>
             ) : null}
           </Box>
@@ -104,7 +107,7 @@ export function ResourceTable<TRow>({
                   ) : null}
                   {columns.map((column) => (
                     <TableCell align={column.align} key={column.key}>
-                      {column.header}
+                      {translateText(column.header)}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -115,7 +118,7 @@ export function ResourceTable<TRow>({
                     <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                       <Stack alignItems="center" direction="row" justifyContent="center" spacing={1.5} sx={{ py: 4 }}>
                         <CircularProgress size={20} />
-                        <Typography variant="body2">Loading data...</Typography>
+                        <Typography variant="body2">{translateText("Loading data...")}</Typography>
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -123,7 +126,7 @@ export function ResourceTable<TRow>({
                   <TableRow>
                     <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                       <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
-                        {emptyMessage}
+                        {translateText(emptyMessage)}
                       </Typography>
                     </TableCell>
                   </TableRow>

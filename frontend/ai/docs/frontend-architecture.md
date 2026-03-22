@@ -10,6 +10,7 @@ The external reference model for the next implementation phase lives in `fronten
 
 - **Tooling**: Vite 6, TypeScript, npm.
 - **UI**: MUI 7 with a shared theme in `src/app/theme.ts`.
+- **Localization**: root UI preferences and translation helpers in `src/app/ui-preferences.tsx` + `src/app/i18n.ts` with `en` and `zh-CN`.
 - **Branding**: shared DaChong logo assets under `src/assets/logo/` plus reusable brand tokens in `src/app/brand.ts`.
 - **Routing**: React Router with route-level auth and role guards.
 - **Server state**: TanStack Query.
@@ -22,7 +23,10 @@ frontend/
   src/
     app/
       brand.ts
+      i18n.ts
       scope-context.tsx
+      ui-preferences-storage.ts
+      ui-preferences.tsx
       layout/
       App.tsx
       providers.tsx
@@ -72,6 +76,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Shared bulk queue actions use `useBulkSelection`, `BulkActionBar`, and `executeBulkAction` so selection state, batch orchestration, and operator feedback stay consistent across features.
 - Repeated selector-driven create flows use shared `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, JSON helpers, and reference-option hooks under `src/shared/` instead of rebuilding those primitives per feature.
 - Workspace and warehouse context are centralized through `src/app/scope-context.tsx`, which keeps page flows aligned on the currently selected company membership and warehouse scope.
+- UI locale and color mode are centralized through `src/app/ui-preferences.tsx`; the root provider persists browser preferences and rebuilds the MUI theme for light, dark, English, and Simplified Chinese modes.
 - Repeated table filtering and saved views use shared modules (`useDataView`, `DataViewToolbar`, and `ResourceTable` with toolbar slots) instead of per-page one-off controls.
 - Repeated branding usage goes through reusable modules: raw logo files live in `src/assets/logo/`, and the live UI consumes them through shared components such as `BrandLogo` and `AuthShell`.
 - JF-style shell state now lives in shared app modules: `src/app/workspace-preferences.ts` owns workspace-tab and workbench-preference queries, while `app/layout/*` owns the horizontal module nav and workspace-tab strip.
@@ -84,9 +89,11 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - `MfaEnrollmentPage`: authenticated TOTP setup, verification, and recovery-code display.
 - `SecurityPage`: tenant staff access management, role assignment, lock-state control, and MFA posture summary.
 - `SecurityPage`: company membership provisioning, browser-account management, staff directory controls, role assignment, lock-state control, and MFA posture summary.
+- `ClientsPage`: internal client-account management for dropshipping order intake, billing contacts, and inbound-submission permissions.
+- `ProductsPage`: product master data plus selected-product subworkflows for distribution products, serial settings, packaging, and product marks.
 - `DashboardPage`: workbench-style operational summary with persisted time window and right-rail widgets.
-- `InventoryBalancesPage`: tenant-scoped stock positions.
-- `InboundPage`: purchase orders, receipts, putaway tasks, and scan-first receive/putaway actions.
+- `InventoryBalancesPage`: inventory workbench covering tenant-scoped stock positions, count escalation, internal moves, stock-age reporting, manual adjustments, and cross-warehouse planning.
+- `InboundPage`: stock-in workbench covering standard receipt posting, stock-in list management, scan sign/receive/list actions, CSV import intake, returns-to-stock visibility, and inbound record queues for ASN, signing, receiving, and listing.
 - `PurchaseOrderDetailPage`: editable purchase-order header flow plus cancel action.
 - `OutboundPage`: sales orders, pick tasks, shipments, dock-load verification, explicit short-pick follow-up, and scan-first pick/ship actions.
 - `SalesOrderDetailPage`: editable sales-order header flow plus allocation and cancel actions.
@@ -114,6 +121,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Shared modules such as `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Shared modules such as `WorkspaceContextSwitcher`, `DataViewToolbar`, `useDataView(...)`, `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Brand palette, gradients, and shadows come from `src/app/brand.ts`, so auth screens, page headers, and the shell all stay aligned with the gold/copper/charcoal logo theme.
+- Shared UI primitives translate known shell/auth/common copy through `src/app/i18n.ts` so locale coverage can expand incrementally without rewriting every feature page at once.
 - The authenticated shell is now JF-inspired: horizontal module nav first, workspace-tab strip second, content canvas third. Mobile keeps a drawer fallback.
 - Search-heavy lookup fields now use debounced, paginated reference hooks instead of assuming the first page of options is sufficient.
 - Queue-heavy screens now use the same filter/saved-view pattern across inventory, inbound, outbound, transfers, returns, counting, finance, automation, integrations, and security.

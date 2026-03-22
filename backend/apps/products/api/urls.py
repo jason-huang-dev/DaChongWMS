@@ -1,0 +1,61 @@
+from django.urls import path
+
+from .views import (
+    OrganizationDistributionProductDetailAPIView,
+    OrganizationDistributionProductListCreateAPIView,
+    OrganizationProductDetailAPIView,
+    OrganizationProductListCreateAPIView,
+    OrganizationProductMarkDetailAPIView,
+    OrganizationProductMarkListCreateAPIView,
+    OrganizationProductPackagingDetailAPIView,
+    OrganizationProductPackagingListCreateAPIView,
+    OrganizationProductSerialConfigAPIView,
+)
+
+urlpatterns = [
+    path(
+        "organizations/<int:organization_id>/products/",
+        OrganizationProductListCreateAPIView.as_view(),
+        name="organization-product-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/",
+        OrganizationProductDetailAPIView.as_view(),
+        name="organization-product-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/distribution-products/",
+        OrganizationDistributionProductListCreateAPIView.as_view(),
+        name="organization-distribution-product-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/distribution-products/<int:distribution_product_id>/",
+        OrganizationDistributionProductDetailAPIView.as_view(),
+        name="organization-distribution-product-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/serial-management/",
+        OrganizationProductSerialConfigAPIView.as_view(),
+        name="organization-product-serial-config",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/packaging/",
+        OrganizationProductPackagingListCreateAPIView.as_view(),
+        name="organization-product-packaging-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/packaging/<int:packaging_id>/",
+        OrganizationProductPackagingDetailAPIView.as_view(),
+        name="organization-product-packaging-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/marks/",
+        OrganizationProductMarkListCreateAPIView.as_view(),
+        name="organization-product-mark-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/products/<int:product_id>/marks/<int:product_mark_id>/",
+        OrganizationProductMarkDetailAPIView.as_view(),
+        name="organization-product-mark-detail",
+    ),
+]

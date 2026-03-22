@@ -2,6 +2,8 @@ import type { PropsWithChildren } from "react";
 
 import { Alert, Card, CardContent, Stack, Typography } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
+
 interface MutationCardProps extends PropsWithChildren {
   title: string;
   description: string;
@@ -16,14 +18,16 @@ export function MutationCard({
   successMessage,
   children,
 }: MutationCardProps) {
+  const { translateText } = useI18n();
+
   return (
     <Card>
       <CardContent>
         <Stack spacing={2}>
           <Stack spacing={0.75}>
-            <Typography variant="h6">{title}</Typography>
+            <Typography variant="h6">{translateText(title)}</Typography>
             <Typography color="text.secondary" variant="body2">
-              {description}
+              {translateText(description)}
             </Typography>
           </Stack>
           {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}

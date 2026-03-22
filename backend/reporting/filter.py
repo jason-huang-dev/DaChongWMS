@@ -82,6 +82,7 @@ class InvoiceFilter(filters.FilterSet):
             "warehouse": ["exact"],
             "customer": ["exact"],
             "status": ["exact"],
+            "finance_approval__status": ["exact"],
             "period_start": ["exact", "gte", "lte"],
             "period_end": ["exact", "gte", "lte"],
             "invoice_number": ["exact", "icontains"],
@@ -105,6 +106,7 @@ class InvoiceSettlementFilter(filters.FilterSet):
         model = InvoiceSettlement
         fields = {
             "invoice": ["exact"],
+            "invoice__warehouse": ["exact"],
             "status": ["exact"],
             "due_date": ["exact", "gte", "lte"],
             "submitted_at": ["gte", "lte"],
@@ -130,7 +132,8 @@ class InvoiceDisputeFilter(filters.FilterSet):
         fields = {
             "invoice": ["exact"],
             "invoice_line": ["exact"],
-            "status": ["exact"],
+            "invoice__warehouse": ["exact"],
+            "status": ["exact", "in"],
             "reason_code": ["exact"],
             "reference_code": ["exact", "icontains"],
             "opened_at": ["gte", "lte"],

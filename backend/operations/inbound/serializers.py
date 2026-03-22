@@ -14,10 +14,14 @@ from supplier.models import ListModel as Supplier
 from utils import datasolve
 from warehouse.models import Warehouse
 
+from operations.order_types import OperationOrderType
+
 from .models import (
     AdvanceShipmentNotice,
     AdvanceShipmentNoticeLine,
     AdvanceShipmentNoticeStatus,
+    InboundImportBatch,
+    InboundSigningRecord,
     PurchaseOrder,
     PurchaseOrderLine,
     PurchaseOrderStatus,
@@ -65,6 +69,7 @@ class AdvanceShipmentNoticeSerializer(serializers.ModelSerializer):
     purchase_order_number = serializers.CharField(source="purchase_order.po_number", read_only=True)
     warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
     supplier_name = serializers.CharField(source="supplier.supplier_name", read_only=True)
+    order_type = serializers.ChoiceField(choices=OperationOrderType.choices, read_only=True)
     asn_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
     reference_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
     notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
@@ -82,6 +87,7 @@ class AdvanceShipmentNoticeSerializer(serializers.ModelSerializer):
             "warehouse_name",
             "supplier",
             "supplier_name",
+            "order_type",
             "asn_number",
             "expected_arrival_date",
             "status",
@@ -156,6 +162,7 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
     supplier = serializers.PrimaryKeyRelatedField(queryset=Supplier.objects.filter(is_delete=False))
     warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
     supplier_name = serializers.CharField(source="supplier.supplier_name", read_only=True)
+    order_type = serializers.ChoiceField(choices=OperationOrderType.choices, required=False, default=OperationOrderType.STANDARD)
     po_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
     reference_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
     notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
@@ -171,6 +178,7 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             "warehouse_name",
             "supplier",
             "supplier_name",
+            "order_type",
             "po_number",
             "expected_arrival_date",
             "reference_code",
@@ -193,6 +201,8 @@ class PurchaseOrderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"line_items": "Purchase order lines cannot be changed through header updates"})
         if action in {"update", "partial_update"} and "po_number" in attrs and self.instance and attrs["po_number"] != self.instance.po_number:
             raise serializers.ValidationError({"po_number": "Purchase order numbers are immutable once created"})
+        if action in {"update", "partial_update"} and "order_type" in attrs and self.instance and attrs["order_type"] != self.instance.order_type:
+            raise serializers.ValidationError({"order_type": "Purchase order type is immutable once created"})
         if action in {"update", "partial_update"} and attrs.get("status") == PurchaseOrderStatus.CLOSED:
             raise serializers.ValidationError({"status": "Purchase orders close automatically when all lines are received"})
         return attrs
@@ -255,6 +265,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
     notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False)
     asn_number = serializers.CharField(source="asn.asn_number", read_only=True)
     purchase_order_number = serializers.CharField(source="purchase_order.po_number", read_only=True)
+    order_type = serializers.CharField(source="purchase_order.order_type", read_only=True)
     warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
     receipt_location_code = serializers.CharField(source="receipt_location.location_code", read_only=True)
     lines = ReceiptLineSerializer(many=True, read_only=True)
@@ -270,6 +281,7 @@ class ReceiptSerializer(serializers.ModelSerializer):
             "asn_number",
             "purchase_order",
             "purchase_order_number",
+            "order_type",
             "warehouse",
             "warehouse_name",
             "receipt_location",
@@ -310,6 +322,38 @@ class ReceiptSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class InboundSigningRecordSerializer(serializers.ModelSerializer):
+    asn_number = serializers.CharField(source="asn.asn_number", read_only=True)
+    purchase_order_number = serializers.CharField(source="purchase_order.po_number", read_only=True)
+    order_type = serializers.CharField(source="purchase_order.order_type", read_only=True)
+    warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
+
+    class Meta:
+        model = InboundSigningRecord
+        fields = [
+            "id",
+            "asn",
+            "asn_number",
+            "purchase_order",
+            "purchase_order_number",
+            "order_type",
+            "warehouse",
+            "warehouse_name",
+            "signing_number",
+            "reference_code",
+            "notes",
+            "carrier_name",
+            "vehicle_plate",
+            "signed_by",
+            "signed_at",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+        read_only_fields = fields
+
+
 class PutawayTaskSerializer(serializers.ModelSerializer):
     create_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
     update_time = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M:%S")
@@ -319,6 +363,7 @@ class PutawayTaskSerializer(serializers.ModelSerializer):
     to_location_code = serializers.CharField(source="to_location.location_code", read_only=True)
     warehouse_name = serializers.CharField(source="warehouse.warehouse_name", read_only=True)
     receipt_number = serializers.CharField(source="receipt_line.receipt.receipt_number", read_only=True)
+    order_type = serializers.CharField(source="receipt_line.receipt.purchase_order.order_type", read_only=True)
     license_plate_code = serializers.CharField(source="license_plate.lpn_code", read_only=True)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=Staff.objects.filter(is_delete=False), allow_null=True, required=False)
     assigned_to_name = serializers.CharField(source="assigned_to.staff_name", read_only=True)
@@ -333,6 +378,7 @@ class PutawayTaskSerializer(serializers.ModelSerializer):
             "id",
             "receipt_line",
             "receipt_number",
+            "order_type",
             "warehouse",
             "warehouse_name",
             "goods",
@@ -418,6 +464,23 @@ class ScanReceiptSerializer(serializers.Serializer):
     )
     reference_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
     notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    order_type = serializers.ChoiceField(choices=OperationOrderType.choices, required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if not attrs.get("purchase_order_number") and not attrs.get("asn_number"):
+            raise serializers.ValidationError({"detail": "purchase_order_number or asn_number is required"})
+        return attrs
+
+
+class ScanSigningSerializer(serializers.Serializer):
+    purchase_order_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate], required=False, allow_blank=True, default="")
+    asn_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate], required=False, allow_blank=True, default="")
+    signing_number = serializers.CharField(max_length=64, validators=[datasolve.data_validate])
+    carrier_name = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    vehicle_plate = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    reference_code = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    notes = serializers.CharField(validators=[datasolve.data_validate], allow_blank=True, required=False, default="")
+    order_type = serializers.ChoiceField(choices=OperationOrderType.choices, required=False, allow_blank=True, default="")
 
     def validate(self, attrs):
         if not attrs.get("purchase_order_number") and not attrs.get("asn_number"):
@@ -431,3 +494,31 @@ class ScanPutawaySerializer(serializers.Serializer):
     to_location_barcode = serializers.CharField(max_length=255, validators=[datasolve.data_validate])
     goods_barcode = serializers.CharField(max_length=255, validators=[datasolve.data_validate])
     lpn_barcode = serializers.CharField(max_length=255, validators=[datasolve.data_validate], required=False, allow_blank=True, default="")
+    order_type = serializers.ChoiceField(choices=OperationOrderType.choices, required=False, allow_blank=True, default="")
+
+
+class InboundImportBatchSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InboundImportBatch
+        fields = [
+            "id",
+            "batch_number",
+            "file_name",
+            "status",
+            "total_rows",
+            "success_rows",
+            "failed_rows",
+            "summary",
+            "failure_rows",
+            "imported_by",
+            "imported_at",
+            "creator",
+            "openid",
+            "create_time",
+            "update_time",
+        ]
+        read_only_fields = fields
+
+
+class InboundImportBatchUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()

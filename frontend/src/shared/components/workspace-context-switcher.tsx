@@ -1,5 +1,6 @@
 import { Chip, MenuItem, Stack, TextField, Typography } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { CompanyContextRecord, CompanyMembershipRecord, WarehouseRecord } from "@/shared/types/domain";
 
 interface WorkspaceContextSwitcherProps {
@@ -21,13 +22,15 @@ export function WorkspaceContextSwitcher({
   activeWarehouseId,
   onWarehouseChange,
 }: WorkspaceContextSwitcherProps) {
+  const { t, translateText } = useI18n();
+
   return (
     <Stack alignItems={{ xs: "stretch", lg: "center" }} direction={{ xs: "column", lg: "row" }} spacing={1.5}>
       {memberships.length <= 1 ? (
-        company ? <Chip label={`Workspace: ${company.label}`} variant="outlined" /> : null
+        company ? <Chip label={t("shell.workspaceChip", { label: company.label })} variant="outlined" /> : null
       ) : (
         <TextField
-          label="Workspace"
+          label={t("shell.workspaceLabel")}
           onChange={(event) => {
             const nextValue = Number(event.target.value);
             if (Number.isFinite(nextValue)) {
@@ -44,7 +47,7 @@ export function WorkspaceContextSwitcher({
               <Stack>
                 <Typography variant="body2">{membership.company_name}</Typography>
                 <Typography color="text.secondary" variant="caption">
-                  {membership.staff_name} · {membership.staff_type}
+                  {membership.staff_name} · {translateText(membership.staff_type)}
                 </Typography>
               </Stack>
             </MenuItem>
@@ -54,12 +57,16 @@ export function WorkspaceContextSwitcher({
       {warehouses.length <= 1 ? (
         <Chip
           color="primary"
-          label={warehouses[0]?.warehouse_name ? `Warehouse: ${warehouses[0].warehouse_name}` : "No warehouse"}
+          label={
+            warehouses[0]?.warehouse_name
+              ? t("shell.warehouseChip", { label: warehouses[0].warehouse_name })
+              : t("shell.noWarehouse")
+          }
           variant="outlined"
         />
       ) : (
         <TextField
-          label="Warehouse"
+          label={t("shell.warehouseLabel")}
           onChange={(event) => {
             const rawValue = event.target.value;
             if (!rawValue) {

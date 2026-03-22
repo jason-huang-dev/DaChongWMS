@@ -18,7 +18,7 @@ import {
   Toolbar,
   Typography,
 } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useWorkspaceTabs } from "@/app/workspace-preferences";
@@ -28,16 +28,21 @@ import { navigationItems } from "@/app/layout/navigation-items";
 import { RouteBreadcrumbs } from "@/app/layout/route-breadcrumbs";
 import { WorkspaceTabsBar } from "@/app/layout/workspace-tabs-bar";
 import { useTenantScope } from "@/app/scope-context";
+import { useI18n } from "@/app/ui-preferences";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { BrandLogo } from "@/shared/components/brand-logo";
+import { UiPreferencesControls } from "@/shared/components/ui-preferences-controls";
 import { WorkspaceContextSwitcher } from "@/shared/components/workspace-context-switcher";
 import { hasAnyRole } from "@/shared/utils/permissions";
 
 const mobileDrawerWidth = 300;
 
 export function AppShell() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
   const location = useLocation();
   const navigate = useNavigate();
+  const { t, translateText } = useI18n();
   const { session, logout } = useAuth();
   const { company, memberships, activeMembershipId, switchMembership, warehouses, activeWarehouseId, setActiveWarehouseId } = useTenantScope();
   const { tabs, activateTab, closeTab, isClosingTab } = useWorkspaceTabs();
@@ -52,7 +57,9 @@ export function AppShell() {
   const drawerContent = (
     <Box
       sx={{
-        background: brandGradients.shellDrawer,
+        background: isDark
+          ? "linear-gradient(180deg, #120d09 0%, #1b120c 52%, #23150d 100%)"
+          : brandGradients.shellDrawer,
         color: brandColors.inkSoft,
         display: "flex",
         flexDirection: "column",
@@ -61,9 +68,9 @@ export function AppShell() {
     >
       <Toolbar sx={{ alignItems: "flex-start", px: 3, py: 3 }}>
         <Stack spacing={1.5} sx={{ width: "100%" }}>
-          <BrandLogo kind="lockup" sx={{ width: 150 }} variant="gold" />
+          <BrandLogo alt={t("ui.brandLogoAlt")} kind="lockup" sx={{ width: 150 }} variant="gold" />
           <Typography color={alpha(brandColors.inkSoft, 0.7)} variant="body2">
-            Multi-tenant warehouse command center
+            {t("shell.multiTenantTagline")}
           </Typography>
           <WorkspaceContextSwitcher
             activeMembershipId={activeMembershipId}
@@ -108,7 +115,7 @@ export function AppShell() {
               <ListItemIcon>
                 <Icon color={selected ? "primary" : "inherit"} />
               </ListItemIcon>
-              <ListItemText primary={item.label} />
+              <ListItemText primary={translateText(item.label)} />
             </ListItemButton>
           );
         })}
@@ -124,7 +131,7 @@ export function AppShell() {
             <MenuIcon />
           </IconButton>
           <Stack direction="row" spacing={1.5} sx={{ minWidth: 0, width: { xs: "auto", lg: 220 } }}>
-            <BrandLogo kind="lockup" sx={{ width: 150 }} variant="gold" />
+            <BrandLogo alt={t("ui.brandLogoAlt")} kind="lockup" sx={{ width: 150 }} variant="gold" />
           </Stack>
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: { xs: "none", xl: "block" } }}>
@@ -138,6 +145,7 @@ export function AppShell() {
               warehouses={warehouses}
             />
           </Box>
+          <UiPreferencesControls compact />
           <Stack alignItems="center" direction="row" onClick={(event) => setMenuAnchor(event.currentTarget)} spacing={1.5} sx={{ cursor: "pointer" }}>
             <Avatar
               sx={{
@@ -153,7 +161,7 @@ export function AppShell() {
             <Box sx={{ display: { xs: "none", sm: "block" } }}>
               <Typography variant="body2">{session?.operatorName}</Typography>
               <Typography color="text.secondary" variant="caption">
-                {session?.operatorRole}
+                {session?.operatorRole ? translateText(session.operatorRole) : session?.operatorRole}
               </Typography>
             </Box>
           </Stack>
@@ -165,7 +173,7 @@ export function AppShell() {
                 navigate("/login", { replace: true });
               }}
             >
-              Sign out
+              {t("shell.signOut")}
             </MenuItem>
           </Menu>
         </Toolbar>

@@ -1,0 +1,34 @@
+{
+  "include": [
+    "backend/apps",
+    "backend/config"
+  ],
+  "exclude": [
+    "**/__pycache__",
+    "backend/dachong_wms",
+    "backend/access",
+    "backend/warehouse",
+    "backend/inventory",
+    "backend/locations",
+    "backend/operations",
+    "backend/catalog",
+    "backend/reporting",
+    "backend/scanner",
+    "backend/integrations",
+    "backend/automation",
+    "backend/mfa",
+    "backend/staff",
+    "backend/userprofile",
+    "backend/userlogin"
+  ],
+  "typeCheckingMode": "strict",
+  "reportMissingTypeStubs": false,
+  "executionEnvironments": [
+    {
+      "root": "backend",
+      "extraPaths": [
+        "backend"
+      ]
+    }
+  ]
+}

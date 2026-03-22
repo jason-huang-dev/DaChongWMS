@@ -1,58 +1,65 @@
 # Backend Architecture
 
-DaChongWMS uses Django and Django REST Framework (DRF) to deliver a modular, domain-first backend. This document captures the layered approach so future apps align with the same structure.
+DaChongWMS is moving to a modular backend rooted in `backend/apps/*` and booted by `backend/config/*`.
 
-## High-Level Layers
+## Current source of truth
 
-1. **Entry + Configuration**: `dachong_wms.settings`, `asgi.py`, and `wsgi.py`.
-2. **Django Apps**: Each domain lives in its own app inside `backend/`. Shared domain groupings such as `catalog.*` and `operations.*` are preferred when several apps belong to the same bounded context.
-3. **Service Layer**: Multi-model workflow stays in service modules, not serializers.
-4. **API Layer**: DRF viewsets and explicit URL maps per app.
-5. **Automation Layer**: `automation` owns queued work, recurring schedules, retry state, worker heartbeats, alerting, and the worker command for async execution.
-6. **Utility Layer**: shared helpers under `backend/utils/` for auth, operator resolution, pagination, validation, and scan-code resolution.
-7. **Bootstrap Services**: `test_system` seeds a usable tenant for smoke tests.
-8. **Access Domain**: `access` owns companies and company memberships for browser users, including company switching, admin-driven account provisioning, and persisted frontend preferences such as queue views, workspace tabs, and workbench layouts.
-9. **Operational Domains**: `operations.inbound`, `operations.outbound`, `operations.counting`, `operations.transfers`, and `operations.returns` own warehouse execution.
-10. **Integration + Commercial Domains**: `integrations` owns ERP/carrier/webhook control flow. `reporting` owns KPIs, storage accruals, finance review/export, rate contracts, invoices, settlements, remittances, disputes, credit notes, external remittance ingestion, and billing charge events.
-11. **Scan Primitives**: `scanner` holds barcode aliases, scan rules, LPN state, handheld device sessions, telemetry, and offline replay used by the operational apps.
+1. **Entry + Configuration**: `config.settings.*`, `config.asgi`, and `config.wsgi`
+2. **Core modular apps**:
+   - `apps.accounts`
+   - `apps.fees`
+   - `apps.organizations`
+   - `apps.iam`
+   - `apps.logistics`
+   - `apps.partners`
+   - `apps.workorders`
+   - `apps.warehouse`
+3. **Service layer**: app-local `services/` modules hold multi-model orchestration
+4. **API layer**: app-local `api/` packages expose DRF views and URL wiring
 
-## Current State
+## New domain boundaries
 
-- DRF Spectacular is wired under `/api/schema/` and `/api/docs/`.
-- `automation` is now installed and exposed under `/api/automation/`.
-- `access` is now installed and exposed under `/api/access/`.
-- Scan-first execution now includes ASN/LPN-aware inbound receive/putaway, dock-verified outbound shipping, and scanner-managed handheld session/offline replay.
-- Browser auth now resolves through company memberships so one browser identity can move between multiple companies while warehouse APIs remain tenant-safe.
+- `accounts`: authentication identity
+- `fees`: operational recharge, deduction, vouchers, charging catalog, receivable billing, expense tracking, and profit snapshots
+- `organizations`: tenancy and memberships
+- `iam`: roles, groups, scopes, permission resolution
+- `logistics`: provider masters, provider channels, customer channel mappings, routing rules, surcharges, charging strategy, logistics charges, and logistics costs
+- `partners`: customer accounts and client-account access
+- `workorders`: fulfillment scheduling, urgency, and work-order type templates
+- `warehouse`: organization-scoped warehouse master data
 
-## App Layout Template
+## External access model
 
+- Supplier records are partner master data, not login identities.
+- Client portal users are `accounts.User` identities with `membership_type=CLIENT`.
+- Client access is limited through IAM resource scopes tied to `partners.CustomerAccount`.
+
+## App layout template
+
+```text
+backend/apps/<app_name>/
+  models.py
+  services/
+  api/
+  permissions.py
+  admin.py
+  tests/
 ```
-backend/
-  <app_name>/
-    __init__.py
-    apps.py
-    models.py
-    serializers.py
-    services.py
-    views.py
-    urls.py
-    permissions.py
-    tests.py
-```
 
-- Keep migrations inside each app.
-- Keep domain orchestration in services.
-- Keep APIs thin and tenant-safe.
+## Legacy status
 
-## Cross-Cutting Concerns
+The old top-level Django apps under `backend/` still exist and remain migration targets:
 
-- **Authentication**: Django auth + token auth.
-- **Auditing**: stamp resolved operator names into workflow records.
-- **Transactions**: wrap stock-changing flows and background handlers with `transaction.atomic()`.
-- **Async Boundaries**: long-running integrations and scheduled commercial/reporting jobs belong in `automation`, not HTTP requests.
+- `access`
+- `warehouse`
+- `inventory`
+- `locations`
+- `operations/*`
+- `reporting`
+- `scanner`
+- `userlogin`
+- `userprofile`
+- `customer`
+- `supplier`
 
-## Future Enhancements
-
-- broker-backed workers for horizontal scale
-- metrics/health endpoints for worker backlog and failure rate
-- shared core mixins if repeated model/view scaffolding grows further
+New feature work should prefer `apps/*` unless a migration shim is explicitly required.

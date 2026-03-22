@@ -10,6 +10,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from inventory.models import InventoryMovement, InventoryStatus
+from operations.order_types import OperationOrderType
 
 
 class TenantAuditModel(models.Model):
@@ -30,6 +31,21 @@ class SalesOrderStatus(models.TextChoices):
     PICKED = "PICKED", "Picked"
     SHIPPED = "SHIPPED", "Shipped"
     CANCELLED = "CANCELLED", "Cancelled"
+
+
+class SalesOrderFulfillmentStage(models.TextChoices):
+    GET_TRACKING_NO = "GET_TRACKING_NO", "Get Tracking No"
+    TO_MOVE = "TO_MOVE", "To Move"
+    IN_PROCESS = "IN_PROCESS", "In Process Orders"
+    TO_SHIP = "TO_SHIP", "To Ship"
+    SHIPPED = "SHIPPED", "Shipped"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class SalesOrderExceptionState(models.TextChoices):
+    NORMAL = "NORMAL", "Normal"
+    ABNORMAL_PACKAGE = "ABNORMAL_PACKAGE", "Abnormal Package"
+    ORDER_INTERCEPTION = "ORDER_INTERCEPTION", "Order Interception"
 
 
 class SalesOrderLineStatus(models.TextChoices):
@@ -72,6 +88,40 @@ class ShortPickReason(models.TextChoices):
     OTHER = "OTHER", "Other"
 
 
+class OutboundWaveStatus(models.TextChoices):
+    OPEN = "OPEN", "Open"
+    RELEASED = "RELEASED", "Released"
+    COMPLETED = "COMPLETED", "Completed"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class PackageExecutionStep(models.TextChoices):
+    RELABEL = "RELABEL", "Scan And Relabel"
+    PACK = "PACK", "Scan To Pack"
+    INSPECT = "INSPECT", "Scan To Inspect"
+    WEIGH = "WEIGH", "Weighing To Ship"
+
+
+class PackageExecutionStatus(models.TextChoices):
+    SUCCESS = "SUCCESS", "Success"
+    FLAGGED = "FLAGGED", "Flagged"
+
+
+class ShipmentDocumentType(models.TextChoices):
+    MANIFEST = "MANIFEST", "Manifest Record"
+    PHOTO = "PHOTO", "Photo Record"
+    SCANFORM = "SCANFORM", "Get Scanform"
+
+
+class LogisticsTrackingStatus(models.TextChoices):
+    INFO_RECEIVED = "INFO_RECEIVED", "Info Received"
+    IN_TRANSIT = "IN_TRANSIT", "In Transit"
+    ARRIVED = "ARRIVED", "Arrived"
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY", "Out For Delivery"
+    DELIVERED = "DELIVERED", "Delivered"
+    EXCEPTION = "EXCEPTION", "Exception"
+
+
 class SalesOrder(TenantAuditModel):
     warehouse = models.ForeignKey(
         "warehouse.Warehouse",
@@ -91,8 +141,16 @@ class SalesOrder(TenantAuditModel):
         related_name="sales_orders",
         verbose_name="Staging Location",
     )
+    order_type = models.CharField(
+        max_length=32,
+        choices=OperationOrderType.choices,
+        default=OperationOrderType.DROPSHIP,
+        verbose_name="Order Type",
+    )
     order_number = models.CharField(max_length=64, verbose_name="Sales Order Number")
+    order_time = models.DateTimeField(blank=True, null=True, verbose_name="Order Time")
     requested_ship_date = models.DateField(blank=True, null=True, verbose_name="Requested Ship Date")
+    expires_at = models.DateTimeField(blank=True, null=True, verbose_name="Expiration Time")
     reference_code = models.CharField(max_length=64, blank=True, default="", verbose_name="Reference Code")
     status = models.CharField(
         max_length=32,
@@ -100,6 +158,74 @@ class SalesOrder(TenantAuditModel):
         default=SalesOrderStatus.OPEN,
         verbose_name="Status",
     )
+    fulfillment_stage = models.CharField(
+        max_length=32,
+        choices=SalesOrderFulfillmentStage.choices,
+        default=SalesOrderFulfillmentStage.GET_TRACKING_NO,
+        verbose_name="Fulfillment Stage",
+    )
+    exception_state = models.CharField(
+        max_length=32,
+        choices=SalesOrderExceptionState.choices,
+        default=SalesOrderExceptionState.NORMAL,
+        verbose_name="Exception State",
+    )
+    package_count = models.PositiveIntegerField(default=0, verbose_name="Package Count")
+    package_type = models.CharField(max_length=64, blank=True, default="", verbose_name="Package Type")
+    package_weight = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Package Weight",
+    )
+    package_length = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Package Length",
+    )
+    package_width = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Package Width",
+    )
+    package_height = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Package Height",
+    )
+    package_volume = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Package Volume",
+    )
+    logistics_provider = models.CharField(max_length=64, blank=True, default="", verbose_name="Logistics Provider")
+    shipping_method = models.CharField(max_length=64, blank=True, default="", verbose_name="Shipping Method")
+    tracking_number = models.CharField(max_length=64, blank=True, default="", verbose_name="Tracking Number")
+    waybill_number = models.CharField(max_length=64, blank=True, default="", verbose_name="Waybill Number")
+    waybill_printed = models.BooleanField(default=False, verbose_name="Waybill Printed")
+    waybill_printed_at = models.DateTimeField(blank=True, null=True, verbose_name="Waybill Printed At")
+    deliverer_name = models.CharField(max_length=255, blank=True, default="", verbose_name="Deliverer Name")
+    deliverer_phone = models.CharField(max_length=64, blank=True, default="", verbose_name="Deliverer Phone")
+    receiver_name = models.CharField(max_length=255, blank=True, default="", verbose_name="Receiver Name")
+    receiver_phone = models.CharField(max_length=64, blank=True, default="", verbose_name="Receiver Phone")
+    receiver_country = models.CharField(max_length=64, blank=True, default="", verbose_name="Receiver Country")
+    receiver_state = models.CharField(max_length=64, blank=True, default="", verbose_name="Receiver State")
+    receiver_city = models.CharField(max_length=64, blank=True, default="", verbose_name="Receiver City")
+    receiver_address = models.CharField(max_length=255, blank=True, default="", verbose_name="Receiver Address")
+    receiver_postal_code = models.CharField(max_length=32, blank=True, default="", verbose_name="Receiver Postal Code")
+    picking_started_at = models.DateTimeField(blank=True, null=True, verbose_name="Picking Started At")
+    picking_completed_at = models.DateTimeField(blank=True, null=True, verbose_name="Picking Completed At")
+    packed_at = models.DateTimeField(blank=True, null=True, verbose_name="Packed At")
+    exception_notes = models.TextField(blank=True, default="", verbose_name="Exception Notes")
     notes = models.TextField(blank=True, default="", verbose_name="Notes")
 
     class Meta:
@@ -410,6 +536,260 @@ class ShipmentLine(TenantAuditModel):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.shipment.shipment_number}:{self.goods.goods_code}"
+
+
+class OutboundWave(TenantAuditModel):
+    warehouse = models.ForeignKey(
+        "warehouse.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="outbound_waves",
+        verbose_name="Warehouse",
+    )
+    order_type = models.CharField(
+        max_length=32,
+        choices=OperationOrderType.choices,
+        default=OperationOrderType.DROPSHIP,
+        verbose_name="Order Type",
+    )
+    wave_number = models.CharField(max_length=64, verbose_name="Wave Number")
+    status = models.CharField(
+        max_length=16,
+        choices=OutboundWaveStatus.choices,
+        default=OutboundWaveStatus.OPEN,
+        verbose_name="Status",
+    )
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+    generated_by = models.CharField(max_length=255, verbose_name="Generated By")
+    generated_at = models.DateTimeField(default=timezone.now, verbose_name="Generated At")
+
+    class Meta:
+        db_table = "outbound_wave"
+        verbose_name = "Outbound Wave"
+        verbose_name_plural = "Outbound Waves"
+        ordering = ["-generated_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "wave_number"],
+                condition=Q(is_delete=False),
+                name="outbound_wave_number_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.wave_number
+
+
+class OutboundWaveOrder(TenantAuditModel):
+    wave = models.ForeignKey(
+        OutboundWave,
+        on_delete=models.PROTECT,
+        related_name="orders",
+        verbose_name="Wave",
+    )
+    sales_order = models.ForeignKey(
+        SalesOrder,
+        on_delete=models.PROTECT,
+        related_name="wave_assignments",
+        verbose_name="Sales Order",
+    )
+    sort_sequence = models.PositiveIntegerField(default=1, verbose_name="Sort Sequence")
+
+    class Meta:
+        db_table = "outbound_wave_order"
+        verbose_name = "Outbound Wave Order"
+        verbose_name_plural = "Outbound Wave Orders"
+        ordering = ["wave_id", "sort_sequence", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["wave", "sales_order"],
+                condition=Q(is_delete=False),
+                name="outbound_wave_order_sales_order_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"{self.wave.wave_number}:{self.sales_order.order_number}"
+
+
+class PackageExecutionRecord(TenantAuditModel):
+    warehouse = models.ForeignKey(
+        "warehouse.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="package_execution_records",
+        verbose_name="Warehouse",
+    )
+    sales_order = models.ForeignKey(
+        SalesOrder,
+        on_delete=models.PROTECT,
+        related_name="package_execution_records",
+        verbose_name="Sales Order",
+    )
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.PROTECT,
+        related_name="package_execution_records",
+        blank=True,
+        null=True,
+        verbose_name="Shipment",
+    )
+    wave = models.ForeignKey(
+        OutboundWave,
+        on_delete=models.PROTECT,
+        related_name="package_execution_records",
+        blank=True,
+        null=True,
+        verbose_name="Wave",
+    )
+    record_number = models.CharField(max_length=64, verbose_name="Record Number")
+    step_type = models.CharField(
+        max_length=16,
+        choices=PackageExecutionStep.choices,
+        verbose_name="Step Type",
+    )
+    execution_status = models.CharField(
+        max_length=16,
+        choices=PackageExecutionStatus.choices,
+        default=PackageExecutionStatus.SUCCESS,
+        verbose_name="Execution Status",
+    )
+    package_number = models.CharField(max_length=64, verbose_name="Package Number")
+    scan_code = models.CharField(max_length=255, blank=True, default="", verbose_name="Scan Code")
+    weight = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(Decimal("0.0000"))],
+        verbose_name="Weight",
+    )
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+    executed_by = models.CharField(max_length=255, verbose_name="Executed By")
+    executed_at = models.DateTimeField(default=timezone.now, verbose_name="Executed At")
+
+    class Meta:
+        db_table = "outbound_package_execution_record"
+        verbose_name = "Package Execution Record"
+        verbose_name_plural = "Package Execution Records"
+        ordering = ["-executed_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "record_number"],
+                condition=Q(is_delete=False),
+                name="outbound_package_execution_number_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.record_number
+
+
+class ShipmentDocumentRecord(TenantAuditModel):
+    warehouse = models.ForeignKey(
+        "warehouse.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="shipment_document_records",
+        verbose_name="Warehouse",
+    )
+    sales_order = models.ForeignKey(
+        SalesOrder,
+        on_delete=models.PROTECT,
+        related_name="shipment_document_records",
+        verbose_name="Sales Order",
+    )
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.PROTECT,
+        related_name="document_records",
+        blank=True,
+        null=True,
+        verbose_name="Shipment",
+    )
+    wave = models.ForeignKey(
+        OutboundWave,
+        on_delete=models.PROTECT,
+        related_name="document_records",
+        blank=True,
+        null=True,
+        verbose_name="Wave",
+    )
+    document_number = models.CharField(max_length=64, verbose_name="Document Number")
+    document_type = models.CharField(
+        max_length=16,
+        choices=ShipmentDocumentType.choices,
+        verbose_name="Document Type",
+    )
+    reference_code = models.CharField(max_length=64, blank=True, default="", verbose_name="Reference Code")
+    file_name = models.CharField(max_length=255, blank=True, default="", verbose_name="File Name")
+    notes = models.TextField(blank=True, default="", verbose_name="Notes")
+    generated_by = models.CharField(max_length=255, verbose_name="Generated By")
+    generated_at = models.DateTimeField(default=timezone.now, verbose_name="Generated At")
+
+    class Meta:
+        db_table = "outbound_shipment_document_record"
+        verbose_name = "Shipment Document Record"
+        verbose_name_plural = "Shipment Document Records"
+        ordering = ["-generated_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "document_number"],
+                condition=Q(is_delete=False),
+                name="outbound_shipment_document_number_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.document_number
+
+
+class LogisticsTrackingEvent(TenantAuditModel):
+    warehouse = models.ForeignKey(
+        "warehouse.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="logistics_tracking_events",
+        verbose_name="Warehouse",
+    )
+    sales_order = models.ForeignKey(
+        SalesOrder,
+        on_delete=models.PROTECT,
+        related_name="tracking_events",
+        verbose_name="Sales Order",
+    )
+    shipment = models.ForeignKey(
+        Shipment,
+        on_delete=models.PROTECT,
+        related_name="tracking_events",
+        blank=True,
+        null=True,
+        verbose_name="Shipment",
+    )
+    event_number = models.CharField(max_length=64, verbose_name="Event Number")
+    tracking_number = models.CharField(max_length=64, verbose_name="Tracking Number")
+    event_code = models.CharField(max_length=32, verbose_name="Event Code")
+    event_status = models.CharField(
+        max_length=32,
+        choices=LogisticsTrackingStatus.choices,
+        verbose_name="Event Status",
+    )
+    event_location = models.CharField(max_length=255, blank=True, default="", verbose_name="Event Location")
+    description = models.TextField(blank=True, default="", verbose_name="Description")
+    occurred_at = models.DateTimeField(default=timezone.now, verbose_name="Occurred At")
+    recorded_by = models.CharField(max_length=255, verbose_name="Recorded By")
+
+    class Meta:
+        db_table = "outbound_logistics_tracking_event"
+        verbose_name = "Logistics Tracking Event"
+        verbose_name_plural = "Logistics Tracking Events"
+        ordering = ["-occurred_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["openid", "event_number"],
+                condition=Q(is_delete=False),
+                name="outbound_tracking_event_number_uq",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return self.event_number
 
 
 class DockLoadVerification(TenantAuditModel):

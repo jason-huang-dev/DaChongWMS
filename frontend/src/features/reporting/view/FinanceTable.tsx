@@ -8,7 +8,7 @@ import { formatDateTime, formatNumber } from "@/shared/utils/format";
 
 import { sumInvoiceAmounts } from "../model/mappers";
 
-const invoiceFields: DataViewFieldConfig<{ invoice_number__icontains: string; status: string }>[] = [
+const invoiceFields: DataViewFieldConfig<{ invoice_number__icontains: string; status: string; "finance_approval__status": string }>[] = [
   { key: "invoice_number__icontains", label: "Invoice", placeholder: "INV-1001" },
   {
     key: "status",
@@ -20,6 +20,16 @@ const invoiceFields: DataViewFieldConfig<{ invoice_number__icontains: string; st
       { label: "Void", value: "VOID" },
     ],
   },
+  {
+    key: "finance_approval__status",
+    label: "Finance approval",
+    type: "select",
+    options: [
+      { label: "Pending", value: "PENDING" },
+      { label: "Approved", value: "APPROVED" },
+      { label: "Rejected", value: "REJECTED" },
+    ],
+  },
 ];
 
 interface FinanceTableProps {
@@ -28,7 +38,7 @@ interface FinanceTableProps {
   error?: string | null;
   total: number;
   activeWarehouseName?: string | null;
-  dataView: UseDataViewResult<{ invoice_number__icontains: string; status: string }>;
+  dataView: UseDataViewResult<{ invoice_number__icontains: string; status: string; "finance_approval__status": string }>;
 }
 
 export function FinanceTable({ rows, isLoading, error, total, activeWarehouseName, dataView }: FinanceTableProps) {
@@ -47,6 +57,11 @@ export function FinanceTable({ rows, isLoading, error, total, activeWarehouseNam
           key: "disputed",
           align: "right",
           render: (row) => formatNumber(row.disputed_amount ?? sumInvoiceAmounts(row.disputes ?? [], "disputed_amount")),
+        },
+        {
+          header: "Finance approval",
+          key: "financeApproval",
+          render: (row) => <StatusChip status={row.finance_approval?.status ?? "DRAFT"} />,
         },
         {
           header: "Credited",

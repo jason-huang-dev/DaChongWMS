@@ -43,6 +43,28 @@ export const scanReceiveSchema = z
     unit_cost: z.coerce.number().min(0, "Unit cost cannot be negative"),
     reference_code: z.string().trim().optional().default(""),
     notes: z.string().trim().optional().default(""),
+    order_type: z.string().trim().optional().default(""),
+  })
+  .superRefine((values, context) => {
+    if (!values.purchase_order_number && !values.asn_number) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either a purchase order number or an ASN number",
+        path: ["purchase_order_number"],
+      });
+    }
+  });
+
+export const scanSignSchema = z
+  .object({
+    purchase_order_number: z.string().trim().optional().default(""),
+    asn_number: z.string().trim().optional().default(""),
+    signing_number: z.string().trim().min(1, "Signing number is required"),
+    carrier_name: z.string().trim().optional().default(""),
+    vehicle_plate: z.string().trim().optional().default(""),
+    reference_code: z.string().trim().optional().default(""),
+    notes: z.string().trim().optional().default(""),
+    order_type: z.string().trim().optional().default(""),
   })
   .superRefine((values, context) => {
     if (!values.purchase_order_number && !values.asn_number) {
@@ -60,4 +82,5 @@ export const scanPutawaySchema = z.object({
   to_location_barcode: z.string().trim().min(1, "To-location barcode is required"),
   goods_barcode: z.string().trim().min(1, "Goods barcode is required"),
   lpn_barcode: z.string().trim().optional().default(""),
+  order_type: z.string().trim().optional().default(""),
 });
