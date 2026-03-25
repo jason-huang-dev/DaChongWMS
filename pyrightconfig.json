@@ -3,23 +3,10 @@
     "backend/apps",
     "backend/config"
   ],
+  "stubPath": "backend/typings",
   "exclude": [
     "**/__pycache__",
-    "backend/dachong_wms",
-    "backend/access",
-    "backend/warehouse",
-    "backend/inventory",
-    "backend/locations",
-    "backend/operations",
-    "backend/catalog",
-    "backend/reporting",
-    "backend/scanner",
-    "backend/integrations",
-    "backend/automation",
-    "backend/mfa",
-    "backend/staff",
-    "backend/userprofile",
-    "backend/userlogin"
+    "backend/apps/legacy"
   ],
   "typeCheckingMode": "strict",
   "reportMissingTypeStubs": false,

@@ -1,53 +1,51 @@
 # Django Initialization and Entry
 
-This document explains how Django boots inside DaChongWMS and how each entrypoint should be used for development, staging, and production.
+This document describes how Django boots inside DaChongWMS through the first-class `config` project.
 
 ## Core Files
 
-- `backend/manage.py` — CLI entry used for `runserver`, management commands, migrations, etc. It sets `DJANGO_SETTINGS_MODULE` to `dachong_wms.settings` before delegating to Django.
-- `backend/dachong_wms/asgi.py` — Async entrypoint for ASGI servers such as Uvicorn, Daphne, or Hypercorn. It exposes the `application` callable discovered by the ASGI server.
-- `backend/dachong_wms/wsgi.py` — Sync entrypoint for WSGI servers such as Gunicorn or uWSGI. Use when ASGI features (websockets, long-lived async tasks) are not required.
-- `backend/dachong_wms/settings.py` — Centralized configuration consumed by both entrypoints. All process types share the same settings module so environment-managed overrides are critical.
+- `backend/manage.py` — CLI entry used for `runserver`, migrations, and management commands. It now defaults `DJANGO_SETTINGS_MODULE` to `config.settings.dev`.
+- `backend/config/asgi.py` — Canonical ASGI entrypoint for async servers.
+- `backend/config/wsgi.py` — Canonical WSGI entrypoint for Gunicorn/uWSGI style deployments.
+- `backend/config/settings/base.py` — Shared modular-backend settings.
+- `backend/config/settings/dev.py` — Development profile.
+- `backend/config/settings/prod.py` — Production profile.
+- `backend/config/settings/test.py` — Test profile.
+- `backend/apps/common/env.py` — Shared environment parsing helpers for all supported settings profiles.
 
 ## Initialization Flow
 
-1. **Environment variables** are sourced via shell, `.env`, or orchestration layer. Key variables:
-   - `DJANGO_SECRET_KEY`
-   - `DJANGO_DEBUG`
-   - `DJANGO_ALLOWED_HOSTS`
-   - `DJANGO_CORS_ALLOWED_ORIGINS`, `DJANGO_CSRF_TRUSTED_ORIGINS`
-   - Database and cache URLs as the stack evolves (see other docs).
-2. **Entry command executes** (`python manage.py runserver`, `uvicorn dachong_wms.asgi:application`, etc.).
-3. **Entry module** (`manage.py`, `asgi.py`, or `wsgi.py`) sets `DJANGO_SETTINGS_MODULE` if missing.
-4. **Django loads settings** and performs app registry initialization.
-5. **Runtime server** (runserver, Gunicorn worker, etc.) serves requests through the configured middleware stack.
+1. Environment variables are loaded by the shell, Docker, or orchestration layer.
+2. The entry command executes:
+   - `python backend/manage.py runserver`
+   - `gunicorn config.wsgi:application`
+   - `uvicorn config.asgi:application`
+3. The entry module sets `DJANGO_SETTINGS_MODULE` if it is not already present.
+4. Django imports the chosen `config.settings.*` module.
+5. Django loads `config.urls`, initializes installed apps, and starts serving requests.
 
-## Local Development
+## Canonical runtime targets
 
-- Default DB is SQLite via `dj_database_url`, but developers may point to Postgres by exporting `DATABASE_URL`.
-- Use `python manage.py runserver` for quick iteration. This uses the same settings module so features such as DRF, CORS, and static handling follow production paths.
-- Keep `.env` files scoped per developer; do not commit secrets.
-- The Docker dev stack now lives in `docker-compose.dev.yml`; it binds the backend source tree into the container and runs `python manage.py runserver 0.0.0.0:8000`.
+- Development:
+  - `DJANGO_SETTINGS_MODULE=config.settings.dev`
+  - `python backend/manage.py runserver`
+- Production:
+  - `DJANGO_SETTINGS_MODULE=config.settings.prod`
+  - `gunicorn config.wsgi:application`
+- Tests:
+  - `DJANGO_SETTINGS_MODULE=config.settings.test`
+  - `python backend/manage.py test ... --settings=config.settings.test`
+  - `TEST_DATABASE_URL` overrides the PostgreSQL database used for the Django test runner; otherwise it falls back to `DATABASE_URL`
 
-## Deployment Targets
+## Docker alignment
 
-- **ASGI (preferred long-term)**: Allows websocket channels, async views, and compatibility with async task dispatch. Example command: `uvicorn dachong_wms.asgi:application --host 0.0.0.0 --port 8000`.
-- **WSGI**: Works with established Django hosting stacks. Example command: `gunicorn dachong_wms.wsgi:application`.
-- **Management jobs**: Use `python manage.py <command>` inside the same virtualenv/container image used for serving.
-- The Docker production stack now lives in `docker-compose.prod.yml`; it runs `gunicorn dachong_wms.wsgi:application` behind the frontend Nginx container.
-
-## Shared Utilities
-
-- Token auth + throttles from `backend/utils` are wired via `REST_FRAMEWORK` settings, so new apps automatically inherit the header-based authentication, rate limits, and custom exception handler.
-- Validation helpers (`datasolve.py`) and support modules (`fbmsg.py`, `md5.py`, `jwt.py`, `websocket.py`) live under the same package; import them instead of duplicating logic when building future domain models or APIs.
-
-## Health Checks & Observability
-
-- Add lightweight health endpoints under `/api/health/` within a future `ops` app; use DRF permissions to restrict as needed.
-- Tie log output to the `LOGGING` dict in `settings.py`. When running under Gunicorn/Uvicorn, ensure access logs are forwarded to the same sink as Django logs.
+- `backend/Dockerfile` now pre-collects static assets with `config.settings.prod`.
+- `docker-compose.dev.yml` uses `config.settings.dev`.
+- `docker-compose.prod.yml` runs `gunicorn config.wsgi:application` with `config.settings.prod`.
 
 ## Common Gotchas
 
-- Always activate the virtualenv before running manage.py so all requirements (CORS, DRF, Spectacular) are available.
-- If `DJANGO_SETTINGS_MODULE` is overridden for experiments, remember to revert to `dachong_wms.settings` before committing anything.
-- Keep ASGI and WSGI modules minimal—initialization logic should live in settings, apps, or dedicated service modules.
+- Do not introduce a second Django project package under `backend/`; keep project entrypoints in `backend/config/*`.
+- Do not reintroduce a root-level `backend/utils`; shared modular helpers belong in `backend/apps/common/*`.
+- When running the modular backend locally, prefer explicit settings overrides such as `--settings=config.settings.test` for tests and one-off commands.
+- The supported backend database is PostgreSQL across dev, test, and prod settings.

@@ -19,6 +19,7 @@ import { resolveAuthenticatedResponse, resolveLoginResult, verifyMfaChallengeAct
 export async function hydrateSession(baseSession: BaseAuthSession) {
   const operator = await fetchOperatorProfile({
     openid: baseSession.openid,
+    token: baseSession.token,
     operatorId: baseSession.operatorId,
   });
   return mapOperatorToSession(baseSession, operator);

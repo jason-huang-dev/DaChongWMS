@@ -19,6 +19,7 @@ MANAGE_PROD := $(COMPOSE_PROD) exec backend python manage.py
 	prod run_prod prod_build build_prod \
 	down down_dev down_prod clean_docker \
 	venv migrate migrate_prod makemigrations showmigrations createsuperuser \
+	reset_dev_db remigrate \
 	export_pg13_dump import_pg13_dump \
 	check_tables flush_db db_relations test_backend \
 	update_from_branch push_to_branch update update_run push migrate_and_update \
@@ -36,6 +37,8 @@ help:
 		"  make migrate                Run Django migrations in dev" \
 		"  make migrate_prod PROD_ENV_FILE=.env.prod" \
 		"                              Run Django migrations in prod" \
+		"  make reset_dev_db           Drop and recreate the dev PostgreSQL schema" \
+		"  make remigrate              Reset the dev PostgreSQL schema, then rerun migrations" \
 		"  make export_pg13_dump OLD_PG13_VOLUME=dachongwms_db_data" \
 		"                              Export the old PostgreSQL 13 volume into a dump file" \
 		"  make import_pg13_dump DUMP_FILE=tmp/pg13-to-pg16.dump" \
@@ -95,19 +98,23 @@ showmigrations:
 createsuperuser:
 	$(MANAGE_DEV) createsuperuser
 
+reset_dev_db:
+	$(COMPOSE_DEV) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"'
+
+remigrate: reset_dev_db migrate
+
 check_tables:
 	$(COMPOSE_DEV) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "\\dt"'
 
 flush_db:
-	$(COMPOSE_DEV) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"'
-	$(MANAGE_DEV) flush
+	$(MAKE) reset_dev_db
 
 db_relations:
-	mkdir -p backend/docs/diagrams
-	$(MANAGE_DEV) graph_models --arrow-shape normal -a -o docs/diagrams/er-diagram.svg
+	mkdir -p backend/ai/docs/diagrams
+	$(MANAGE_DEV) graph_models --arrow-shape normal -a -o ai/docs/diagrams/er-diagram.svg
 
 test_backend:
-	$(MANAGE_DEV) test $(TEST_TARGET)
+	$(MANAGE_DEV) test $(TEST_TARGET) --settings=config.settings.test
 
 export_pg13_dump:
 	OLD_PG13_VOLUME=$(OLD_PG13_VOLUME) DUMP_FILE=$(DUMP_FILE) ./scripts/migrate_pg13_to_pg16.sh export

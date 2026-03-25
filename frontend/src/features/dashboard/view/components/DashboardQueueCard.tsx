@@ -9,14 +9,19 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink } from "react-router-dom";
 
+import { brandColors, brandMotion, brandShadows, brandStatusColors } from "@/app/brand";
 import { useI18n } from "@/app/ui-preferences";
 
-interface DashboardQueueMetric {
+export type DashboardQueueMetricTone = "info" | "success" | "warning" | "danger" | "neutral";
+
+export interface DashboardQueueMetric {
   label: string;
   value: ReactNode;
   to?: string;
+  tone?: DashboardQueueMetricTone;
 }
 
 interface DashboardQueueCardProps {
@@ -26,7 +31,24 @@ interface DashboardQueueCardProps {
 }
 
 export function DashboardQueueCard({ title, subtitle, metrics }: DashboardQueueCardProps) {
+  const theme = useTheme();
   const { translateText } = useI18n();
+  const isDark = theme.palette.mode === "dark";
+
+  function getToneColor(tone: DashboardQueueMetricTone | undefined) {
+    switch (tone) {
+      case "success":
+        return isDark ? brandStatusColors.success.dark : brandStatusColors.success.light;
+      case "info":
+        return isDark ? brandStatusColors.info.dark : brandStatusColors.info.light;
+      case "warning":
+        return isDark ? brandStatusColors.warning.dark : brandStatusColors.warning.light;
+      case "danger":
+        return isDark ? brandStatusColors.danger.dark : brandStatusColors.danger.light;
+      default:
+        return brandColors.accent;
+    }
+  }
 
   return (
     <Card sx={{ height: "100%" }}>
@@ -42,6 +64,7 @@ export function DashboardQueueCard({ title, subtitle, metrics }: DashboardQueueC
           </Box>
           <Stack spacing={1.25}>
             {metrics.map((metric) => {
+              const toneColor = getToneColor(metric.tone);
               const content = (
                 <Stack
                   alignItems="center"
@@ -50,11 +73,23 @@ export function DashboardQueueCard({ title, subtitle, metrics }: DashboardQueueC
                   spacing={1.5}
                   sx={{ minHeight: 40 }}
                 >
-                  <Typography color="text.secondary" variant="body2">
-                    {translateText(metric.label)}
-                  </Typography>
+                  <Stack alignItems="center" direction="row" spacing={0.9}>
+                    <Box
+                      sx={{
+                        backgroundColor: toneColor,
+                        borderRadius: 999,
+                        boxShadow: `0 0 0 4px ${alpha(toneColor, isDark ? 0.14 : 0.1)}`,
+                        flexShrink: 0,
+                        height: 8,
+                        width: 8,
+                      }}
+                    />
+                    <Typography color="text.secondary" variant="body2">
+                      {translateText(metric.label)}
+                    </Typography>
+                  </Stack>
                   <Stack alignItems="center" direction="row" spacing={0.75}>
-                    <Typography sx={{ fontWeight: 600 }} variant="h6">
+                    <Typography sx={{ color: toneColor, fontWeight: 700 }} variant="h6">
                       {metric.value}
                     </Typography>
                     {metric.to ? <ChevronRightRoundedIcon color="action" fontSize="small" /> : null}
@@ -68,14 +103,25 @@ export function DashboardQueueCard({ title, subtitle, metrics }: DashboardQueueC
                   component={RouterLink}
                   key={metric.label}
                   sx={{
+                    "&:focus-visible": {
+                      outline: `2px solid ${alpha(toneColor, 0.9)}`,
+                      outlineOffset: 2,
+                    },
                     borderRadius: 2,
                     display: "block",
+                    overflow: "hidden",
                     px: 1.25,
                     py: 0.25,
                     textDecoration: "none",
-                    transition: "background-color 120ms ease",
+                    transition: [
+                      `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                      `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
+                      `transform ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                    ].join(", "),
                     "&:hover": {
-                      bgcolor: "action.hover",
+                      bgcolor: alpha(toneColor, isDark ? 0.12 : 0.08),
+                      boxShadow: isDark ? brandShadows.floatingDark : brandShadows.floatingLight,
+                      transform: "translateY(-1px)",
                     },
                   }}
                   to={metric.to}
@@ -90,6 +136,7 @@ export function DashboardQueueCard({ title, subtitle, metrics }: DashboardQueueC
                     borderRadius: 2,
                     px: 1.25,
                     py: 0.25,
+                    position: "relative",
                   }}
                 >
                   {content}

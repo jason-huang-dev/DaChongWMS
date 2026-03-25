@@ -1,15 +1,21 @@
 # Reporting and Billing
 
-`reporting` packages warehouse KPIs, operational CSV exports, storage accruals, contract rating, invoice generation, finance review, settlement/remittance, disputes, credit notes, external remittance ingestion, and the billing-event ledger.
+Reporting is now split across two layers:
 
-Operational fee management now lives separately in `apps.fees`. That modular app owns recharge/deduction requests, vouchers, charge items/templates, manual charges, rent details, business expenses, receivable bills, fund flow, and profit snapshots. `reporting` remains the invoice-centric legacy domain.
+- `apps.reporting` is the first-class modular reporting app for warehouse KPI snapshots and operational CSV exports.
+- Advanced invoice generation, storage-accrual billing, settlement/remittance, disputes, credit notes, external remittance ingestion, and the billing-event ledger still need a first-class modular rebuild.
 
-The new `/statistics` frontend workbench currently reads directly from the operational inbound, outbound, returns, and inventory APIs. It is intentionally not backed by a separate modular `apps.statistics` service yet, because the core execution models still live in the legacy operational domains.
+Operational fee management now lives separately in `apps.fees`. That modular app owns recharge/deduction requests, vouchers, charge items/templates, manual charges, rent details, business expenses, receivable bills, fund flow, and profit snapshots.
 
-## Scope
+The new `/statistics` frontend workbench currently reads directly from the modular inbound, outbound, returns, and inventory APIs. It is intentionally not backed by a separate modular `apps.statistics` service yet; it is still a read-only aggregation layer over those operational domains.
+
+## First-Class Reporting Scope
 
 - `WarehouseKpiSnapshot`: point-in-time warehouse metrics derived from operational tables.
 - `OperationalReportExport`: stored CSV exports for inventory aging and throughput reporting.
+
+## Not Yet Rebuilt In Reporting
+
 - `BillingChargeEvent`: billable operational events.
 - `BillingRateContract`: pricing rules by warehouse, customer, charge type, and effective dates.
 - `Invoice` / `InvoiceLine`: rated billing documents generated from open charge events.
@@ -22,7 +28,13 @@ The new `/statistics` frontend workbench currently reads directly from the opera
 - `ExternalRemittanceBatch` / `ExternalRemittanceItem`: idempotent ingestion log for ERP or bank remittance payloads.
 - `FinanceExport`: finance-facing CSV extract of approved invoices.
 
-## Billing Flow
+## Modular Reporting Flow
+
+1. Warehouse KPI generation snapshots first-class inventory, inbound, outbound, counting, and returns data into `WarehouseKpiSnapshot`.
+2. Operational report generation exports first-class warehouse data into CSV artifacts stored in `OperationalReportExport`.
+3. The `/statistics` frontend can read either those persisted reporting artifacts or the underlying operational APIs depending on the screen.
+
+## Target Billing Flow
 
 1. Warehouse execution creates or updates open `BillingChargeEvent` rows.
 2. Rate contracts define the price for each charge type.
@@ -53,39 +65,12 @@ The new `/statistics` frontend workbench currently reads directly from the opera
 
 ## API Surface
 
-- `GET/POST /api/reporting/kpi-snapshots/`
-- `GET /api/reporting/kpi-snapshots/{id}/`
-- `GET/POST /api/reporting/report-exports/`
-- `GET /api/reporting/report-exports/{id}/`
-- `GET /api/reporting/report-exports/{id}/download/`
-- `GET/POST /api/reporting/billing-charge-events/`
-- `GET/PUT/PATCH /api/reporting/billing-charge-events/{id}/`
-- `GET/POST /api/reporting/rate-contracts/`
-- `GET/PUT/PATCH /api/reporting/rate-contracts/{id}/`
-- `GET/POST /api/reporting/storage-accrual-runs/`
-- `GET /api/reporting/storage-accrual-runs/{id}/`
-- `GET/POST /api/reporting/invoices/`
-- `GET /api/reporting/invoices/{id}/`
-- `POST /api/reporting/invoices/{id}/finalize/`
-- `POST /api/reporting/invoices/{id}/submit-finance-review/`
-- `POST /api/reporting/invoices/{id}/approve-finance-review/`
-- `POST /api/reporting/invoices/{id}/reject-finance-review/`
-- `GET/POST /api/reporting/invoice-settlements/`
-- `GET /api/reporting/invoice-settlements/{id}/`
-- `POST /api/reporting/invoice-settlements/{id}/approve/`
-- `POST /api/reporting/invoice-settlements/{id}/reject/`
-- `GET/POST /api/reporting/invoice-remittances/`
-- `GET /api/reporting/invoice-remittances/{id}/`
-- `GET/POST /api/reporting/invoice-disputes/`
-- `GET /api/reporting/invoice-disputes/{id}/`
-- `POST /api/reporting/invoice-disputes/{id}/review/`
-- `POST /api/reporting/invoice-disputes/{id}/resolve/`
-- `POST /api/reporting/invoice-disputes/{id}/reject/`
-- `GET/POST /api/reporting/credit-notes/`
-- `GET /api/reporting/credit-notes/{id}/`
-- `POST /api/reporting/credit-notes/{id}/apply/`
-- `GET/POST /api/reporting/external-remittance-batches/`
-- `GET /api/reporting/external-remittance-batches/{id}/`
-- `GET/POST /api/reporting/finance-exports/`
-- `GET /api/reporting/finance-exports/{id}/`
-- `GET /api/reporting/finance-exports/{id}/download/`
+First-class modular reporting routes:
+
+- `GET/POST /api/v1/organizations/{organization_id}/reporting/kpi-snapshots/`
+- `GET /api/v1/organizations/{organization_id}/reporting/kpi-snapshots/{id}/`
+- `GET/POST /api/v1/organizations/{organization_id}/reporting/report-exports/`
+- `GET /api/v1/organizations/{organization_id}/reporting/report-exports/{id}/`
+- `GET /api/v1/organizations/{organization_id}/reporting/report-exports/{id}/download/`
+
+These deeper billing routes are intentionally not exposed from the supported modular runtime until they are rebuilt under first-class `apps.reporting` and `apps.fees` APIs.

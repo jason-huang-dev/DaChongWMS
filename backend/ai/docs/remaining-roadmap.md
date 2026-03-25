@@ -1,6 +1,6 @@
 # Remaining Roadmap
 
-Core master data, topology, inventory, operational flows, integration control, reporting/billing, DB-backed background workers, worker monitoring, and the current Y2 scan-first inbound/outbound slice are now in place. The remaining work is depth, hardening, and scale.
+Core master data, topology, inventory, the first-class operational flows, integration control, reporting/billing, DB-backed background workers, and worker monitoring are now in place. The remaining work is depth, hardening, scanner-heavy execution, and scale.
 
 ## Still To Build
 

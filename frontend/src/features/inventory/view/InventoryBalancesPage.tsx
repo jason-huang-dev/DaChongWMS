@@ -107,6 +107,7 @@ export function InventoryBalancesPage() {
               <MetricCard
                 helper={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
                 label="Inventory positions"
+                tone="info"
                 value={balancesQuery.data?.count ?? "--"}
               />
             </Grid>
@@ -114,6 +115,7 @@ export function InventoryBalancesPage() {
               <MetricCard
                 helper="Visible rows after current filters."
                 label="Visible on-hand qty"
+                tone="success"
                 value={formatNumber(sumVisibleQuantity(visibleBalances, "on_hand_qty"))}
               />
             </Grid>
@@ -121,6 +123,7 @@ export function InventoryBalancesPage() {
               <MetricCard
                 helper="Visible rows after current filters."
                 label="Visible available qty"
+                tone="info"
                 value={formatNumber(sumVisibleQuantity(visibleBalances, "available_qty"))}
               />
             </Grid>
@@ -160,13 +163,28 @@ export function InventoryBalancesPage() {
           <QueryAlert message={countDashboardQuery.error ? parseApiError(countDashboardQuery.error) : null} />
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard label="Pending approvals" value={countDashboardQuery.data?.pending_total ?? "--"} />
+              <MetricCard
+                label="Pending approvals"
+                to="/counting#variance-approvals"
+                tone="warning"
+                value={countDashboardQuery.data?.pending_total ?? "--"}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard label="Approval SLA breaches" value={countDashboardQuery.data?.pending_sla_breach_count ?? "--"} />
+              <MetricCard
+                label="Approval SLA breaches"
+                to="/counting#variance-approvals"
+                tone="danger"
+                value={countDashboardQuery.data?.pending_sla_breach_count ?? "--"}
+              />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard label="Recount SLA breaches" value={countDashboardQuery.data?.recount_sla_breach_count ?? "--"} />
+              <MetricCard
+                label="Recount SLA breaches"
+                to="/counting#variance-approvals"
+                tone="danger"
+                value={countDashboardQuery.data?.recount_sla_breach_count ?? "--"}
+              />
             </Grid>
           </Grid>
           <ResourceTable
@@ -207,10 +225,15 @@ export function InventoryBalancesPage() {
           </Stack>
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 6 }}>
-              <MetricCard label="Open transfer orders" value={transferOrdersQuery.data?.count ?? "--"} />
+              <MetricCard label="Open transfer orders" to="/transfers" tone="info" value={transferOrdersQuery.data?.count ?? "--"} />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <MetricCard label="Open replenishment tasks" value={replenishmentTasksQuery.data?.count ?? "--"} />
+              <MetricCard
+                label="Open replenishment tasks"
+                to="/transfers"
+                tone="warning"
+                value={replenishmentTasksQuery.data?.count ?? "--"}
+              />
             </Grid>
           </Grid>
           <Grid container spacing={2.5}>
@@ -281,6 +304,7 @@ export function InventoryBalancesPage() {
                 <MetricCard
                   helper={`${formatNumber(bucket.quantity)} on hand`}
                   label={bucket.label}
+                  tone={bucket.label.includes("90") || bucket.label.includes("120") ? "danger" : bucket.label.includes("60") ? "warning" : "info"}
                   value={bucket.count}
                 />
               </Grid>
@@ -343,13 +367,13 @@ export function InventoryBalancesPage() {
               <Stack spacing={2}>
                 <Grid container spacing={2.5}>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <MetricCard label="Active adjustment reasons" value={adjustmentReasonsQuery.data?.count ?? "--"} />
+                    <MetricCard label="Active adjustment reasons" tone="info" value={adjustmentReasonsQuery.data?.count ?? "--"} />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <MetricCard label="Approval rules" value={adjustmentRulesQuery.data?.count ?? "--"} />
+                    <MetricCard label="Approval rules" tone="warning" value={adjustmentRulesQuery.data?.count ?? "--"} />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <MetricCard label="Recent adjustments" value={recentAdjustments.length} />
+                    <MetricCard label="Recent adjustments" tone="danger" value={recentAdjustments.length} />
                   </Grid>
                 </Grid>
                 <ResourceTable
@@ -408,15 +432,17 @@ export function InventoryBalancesPage() {
                   <MetricCard
                     helper={activeWarehouse ? `Current warehouse: ${activeWarehouse.warehouse_name}` : "No warehouse selected"}
                     label="Warehouse comparisons"
+                    tone="info"
                     value={warehouses.length}
                   />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
-                  <MetricCard label="Transfer candidate SKUs" value={crossWarehouseCandidates.length} />
+                  <MetricCard label="Transfer candidate SKUs" tone="warning" value={crossWarehouseCandidates.length} />
                 </Grid>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <MetricCard
                     label="Other-warehouse available qty"
+                    tone="success"
                     value={formatNumber(
                       crossWarehouseCandidates.reduce((total, row) => total + row.other_warehouse_qty, 0),
                     )}

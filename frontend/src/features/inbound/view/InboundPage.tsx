@@ -220,17 +220,19 @@ export function InboundPage() {
               <MetricCard
                 helper={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
                 label="Open purchase orders"
+                to="#stock-in-list-management"
+                tone="warning"
                 value={purchaseOrdersQuery.data?.count ?? "--"}
               />
             </Grid>
             <Grid size={{ xs: 12, md: 3 }}>
-              <MetricCard label="Open ASNs" value={advanceShipmentNoticesQuery.data?.count ?? "--"} />
+              <MetricCard label="Open ASNs" to="#stock-in-record" tone="info" value={advanceShipmentNoticesQuery.data?.count ?? "--"} />
             </Grid>
             <Grid size={{ xs: 12, md: 3 }}>
-              <MetricCard label="Overdue receipts" value={overdueRows.length} />
+              <MetricCard label="Overdue receipts" to="#standard-stock-in" tone="danger" value={overdueRows.length} />
             </Grid>
             <Grid size={{ xs: 12, md: 3 }}>
-              <MetricCard label="Open listing tasks" value={putawayTasksQuery.data?.count ?? "--"} />
+              <MetricCard label="Open listing tasks" to="#listing-record" tone="warning" value={putawayTasksQuery.data?.count ?? "--"} />
             </Grid>
             <Grid size={{ xs: 12 }}>
               <CreateReceiptPanel
@@ -401,13 +403,13 @@ export function InboundPage() {
           </Stack>
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard label="Open return orders" value={returnOrdersQuery.data?.count ?? "--"} />
+              <MetricCard label="Open return orders" to="#return-order-management" tone="warning" value={returnOrdersQuery.data?.count ?? "--"} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard label="Posted return receipts" value={returnReceiptsQuery.data?.count ?? "--"} />
+              <MetricCard label="Posted return receipts" to="#receiving-record" tone="success" value={returnReceiptsQuery.data?.count ?? "--"} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard label="Warehouse context" value={activeWarehouse?.warehouse_name ?? "All warehouses"} />
+              <MetricCard label="Warehouse context" tone="info" value={activeWarehouse?.warehouse_name ?? "All warehouses"} />
             </Grid>
           </Grid>
         </Stack>

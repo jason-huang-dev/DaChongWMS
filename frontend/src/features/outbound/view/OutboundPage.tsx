@@ -16,6 +16,7 @@ import { ShipmentDocumentPanel } from "@/features/outbound/view/components/Shipm
 import { TrackLogisticsPanel } from "@/features/outbound/view/components/TrackLogisticsPanel";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { ExceptionLane } from "@/shared/components/exception-lane";
+import { MetricCard } from "@/shared/components/metric-card";
 import { PageHeader } from "@/shared/components/page-header";
 import { RecordLink } from "@/shared/components/record-link";
 import { ResourceTable } from "@/shared/components/resource-table";
@@ -191,6 +192,44 @@ export function OutboundPage() {
         description="Manage stock-out packages, wave generation, package scan steps, shipping documents, and logistics tracking from one outbound workbench."
         title="Outbound operations"
       />
+      <Grid container spacing={2.5}>
+        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+          <MetricCard
+            helper={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+            label="Package queue"
+            to="#package-management"
+            tone="warning"
+            value={salesOrdersQuery.data?.count ?? "--"}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+          <MetricCard
+            helper="Open pick work before packing and ship confirmation."
+            label="Secondary picking tasks"
+            to="#secondary-picking"
+            tone="warning"
+            value={pickTasksQuery.data?.count ?? "--"}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+          <MetricCard
+            helper="Held or abnormal outbound orders that need operator follow-up."
+            label="Outbound exceptions"
+            to="#abnormal-package"
+            tone="danger"
+            value={(abnormalPackagesQuery.data?.count ?? 0) + (interceptionOrdersQuery.data?.count ?? 0)}
+          />
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+          <MetricCard
+            helper="Posted shipment records ready for handover and tracking."
+            label="Shipping records"
+            to="#shipping-manage"
+            tone="success"
+            value={shipmentsQuery.data?.count ?? "--"}
+          />
+        </Grid>
+      </Grid>
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 6, xl: 3 }}>
           <GenerateWavePanel />

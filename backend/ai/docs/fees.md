@@ -66,13 +66,17 @@ Each surface currently supports:
 
 `apps.fees` is the operator-facing fees workbench domain.
 
-Legacy `backend/reporting` remains invoice-centric and still owns:
+Legacy `backend/apps/legacy/reporting` remains invoice-centric and still owns:
 
 - invoice generation
 - settlement and remittance
 - disputes
 - finance exports
-- KPI/report exports
+
+First-class `apps.reporting` now owns:
+
+- KPI snapshots
+- operational report exports
 
 The current frontend routes therefore split responsibilities:
 

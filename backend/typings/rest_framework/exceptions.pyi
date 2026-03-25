@@ -13,3 +13,11 @@ class APIException(Exception):
 
 class AuthenticationFailed(APIException):
     pass
+
+
+class PermissionDenied(APIException):
+    pass
+
+
+class ValidationError(APIException):
+    pass

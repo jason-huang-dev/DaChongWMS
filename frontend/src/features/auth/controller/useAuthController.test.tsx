@@ -61,10 +61,26 @@ function LoginChallengeProbe() {
   );
 }
 
+function BootstrapProbe() {
+  const { bootstrap, session, status } = useAuth();
+
+  return (
+    <div>
+      <button onClick={() => bootstrap()} type="button">
+        Bootstrap
+      </button>
+      <span>{status}</span>
+      <span>{session?.username ?? "--"}</span>
+      <span>{session?.operatorName ?? "--"}</span>
+    </div>
+  );
+}
+
 test("restores a stored session and hydrates the operator profile", async () => {
   saveStoredSession({
     username: "worker",
     openid: "tenant-openid",
+    token: "session-token-7",
     operatorId: 7,
     operatorName: "",
     operatorRole: "",
@@ -73,7 +89,7 @@ test("restores a stored session and hydrates the operator profile", async () => 
   installFetchMock((url, init) => {
     if (url.pathname === "/api/staff/7/") {
       const headers = new Headers(init?.headers);
-      expect(headers.get("TOKEN")).toBe("tenant-openid");
+      expect(headers.get("TOKEN")).toBe("session-token-7");
       expect(headers.get("OPERATOR")).toBe("7");
       return jsonResponse({
         id: 7,
@@ -107,6 +123,7 @@ test("signs up a new workspace user and hydrates the operator profile", async ()
         data: {
           name: "new-manager",
           openid: "tenant-openid",
+          token: "signup-token-42",
           user_id: 42,
           email: "new-manager@example.com",
           mfa_enrollment_required: true,
@@ -117,7 +134,7 @@ test("signs up a new workspace user and hydrates the operator profile", async ()
 
     if (url.pathname === "/api/staff/42/") {
       const headers = new Headers(init?.headers);
-      expect(headers.get("TOKEN")).toBe("tenant-openid");
+      expect(headers.get("TOKEN")).toBe("signup-token-42");
       expect(headers.get("OPERATOR")).toBe("42");
       return jsonResponse({
         id: 42,
@@ -170,6 +187,7 @@ test("stores a pending MFA challenge and completes it into an authenticated sess
         data: {
           name: "mfa-user",
           openid: "tenant-openid",
+          token: "mfa-token-9",
           user_id: 9,
           mfa_verified: true,
           mfa_method: "TOTP",
@@ -180,6 +198,9 @@ test("stores a pending MFA challenge and completes it into an authenticated sess
     }
 
     if (url.pathname === "/api/staff/9/") {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("TOKEN")).toBe("mfa-token-9");
+      expect(headers.get("OPERATOR")).toBe("9");
       return jsonResponse({
         id: 9,
         staff_name: "MFA Manager",
@@ -205,4 +226,62 @@ test("stores a pending MFA challenge and completes it into an authenticated sess
     expect(screen.getByText("authenticated")).toBeInTheDocument();
   });
   expect(screen.getByText("MFA Manager")).toBeInTheDocument();
+});
+
+test("bootstraps into the stable default development user and hydrates the operator profile", async () => {
+  const user = userEvent.setup();
+
+  installFetchMock((url, init) => {
+    if (url.pathname === "/api/test-system/register/") {
+      expect(init?.method).toBe("POST");
+      return jsonResponse({
+        code: "200",
+        data: {
+          name: "Test System Admin",
+          openid: "test-system-organization",
+          token: "bootstrap-token",
+          user_id: 7,
+          company_id: 3,
+          company_name: "Test System Organization",
+          membership_id: 9,
+          mfa_enrollment_required: false,
+          used_default_name: true,
+          used_default_password: true,
+          seed_summary: {
+            users: 0,
+            organizations: 0,
+            memberships: 0,
+            warehouses: 0,
+          },
+        },
+        msg: "success",
+      });
+    }
+
+    if (url.pathname === "/api/staff/7/") {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("TOKEN")).toBe("bootstrap-token");
+      expect(headers.get("OPERATOR")).toBe("7");
+      return jsonResponse({
+        id: 7,
+        staff_name: "Test System Admin",
+        staff_type: "Owner",
+        check_code: 8888,
+        create_time: "2026-03-24 09:00:00",
+        update_time: "2026-03-24 09:00:00",
+        error_check_code_counter: 0,
+        is_lock: false,
+      });
+    }
+
+    return undefined;
+  });
+
+  renderWithProviders(<BootstrapProbe />, { includeAuth: true });
+  await user.click(screen.getByRole("button", { name: "Bootstrap" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("authenticated")).toBeInTheDocument();
+  });
+  expect(screen.getAllByText("Test System Admin")).toHaveLength(2);
 });

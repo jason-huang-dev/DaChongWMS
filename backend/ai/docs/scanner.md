@@ -23,7 +23,7 @@ Additional scanner models:
 ## Current Role In The Stack
 
 - Catalog uploads can still seed legacy barcode rows through `scanner.ListModel`.
-- `backend/utils/scanning.py` resolves direct codes plus `BarcodeAlias` rows for goods and locations.
+- `backend/apps/legacy/shared/scanning.py` resolves direct codes plus `BarcodeAlias` rows for goods and locations.
 - Inbound receipt scans can create or update `LicensePlate` rows on receipt and transition them to `STORED` on putaway.
 - Outbound pick and ship scans can transition `LicensePlate` rows to `STAGED` and `LOADED`.
 - `GoodsScanRule` is enforced when scan payloads provide lot/serial data or attribute barcode content.
@@ -35,5 +35,5 @@ Additional scanner models:
 ## Near-Term Direction
 
 - keep `scanner` as the home for barcode registry, aliasing, LPN state, device/session depth, and replay telemetry
-- avoid duplicating barcode lookup rules across apps; shared scan-code resolution lives in `backend/utils/scanning.py`
-- keep scan execution rules in `operations.inbound` and `operations.outbound`; `scanner` should orchestrate sessions and replay, not fork the business logic
+- avoid duplicating barcode lookup rules across apps; shared scan-code resolution lives in `backend/apps/legacy/shared/scanning.py`
+- keep scan execution rules in `apps.inbound` and `apps.outbound`; `scanner` should orchestrate sessions and replay, not fork the business logic

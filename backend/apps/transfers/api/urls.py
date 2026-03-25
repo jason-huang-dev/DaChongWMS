@@ -1,0 +1,74 @@
+from django.urls import path
+
+from .views import (
+    ReplenishmentRuleDetailAPIView,
+    ReplenishmentRuleGenerateTaskAPIView,
+    ReplenishmentRuleListCreateAPIView,
+    ReplenishmentTaskCompleteAPIView,
+    ReplenishmentTaskDetailAPIView,
+    ReplenishmentTaskListAPIView,
+    TransferLineCompleteAPIView,
+    TransferLineDetailAPIView,
+    TransferLineListAPIView,
+    TransferOrderDetailAPIView,
+    TransferOrderListCreateAPIView,
+)
+
+urlpatterns = [
+    path(
+        "organizations/<int:organization_id>/transfer-orders/",
+        TransferOrderListCreateAPIView.as_view(),
+        name="organization-transfer-order-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/transfer-orders/<int:transfer_order_id>/",
+        TransferOrderDetailAPIView.as_view(),
+        name="organization-transfer-order-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/transfer-lines/",
+        TransferLineListAPIView.as_view(),
+        name="organization-transfer-line-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/transfer-lines/<int:transfer_line_id>/",
+        TransferLineDetailAPIView.as_view(),
+        name="organization-transfer-line-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/transfer-lines/<int:transfer_line_id>/complete/",
+        TransferLineCompleteAPIView.as_view(),
+        name="organization-transfer-line-complete",
+    ),
+    path(
+        "organizations/<int:organization_id>/replenishment-rules/",
+        ReplenishmentRuleListCreateAPIView.as_view(),
+        name="organization-replenishment-rule-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/replenishment-rules/<int:replenishment_rule_id>/",
+        ReplenishmentRuleDetailAPIView.as_view(),
+        name="organization-replenishment-rule-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/replenishment-rules/<int:replenishment_rule_id>/generate-task/",
+        ReplenishmentRuleGenerateTaskAPIView.as_view(),
+        name="organization-replenishment-rule-generate-task",
+    ),
+    path(
+        "organizations/<int:organization_id>/replenishment-tasks/",
+        ReplenishmentTaskListAPIView.as_view(),
+        name="organization-replenishment-task-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/replenishment-tasks/<int:replenishment_task_id>/",
+        ReplenishmentTaskDetailAPIView.as_view(),
+        name="organization-replenishment-task-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/replenishment-tasks/<int:replenishment_task_id>/complete/",
+        ReplenishmentTaskCompleteAPIView.as_view(),
+        name="organization-replenishment-task-complete",
+    ),
+]
+

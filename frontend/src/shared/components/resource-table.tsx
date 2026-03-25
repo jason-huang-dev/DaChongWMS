@@ -17,7 +17,9 @@ import {
   TableRow,
   Typography,
 } from "@mui/material";
+import { alpha, useTheme } from "@mui/material/styles";
 
+import { brandColors, brandMotion } from "@/app/brand";
 import { useI18n } from "@/app/ui-preferences";
 
 interface ColumnDefinition<TRow> {
@@ -68,7 +70,9 @@ export function ResourceTable<TRow>({
   toolbar,
   rowSelection,
 }: ResourceTableProps<TRow>) {
+  const theme = useTheme();
   const { translateText } = useI18n();
+  const isDark = theme.palette.mode === "dark";
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
     : [];
@@ -91,12 +95,27 @@ export function ResourceTable<TRow>({
           </Box>
           {toolbar}
           {error ? <Alert severity="error">{error}</Alert> : null}
-          <TableContainer>
+          <TableContainer
+            sx={{
+              border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+              borderRadius: 3,
+              overflow: "hidden",
+            }}
+          >
             <Table size="small">
               <TableHead>
-                <TableRow>
+                <TableRow
+                  sx={{
+                    backgroundColor: alpha(theme.palette.text.primary, isDark ? 0.05 : 0.03),
+                  }}
+                >
                   {rowSelection ? (
-                    <TableCell padding="checkbox">
+                    <TableCell
+                      padding="checkbox"
+                      sx={{
+                        borderBottomColor: alpha(theme.palette.divider, 0.8),
+                      }}
+                    >
                       <Checkbox
                         checked={allSelected}
                         disabled={selectableRows.length === 0}
@@ -106,7 +125,18 @@ export function ResourceTable<TRow>({
                     </TableCell>
                   ) : null}
                   {columns.map((column) => (
-                    <TableCell align={column.align} key={column.key}>
+                    <TableCell
+                      align={column.align}
+                      key={column.key}
+                      sx={{
+                        borderBottomColor: alpha(theme.palette.divider, 0.8),
+                        color: theme.palette.text.secondary,
+                        fontSize: 12,
+                        fontWeight: 800,
+                        letterSpacing: "0.08em",
+                        textTransform: "uppercase",
+                      }}
+                    >
                       {translateText(column.header)}
                     </TableCell>
                   ))}
@@ -131,24 +161,63 @@ export function ResourceTable<TRow>({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((row) => (
-                    <TableRow hover key={getRowId(row)}>
-                      {rowSelection ? (
-                        <TableCell padding="checkbox">
-                          <Checkbox
-                            checked={rowSelection.selectedRowIds.includes(getRowId(row))}
-                            disabled={rowSelection.isRowSelectable ? !rowSelection.isRowSelectable(row) : false}
-                            onChange={() => rowSelection.onToggleRow(row)}
-                          />
-                        </TableCell>
-                      ) : null}
-                      {columns.map((column) => (
-                        <TableCell align={column.align} key={column.key}>
-                          {column.render(row)}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
+                  rows.map((row, index) => {
+                    const rowId = getRowId(row);
+                    const isSelected = rowSelection ? rowSelection.selectedRowIds.includes(rowId) : false;
+                    const canSelect = rowSelection ? (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true) : false;
+
+                    return (
+                      <TableRow
+                        hover
+                        key={rowId}
+                        sx={{
+                          "& td": {
+                            backgroundColor: isSelected
+                              ? alpha(brandColors.accent, isDark ? 0.12 : 0.08)
+                              : index % 2 === 0
+                                ? alpha(theme.palette.background.paper, isDark ? 0.92 : 0.98)
+                                : alpha(theme.palette.text.primary, isDark ? 0.02 : 0.015),
+                            borderBottomColor: alpha(theme.palette.divider, 0.62),
+                            transition: [
+                              `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                              `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
+                            ].join(", "),
+                          },
+                          "& td:first-of-type": {
+                            boxShadow: isSelected ? `inset 3px 0 0 ${brandColors.accent}` : "none",
+                          },
+                          "&:hover td": {
+                            backgroundColor: isSelected
+                              ? alpha(brandColors.accent, isDark ? 0.16 : 0.1)
+                              : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
+                          },
+                          opacity: rowSelection && !canSelect ? 0.68 : 1,
+                        }}
+                      >
+                        {rowSelection ? (
+                          <TableCell padding="checkbox">
+                            <Checkbox
+                              checked={isSelected}
+                              disabled={!canSelect}
+                              onChange={() => rowSelection.onToggleRow(row)}
+                            />
+                          </TableCell>
+                        ) : null}
+                        {columns.map((column) => (
+                          <TableCell
+                            align={column.align}
+                            key={column.key}
+                            sx={{
+                              fontSize: 13,
+                              verticalAlign: "top",
+                            }}
+                          >
+                            {column.render(row)}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>

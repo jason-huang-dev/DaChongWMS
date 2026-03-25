@@ -3,16 +3,16 @@ from pathlib import Path
 
 import dj_database_url
 
+from apps.common.env import build_allowed_hosts, database_conn_max_age, database_url, env_bool
+
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "insecure-dev-secret-key-change-me")
-DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in {"1", "true", "yes", "on"}
-ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.getenv("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
-    if host.strip()
-]
+DEBUG = env_bool("DJANGO_DEBUG", default=False)
+ALLOWED_HOSTS = build_allowed_hosts(
+    debug=DEBUG,
+    default_hosts=("localhost", "127.0.0.1"),
+)
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -32,6 +32,14 @@ INSTALLED_APPS = [
     "apps.fees.apps.FeesConfig",
     "apps.workorders.apps.WorkordersConfig",
     "apps.warehouse.apps.WarehouseConfig",
+    "apps.locations.apps.LocationsConfig",
+    "apps.inventory.apps.InventoryConfig",
+    "apps.transfers.apps.TransfersConfig",
+    "apps.counting.apps.CountingConfig",
+    "apps.inbound.apps.InboundConfig",
+    "apps.outbound.apps.OutboundConfig",
+    "apps.returns.apps.ReturnsConfig",
+    "apps.reporting.apps.ReportingConfig",
 ]
 
 MIDDLEWARE = [
@@ -66,7 +74,9 @@ TEMPLATES = [
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=database_conn_max_age(debug=DEBUG),
+        default=database_url(),
+        ssl_require=env_bool("DB_SSL_REQUIRED", default=False),
     )
 }
 
@@ -95,9 +105,26 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
+TEST_SYSTEM_ENABLED = DEBUG or env_bool("DJANGO_TEST_SYSTEM_ENABLED", default=False)
+TEST_SYSTEM_DEFAULT_EMAIL = os.getenv("DJANGO_TEST_SYSTEM_DEFAULT_EMAIL", "test-system-admin@example.com").strip().lower()
+TEST_SYSTEM_DEFAULT_PASSWORD = os.getenv("DJANGO_TEST_SYSTEM_DEFAULT_PASSWORD", "TestSystem123!")
+TEST_SYSTEM_DEFAULT_NAME = os.getenv("DJANGO_TEST_SYSTEM_DEFAULT_NAME", "Test System Admin").strip() or "Test System Admin"
+TEST_SYSTEM_DEFAULT_ORGANIZATION_NAME = os.getenv(
+    "DJANGO_TEST_SYSTEM_DEFAULT_ORGANIZATION_NAME",
+    "Test System Organization",
+).strip() or "Test System Organization"
+TEST_SYSTEM_DEFAULT_WAREHOUSE_NAME = os.getenv(
+    "DJANGO_TEST_SYSTEM_DEFAULT_WAREHOUSE_NAME",
+    "Main Warehouse",
+).strip() or "Main Warehouse"
+TEST_SYSTEM_DEFAULT_WAREHOUSE_CODE = os.getenv(
+    "DJANGO_TEST_SYSTEM_DEFAULT_WAREHOUSE_CODE",
+    "MAIN",
+).strip() or "MAIN"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.accounts.authentication.LegacyHeaderAuthentication",
         "rest_framework.authentication.SessionAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],

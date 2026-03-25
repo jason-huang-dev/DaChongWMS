@@ -17,6 +17,7 @@ function isMfaChallengeResponse(data: LoginResponseData): data is MfaChallengeRe
 async function hydrateAuthSuccess(data: AuthenticatedResponseData): Promise<AuthenticatedResult> {
   const operator = await fetchOperatorProfile({
     openid: data.openid,
+    token: data.token,
     operatorId: data.user_id,
   });
 

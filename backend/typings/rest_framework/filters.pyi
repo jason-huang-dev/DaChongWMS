@@ -9,3 +9,7 @@ class BaseFilterBackend:
 
 class OrderingFilter(BaseFilterBackend):
     pass
+
+
+class SearchFilter(BaseFilterBackend):
+    pass

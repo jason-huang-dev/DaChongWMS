@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Chip, Stack } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import { ResourceTable } from "@/shared/components/resource-table";
 
 type Severity = "info" | "warning" | "error";
@@ -44,6 +45,8 @@ export function ExceptionLane<TRow>({
   emptyMessage = "No active exceptions.",
   action,
 }: ExceptionLaneProps<TRow>) {
+  const { translateText } = useI18n();
+
   return (
     <ResourceTable
       columns={columns}
@@ -61,7 +64,10 @@ export function ExceptionLane<TRow>({
           justifyContent="space-between"
           spacing={1}
         >
-          <Chip color={severity} label={severityLabel[severity]} size="small" />
+          <Stack alignItems={{ sm: "center" }} direction={{ xs: "column", sm: "row" }} spacing={1}>
+            <Chip color={severity} label={translateText(severityLabel[severity])} size="small" />
+            <Chip label={translateText(`${rows.length} items`)} size="small" variant="outlined" />
+          </Stack>
           {action}
         </Stack>
       }

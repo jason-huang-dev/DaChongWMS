@@ -54,7 +54,8 @@ The partner domain covers suppliers, customers, and transportation partners. In 
 - The SPA should expose a dedicated `Clients` route/tab for internal operators.
 - Managers and other authorized operations roles use that page to create and maintain customer accounts before attaching external client memberships.
 - Customer-account records are the right place to store dropshipping-order and inbound-submission capability flags. Do not model those capabilities on the global user.
+- First-class dropshipping orders should reference `CustomerAccount` directly and persist a snapshot of customer code, name, and contact fields onto the order header at creation time.
 
-## Migration note
+## Source of truth
 
-Legacy `customer.ListModel` and `supplier.ListModel` still exist as old tenant/openid-backed tables. New feature work should target `apps.partners` and only use the legacy tables as migration references until downstream operational domains are moved.
+Customer and supplier master data should live in `apps.partners`. New feature work should target that app directly rather than reintroducing separate customer or supplier app trees.

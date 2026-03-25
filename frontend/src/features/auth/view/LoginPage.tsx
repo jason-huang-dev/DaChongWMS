@@ -59,8 +59,8 @@ export function LoginPage() {
     <AuthShell
       description="Sign in with your warehouse account. The frontend uses the backend login endpoint and keeps the tenant token and operator id in browser storage for API access."
       heroPoints={["Scanner-first receiving", "Inventory and finance controls", "MFA-backed sign-in"]}
-      heroSummary="The visual system now follows the gold-metal DaChong mark with warm copper accents and dark control surfaces instead of the previous blue default."
-      heroTitle="Branded operations access for every warehouse role"
+      heroSummary="The operator shell now uses industrial surface layering, restrained yellow emphasis, and sharper hierarchy instead of generic dashboard defaults."
+      heroTitle="Precision-built access for every warehouse role"
       title="Sign in to the operator console"
     >
       <Stack spacing={3}>
@@ -85,10 +85,10 @@ export function LoginPage() {
             <Stack spacing={1.5}>
               <Typography variant="subtitle2">{translateText("Developer bootstrap")}</Typography>
               <Typography color="text.secondary" variant="body2">
-                {translateText("Use the backend test-system module to seed a demo tenant, then continue straight into the app.")}
+                {translateText("Use the stable development account. If it does not exist yet, the backend creates it once, seeds the default workspace, and signs you in.")}
               </Typography>
               <Button disabled={isBootstrapping} onClick={handleBootstrap} variant="outlined">
-                {isBootstrapping ? <CircularProgress color="inherit" size={20} /> : translateText("Create demo workspace")}
+                {isBootstrapping ? <CircularProgress color="inherit" size={20} /> : translateText("Use dev workspace")}
               </Button>
             </Stack>
           </>

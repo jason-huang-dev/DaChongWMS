@@ -27,10 +27,11 @@ export async function switchMembershipRequest(membershipId: number) {
   return apiPost<AuthenticatedResponseData>(`/api/access/my-memberships/${membershipId}/activate/`, {});
 }
 
-export async function fetchOperatorProfile(session: Pick<AuthSession, "openid" | "operatorId">) {
+export async function fetchOperatorProfile(session: Pick<AuthSession, "openid" | "operatorId" | "token">) {
   return apiGet<StaffRecord>(`/api/staff/${session.operatorId}/`, undefined, {
     username: "",
     openid: session.openid,
+    token: session.token,
     operatorId: session.operatorId,
     operatorName: "",
     operatorRole: "",

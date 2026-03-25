@@ -1,1 +1,0 @@
-"""Goods Specs app."""

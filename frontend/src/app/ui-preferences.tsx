@@ -16,6 +16,16 @@ interface UiPreferencesContextValue {
   setThemeMode: (themeMode: AppThemeMode) => void;
 }
 
+function createFallbackUiPreferencesValue(): UiPreferencesContextValue {
+  const snapshot = getUiPreferencesSnapshot();
+  return {
+    locale: snapshot.locale,
+    setLocale: () => {},
+    themeMode: snapshot.themeMode,
+    setThemeMode: () => {},
+  };
+}
+
 const UiPreferencesContext = createContext<UiPreferencesContextValue | null>(null);
 
 export function UiPreferencesProvider({ children }: PropsWithChildren) {
@@ -47,10 +57,7 @@ export function UiPreferencesProvider({ children }: PropsWithChildren) {
 
 export function useUiPreferences() {
   const context = useContext(UiPreferencesContext);
-  if (!context) {
-    throw new Error("useUiPreferences must be used within UiPreferencesProvider.");
-  }
-  return context;
+  return context ?? createFallbackUiPreferencesValue();
 }
 
 export function useI18n() {

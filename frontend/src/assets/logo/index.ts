@@ -1,16 +1,13 @@
-import lockupGold from "./dachong-lockup-gold.svg";
-import lockupLight from "./dachong-lockup-light.svg";
-import markGold from "./dachong-mark-gold.svg";
-import markLight from "./dachong-mark-light.svg";
+import dachongLogoFromImage from "./dachong_logo_from_image.png";
 
 export const logoAssets = {
   lockup: {
-    gold: lockupGold,
-    light: lockupLight,
+    gold: dachongLogoFromImage,
+    light: dachongLogoFromImage,
   },
   mark: {
-    gold: markGold,
-    light: markLight,
+    gold: dachongLogoFromImage,
+    light: dachongLogoFromImage,
   },
 } as const;
 

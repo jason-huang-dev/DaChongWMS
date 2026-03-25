@@ -7,5 +7,9 @@ export function hasAnyRole(session: AuthSession | null, roles?: string[]): boole
   if (!session) {
     return false;
   }
-  return roles.some((role) => session.operatorRole.toLowerCase() === role.toLowerCase());
+  const normalizedRole = session.operatorRole.toLowerCase();
+  if (normalizedRole === "owner") {
+    return true;
+  }
+  return roles.some((role) => normalizedRole === role.toLowerCase());
 }

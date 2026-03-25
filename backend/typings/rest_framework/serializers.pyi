@@ -9,7 +9,12 @@ class Field:
 
 class Serializer(Field):
     data: Any
+    errors: Any
     validated_data: Mapping[str, Any]
+
+    def __init__(self, instance: Any = ..., data: Any = ..., many: bool = ..., **kwargs: Any) -> None: ...
+
+    def is_valid(self, *, raise_exception: bool = ...) -> bool: ...
 
     def save(self, **kwargs: Any) -> Any: ...
 
@@ -40,3 +45,31 @@ class CharField(Field):
         trim_whitespace: bool = ...,
         **kwargs: Any,
     ) -> None: ...
+
+
+class IntegerField(Field):
+    def __init__(self, *, min_value: int | None = ..., max_value: int | None = ..., **kwargs: Any) -> None: ...
+
+
+class BooleanField(Field):
+    def __init__(self, *, default: bool | None = ..., **kwargs: Any) -> None: ...
+
+
+class ChoiceField(Field):
+    def __init__(self, choices: Iterable[Any], **kwargs: Any) -> None: ...
+
+
+class ListField(Field):
+    def __init__(self, child: Field | None = ..., **kwargs: Any) -> None: ...
+
+
+class JSONField(Field):
+    def __init__(self, **kwargs: Any) -> None: ...
+
+
+class EmailField(CharField):
+    pass
+
+
+class ValidationError(Exception):
+    def __init__(self, detail: Any = ..., code: Any = ...) -> None: ...

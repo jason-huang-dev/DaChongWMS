@@ -1,10 +1,11 @@
 import Grid from "@mui/material/Grid";
-import { Button, ButtonGroup, Chip, List, ListItem, ListItemText, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Button, ButtonGroup, Chip, MenuItem, Stack, TextField, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
 import { useDashboardController } from "@/features/dashboard/controller/useDashboardController";
 import { DashboardTable } from "@/features/dashboard/view/DashboardTable";
 import { DashboardQueueCard } from "@/features/dashboard/view/components/DashboardQueueCard";
+import type { DashboardQueueMetric } from "@/features/dashboard/view/components/DashboardQueueCard";
 import { MetricCard } from "@/shared/components/metric-card";
 import { PageHeader } from "@/shared/components/page-header";
 import { WorkbenchPanel } from "@/shared/components/workbench-panel";
@@ -57,125 +58,144 @@ export function DashboardPage() {
   } = useDashboardController();
 
   const visibleWidgets = new Set(visibleWidgetKeys.length > 0 ? visibleWidgetKeys : ["metrics", "ops-summary", "queues"]);
-  const rightRailWidgets = new Set(rightRailWidgetKeys.length > 0 ? rightRailWidgetKeys : ["scope", "alerts", "help"]);
+  const rightRailWidgets = new Set(rightRailWidgetKeys.length > 0 ? rightRailWidgetKeys : ["alerts", "help"]);
 
   const warehouseLabel = activeWarehouse?.warehouse_name ?? "No warehouse configured";
 
-  const stockInMetrics = [
+  const stockInMetrics: DashboardQueueMetric[] = [
     {
       label: "Pending Stock In",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.stockIn.pendingStockIn) : "Restricted",
       to: canViewOps ? buildDashboardLink("/inbound", { poStatuses: "OPEN,PARTIAL" }, "purchase-orders") : undefined,
     },
     {
       label: "In Transit",
+      tone: "info",
       value: canViewOps ? formatNumber(queueMetrics.stockIn.inTransit) : "Restricted",
       to: canViewOps ? buildDashboardLink("/inbound", { asnStatuses: "OPEN,PARTIAL" }, "advance-shipment-notices") : undefined,
     },
     {
       label: "Stocking In",
+      tone: "success",
       value: canViewOps ? formatNumber(queueMetrics.stockIn.stockingIn) : "Restricted",
       to: canViewOps ? buildDashboardLink("/inbound", { putawayStatuses: "OPEN,ASSIGNED" }, "putaway-tasks") : undefined,
     },
   ];
 
-  const outboundMetrics = [
+  const outboundMetrics: DashboardQueueMetric[] = [
     {
       label: "To Generate / In Process",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.outbound.toGenerateInProcess) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "IN_PROCESS" }, "package-management") : undefined,
     },
     {
       label: "To Ship",
+      tone: "info",
       value: canViewOps ? formatNumber(queueMetrics.outbound.toShip) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "TO_SHIP", waybillPrinted: "true" }, "package-management") : undefined,
     },
     {
       label: "Get Tracking No",
+      tone: "info",
       value: canViewOps ? formatNumber(queueMetrics.outbound.getTrackingNo) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "GET_TRACKING_NO" }, "package-management") : undefined,
     },
     {
       label: "To Move",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.outbound.toMove) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "TO_MOVE" }, "package-management") : undefined,
     },
     {
       label: "To Pick",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.outbound.toPick) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { pickTaskStatuses: "OPEN,ASSIGNED" }, "secondary-picking") : undefined,
     },
     {
       label: "To Print & Stock-Out",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.outbound.toPrintAndStockOut) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "TO_SHIP", waybillPrinted: "false" }, "package-management") : undefined,
     },
     {
       label: "Abnormal",
+      tone: "danger",
       value: canViewOps ? formatNumber(queueMetrics.outbound.abnormal) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderException: "ABNORMAL_PACKAGE" }, "abnormal-package") : undefined,
     },
     {
       label: "Order Interception",
+      tone: "danger",
       value: canViewOps ? formatNumber(queueMetrics.outbound.orderInterception) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderException: "ORDER_INTERCEPTION" }, "interception-manage") : undefined,
     },
   ];
 
-  const dispatchMetrics = [
+  const dispatchMetrics: DashboardQueueMetric[] = [
     {
       label: "Shipped",
+      tone: "success",
       value: canViewOps ? formatNumber(queueMetrics.dispatch.shipped) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { shipmentStatus: "POSTED" }, "shipping-manage") : undefined,
     },
     {
       label: "Not Shipped",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.dispatch.notShipped) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStatuses: "OPEN,ALLOCATED,PICKING,PICKED" }, "package-management") : undefined,
     },
     {
       label: "Order Cancellation",
+      tone: "danger",
       value: canViewOps ? formatNumber(queueMetrics.dispatch.orderCancellation) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStatus: "CANCELLED" }, "package-management") : undefined,
     },
   ];
 
-  const returnMetrics = [
+  const returnMetrics: DashboardQueueMetric[] = [
     {
       label: "Pending Stock-in",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.returns.pendingStockIn) : "Restricted",
       to: canViewOps ? buildDashboardLink("/returns", { returnOrderStatuses: "OPEN,PARTIAL_RECEIVED" }, "return-orders") : undefined,
     },
   ];
 
-  const workOrderMetrics = [
+  const workOrderMetrics: DashboardQueueMetric[] = [
     {
       label: "Pending Review",
+      tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.workOrder.pendingReview) : "Restricted",
       to: canViewOps ? buildDashboardLink("/counting", { approvalStatus: "PENDING" }, "variance-approvals") : undefined,
     },
   ];
 
-  const financeMetrics = [
+  const financeMetrics: DashboardQueueMetric[] = [
     {
       label: "Deduction pending review",
+      tone: "warning",
       value: canViewFinance ? formatNumber(queueMetrics.finance.deductionPendingReview) : "Restricted",
       to: canViewFinance ? buildDashboardLink("/finance", {}, "recharge-review") : undefined,
     },
     {
       label: "Recharge pending review",
+      tone: "info",
       value: canViewFinance ? formatNumber(queueMetrics.finance.rechargePendingReview) : "Restricted",
       to: canViewFinance ? buildDashboardLink("/finance", {}, "recharge-review") : undefined,
     },
     {
       label: "Quota pending review",
+      tone: "warning",
       value: canViewFinance ? formatNumber(queueMetrics.finance.quotaPendingReview) : "Restricted",
       to: canViewFinance ? buildDashboardLink("/finance", {}, "voucher-management") : undefined,
     },
   ];
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={2.5}>
       <PageHeader
         actions={
           <Stack alignItems={{ sm: "center" }} direction={{ xs: "column", sm: "row" }} spacing={1.5}>
@@ -223,31 +243,30 @@ export function DashboardPage() {
 
       {visibleWidgets.has("metrics") ? (
         <Grid container spacing={2.5}>
-          <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
-            <MetricCard
-              helper={activeWarehouse ? `${activeWarehouse.warehouse_city} | ${activeWarehouse.warehouse_manager}` : "No warehouse configured yet."}
-              label="Active warehouse"
-              value={warehouseLabel}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <MetricCard
               helper={canViewOps ? `${formatNumber(visibleOnHand)} visible units in the current warehouse.` : "Requires an operations role."}
               label="Visible on-hand"
+              to={canViewOps ? buildDashboardLink("/inventory") : undefined}
+              tone={canViewOps ? "success" : "neutral"}
               value={canViewOps ? formatNumber(visibleOnHand) : "Restricted"}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <MetricCard
               helper="Open supervisor approvals for count variances."
               label="Pending approvals"
+              to={canViewOps ? buildDashboardLink("/counting", { approvalStatus: "PENDING" }, "variance-approvals") : undefined}
+              tone={canViewOps ? "warning" : "neutral"}
               value={canViewOps ? approvalsSummaryQuery.data?.pending_count ?? "--" : "Restricted"}
             />
           </Grid>
-          <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
+          <Grid size={{ xs: 12, md: 4 }}>
             <MetricCard
               helper={canViewFinance ? `${invoicesQuery.data?.count ?? 0} invoices in finance scope.` : "Requires finance visibility."}
               label="Finance invoices"
+              to={canViewFinance ? buildDashboardLink("/finance") : undefined}
+              tone={canViewFinance ? "info" : "neutral"}
               value={canViewFinance ? invoicesQuery.data?.count ?? "--" : "Restricted"}
             />
           </Grid>
@@ -255,26 +274,36 @@ export function DashboardPage() {
       ) : null}
 
       {visibleWidgets.has("ops-summary") ? (
-        <Grid container spacing={2.5}>
-          <Grid size={{ xs: 12, md: 6, xl: 2 }}>
-            <DashboardQueueCard metrics={stockInMetrics} subtitle={warehouseLabel} title="Stock In" />
+        <Stack spacing={2.5}>
+          <Stack spacing={0.5}>
+            <Typography variant="h5">Operational queues</Typography>
+            <Typography color="text.secondary" variant="body2">
+              {`Scoped to ${warehouseLabel}. The queue cards are grouped by execution flow so the page reads like an operations cockpit instead of a flat status sheet.`}
+            </Typography>
+          </Stack>
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
+              <DashboardQueueCard metrics={stockInMetrics} title="Stock In" />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
+              <DashboardQueueCard metrics={outboundMetrics} title="Dropshipping Stock-Out" />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
+              <DashboardQueueCard metrics={dispatchMetrics} title="Dispatch / Handover" />
+            </Grid>
           </Grid>
-          <Grid size={{ xs: 12, md: 6, xl: 2 }}>
-            <DashboardQueueCard metrics={outboundMetrics} subtitle={warehouseLabel} title="Dropshipping Stock-Out" />
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
+              <DashboardQueueCard metrics={returnMetrics} title="Return" />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
+              <DashboardQueueCard metrics={workOrderMetrics} title="Work Order" />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6, xl: 4 }}>
+              <DashboardQueueCard metrics={financeMetrics} title="Finance" />
+            </Grid>
           </Grid>
-          <Grid size={{ xs: 12, md: 6, xl: 2 }}>
-            <DashboardQueueCard metrics={dispatchMetrics} subtitle={warehouseLabel} title="Dispatch / Handover" />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6, xl: 2 }}>
-            <DashboardQueueCard metrics={returnMetrics} subtitle={warehouseLabel} title="Return" />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6, xl: 2 }}>
-            <DashboardQueueCard metrics={workOrderMetrics} subtitle={warehouseLabel} title="Work Order" />
-          </Grid>
-          <Grid size={{ xs: 12, md: 6, xl: 2 }}>
-            <DashboardQueueCard metrics={financeMetrics} subtitle={warehouseLabel} title="Finance" />
-          </Grid>
-        </Grid>
+        </Stack>
       ) : null}
 
       <Grid container spacing={2.5}>
@@ -293,22 +322,6 @@ export function DashboardPage() {
         </Grid>
         <Grid size={{ xs: 12, xl: 4 }}>
           <Stack spacing={2.5}>
-            {rightRailWidgets.has("scope") ? (
-              <WorkbenchPanel subtitle="Company and warehouse context for every queue below." title="Scope and context">
-                <List dense disablePadding>
-                  <ListItem disableGutters>
-                    <ListItemText primary="Workspace" secondary={company?.label ?? "Current tenant"} />
-                  </ListItem>
-                  <ListItem disableGutters>
-                    <ListItemText primary="Warehouse" secondary={warehouseLabel} />
-                  </ListItem>
-                  <ListItem disableGutters>
-                    <ListItemText primary="Workbench window" secondary={timeWindowOptions.find((option) => option.value === timeWindow)?.label ?? "This week"} />
-                  </ListItem>
-                </List>
-              </WorkbenchPanel>
-            ) : null}
-
             {rightRailWidgets.has("alerts") ? (
               <WorkbenchPanel subtitle="These are the exception queues worth clearing first." title="Exception watchlist">
                 <Stack spacing={1}>

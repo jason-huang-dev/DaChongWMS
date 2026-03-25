@@ -633,21 +633,21 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
       "使用您的仓库账户登录。前端通过后端登录接口认证，并在浏览器中保存租户令牌和操作员编号以供 API 访问。",
     "Create a manager account backed by Django auth, a tenant user profile, and a matching staff record. Email is required so MFA enrollment and recovery can be added without changing the account model later.":
       "创建一个由 Django 认证、租户用户档案和对应员工记录支撑的管理员账户。邮箱为必填项，以便后续在不修改账户模型的情况下启用 MFA 注册和恢复。",
-    "Branded operations access for every warehouse role": "面向每种仓库角色的品牌化作业入口",
-    "Provision a branded workspace entry point": "配置品牌化工作空间入口",
+    "Precision-built access for every warehouse role": "面向各类仓库角色的精密访问入口",
+    "Provision a workspace with industrial clarity": "以工业化清晰度创建工作空间",
     "Scanner-first receiving": "扫码优先收货",
     "Inventory and finance controls": "库存与财务控制",
     "MFA-backed sign-in": "MFA 保护登录",
     "Tenant bootstrap ready": "可立即初始化租户",
     "Manager role by default": "默认分配经理角色",
     "Immediate MFA enrollment": "立即启用 MFA 注册",
-    "The visual system now follows the gold-metal DaChong mark with warm copper accents and dark control surfaces instead of the previous blue default.":
-      "当前视觉系统以大虫金属质感标志为核心，采用暖铜色点缀和深色控制面板，替代之前默认的蓝色风格。",
-    "The signup surface now matches the DaChong brand system: warm ivory cards, copper dividers, and the gold mark on dark enterprise panels.":
-      "注册界面现已匹配大虫品牌系统：温暖象牙色卡片、铜色分隔线，以及深色企业面板上的金色标志。",
-    "Golden metal branding, dark-control surfaces, and warm enterprise tones now define the product shell and operator flows.":
-      "金属金色品牌、深色控制表面和温暖企业色调共同定义了当前产品外壳和操作流程。",
-    "Warehouse control with a branded operator surface": "品牌化操作界面的仓储控制",
+    "The operator shell now uses industrial surface layering, restrained yellow emphasis, and sharper hierarchy instead of generic dashboard defaults.":
+      "操作界面现采用工业化的表面层级、克制的黄色重点以及更清晰的层次结构，替代通用仪表盘式默认风格。",
+    "The signup flow now follows the same industrial kinetic system as the operator shell, with cleaner surfaces and a tighter operational hierarchy.":
+      "注册流程现已与操作台使用同一套工业动态设计系统，具备更干净的表面层次和更紧凑的业务层级。",
+    "Surface layering, restrained accent highlights, and industrial typography now shape the operator shell and sign-in flows.":
+      "表面层级、克制的强调色和工业化字体共同构成了当前的操作台与登录流程。",
+    "Warehouse control with precision-first operator surfaces": "以精密优先操作界面实现仓储控制",
     "Scanner-first workflows": "扫码优先流程",
     "Finance-ready operations": "财务就绪的作业流程",
     "MFA-protected access": "MFA 保护访问",
@@ -663,9 +663,9 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Verification code": "验证码",
     Verify: "验证",
     "Developer bootstrap": "开发者初始化",
-    "Use the backend test-system module to seed a demo tenant, then continue straight into the app.":
-      "使用后端测试系统模块初始化演示租户，然后直接进入应用。",
-    "Create demo workspace": "创建演示工作空间",
+    "Use the stable development account. If it does not exist yet, the backend creates it once, seeds the default workspace, and signs you in.":
+      "使用稳定的开发账户。如果该账户尚不存在，后端会仅创建一次、初始化默认工作空间，并直接为您登录。",
+    "Use dev workspace": "使用开发工作空间",
     "Your current staff role does not have access to this area. Use a supervisor or finance account, or return to the dashboard.":
       "您当前的员工角色无权访问此区域。请使用主管或财务账户，或返回仪表盘。",
     "Loading...": "加载中…",

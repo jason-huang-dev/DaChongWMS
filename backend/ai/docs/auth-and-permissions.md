@@ -1,92 +1,137 @@
 # Auth and Permissions
 
-Security is foundational for a warehouse management system. This document reflects the modular backend direction under `backend/apps/*`.
+## Domain boundaries
+- `apps.accounts`: global authentication identity, user services, and auth-facing API
+- `apps.fees`: operational fee records, vouchers, charge catalog, receivable bills, and profit snapshots
+- `apps.organizations`: tenant records and memberships
+- `apps.iam`: org-scoped roles, groups, permission resolution, and default role bootstrapping
+- `apps.partners`: customer accounts and client-account access
+- `apps.warehouse`: organization-scoped warehouse records and warehouse API
 
-## Authentication stack
+## Identity model
+- A `User` is global.
+- Authentication is email-based.
+- `username` remains an internal compatibility field derived from email or retained for legacy frontend flows.
+- `GET /api/v1/auth/me/` returns the authenticated user, memberships, and any linked customer accounts.
 
-- **SessionAuthentication**: browser/admin debugging and Django admin access.
-- **BasicAuthentication**: minimal development support in the modular backend.
-- Future token/JWT/SSO providers should be added explicitly in `config.settings`.
+## Compatibility auth/bootstrap layer
+The `config` project exposes the legacy-shaped bootstrap endpoints from first-class code:
 
-## Identity and tenancy
+- `POST /api/login/`
+- `POST /api/signup/`
+- `POST /api/test-system/register/`
+- `GET /api/access/my-memberships/`
+- `POST /api/access/my-memberships/{id}/activate/`
+- `GET /api/staff/{id}/`
+- `GET /api/staff/type/`
+- `GET /api/warehouse/`
+- `GET /api/mfa/status/`
 
-- `apps.accounts.User` is the global login identity.
-- `apps.organizations.Organization` is the tenant boundary.
-- `apps.organizations.OrganizationMembership` grants a user access to an organization.
-- Memberships are typed:
+These compatibility routes keep the current frontend session contract working without a second legacy runtime.
+
+`POST /api/test-system/register/` is a developer-only quick-login path. It resolves a stable default dev account and only creates that account/workspace once if it is missing.
+
+## Security administration compatibility
+The `config` project also now serves the frontend security-management endpoints from first-class code:
+
+- `GET|POST /api/staff/`
+- `GET|PATCH /api/staff/{id}/`
+- `GET|POST /api/access/company-memberships/`
+- `GET|PATCH /api/access/company-memberships/{id}/`
+- `GET|POST /api/access/company-invites/`
+- `POST /api/access/company-invites/accept/`
+- `POST /api/access/company-invites/{id}/revoke/`
+- `GET|POST /api/access/password-resets/`
+- `POST /api/access/password-resets/complete/`
+- `POST /api/access/password-resets/{id}/revoke/`
+- `GET /api/access/audit-events/`
+
+Those endpoints are backed by organization-scoped records and IAM overrides, not by the old company/openid tables.
+
+## Tenancy model
+- An `Organization` is the tenant boundary.
+- An `OrganizationMembership` connects a user to an organization.
+- Memberships carry `membership_type` only:
   - `INTERNAL`
   - `CLIENT`
 
-## IAM strategy
+## Customer account model
+- A `CustomerAccount` represents the client account that owns inventory, orders, and charges.
+- `ClientAccountAccess` links a client membership to a customer account.
+- Client portal permissions should be granted at the customer-account scope, not at the warehouse scope.
 
-Authorization is resolved through `apps.iam`:
+## IAM model
+- Roles, groups, and overrides are organization-aware.
+- Permission definitions come from Django auth `Permission` rows.
+- Effective access is resolved from:
+  - role assignments
+  - group assignments
+  - per-user permission overrides
+- Scope is optional:
+  - no scope = org-wide
+  - `WAREHOUSE` scope = one warehouse
+  - `RESOURCE` scope = a named resource target such as a customer account
 
-1. Django auth `Permission` rows define permission codenames.
-2. IAM roles and groups grant those permissions.
-3. Role/group assignments may be org-wide or scope-specific.
-4. Per-user overrides may explicitly allow or deny.
+## Default system roles
+- `OWNER`
+- `MANAGER`
+- `STAFF`
+- `CLIENT_ADMIN`
+- `CLIENT_USER`
 
-## Scope model
+These are synced by `python backend/manage.py sync_iam_roles --settings=config.settings.dev`.
 
-- `scope=None`: org-wide permission
-- `WAREHOUSE` scope: one warehouse
-- `RESOURCE` scope: one named resource target
+## External user rule
+- Suppliers are partner master data, not login identities.
+- Client users are real organization memberships with `membership_type=CLIENT`.
+- Client users should only see their own customer-account data.
 
-For client portal users, the important resource scope is:
+## Core API
+### `GET /api/v1/auth/me/`
+Returns the authenticated user profile plus organization memberships and linked customer accounts.
 
-- `resource_type="customer_account"`
+### `POST /api/v1/organizations/{organization_id}/users/`
+Creates or reactivates a membership.
 
-This is what prevents a client from seeing another client's stock or charges inside the same organization.
+For client users, `customer_account_id` is required so access is scoped correctly.
 
-## Default role intent
+Request:
+```json
+{
+  "email": "client.user@example.com",
+  "full_name": "Client User",
+  "membership_type": "CLIENT",
+  "customer_account_id": 12,
+  "role_code": "CLIENT_USER"
+}
+```
 
-- `OWNER`: full org administration
-- `MANAGER`: internal operational administration
-- `STAFF`: internal operational read/write subset
-- `CLIENT_ADMIN`: external admin for one or more customer-account scopes
-- `CLIENT_USER`: external read-only user for one or more customer-account scopes
+### `GET /api/v1/organizations/{organization_id}/customer-accounts/`
+Lists visible customer accounts for the current user.
 
-## Current modular permission surfaces
+### `POST /api/v1/organizations/{organization_id}/customer-accounts/`
+Creates a customer account inside the organization.
 
-- Organization user provisioning:
-  - internal users require org-wide `iam.manage_memberships`
-  - client users may be created with org-wide `iam.manage_memberships`
-  - client admins may create client users only within customer accounts where they hold scoped `iam.manage_client_users`
-- Warehouse CRUD:
-  - internal roles use `warehouse.*` permissions
-  - client roles should not receive warehouse admin permissions by default
-- Customer account access:
-  - internal account administrators use `partners.manage_customer_accounts`
-  - client users consume scoped `partners.view_*` permissions
-- Work-order scheduling:
-  - internal operators use `workorders.view_workorder` to see queue state
-  - managers use `workorders.manage_work_order_types` for reusable scheduling templates
-  - managers and staff use `workorders.manage_work_orders` to schedule and reprioritize fulfillment
-- Logistics:
-  - internal roles use `logistics.view_logistics` to view providers, channels, rules, rates, and cost records
-  - managers use `logistics.manage_logistics_providers` for providers, groups, customer channels, and waybill watermarking
-  - managers use `logistics.manage_logistics_rules` for routing, partition, remote-area, and fuel rules
-  - managers use `logistics.manage_logistics_charging` for charging strategies, special customer overrides, and logistics charges
-  - managers use `logistics.manage_logistics_costs` for carrier cost capture and reconciliation
-- Fees:
-  - internal roles use `fees.view_fees` to view the operational fees workspace
-  - managers and finance operators use `fees.manage_balance_transactions` to create recharge and deduction records
-  - finance reviewers use `fees.review_balance_transactions` to approve or reject recharge and deduction requests
-  - managers and finance operators use `fees.manage_vouchers` for voucher issuance and maintenance
-  - managers and finance operators use `fees.manage_charge_catalog` for charge items and charge templates
-  - managers and finance operators use `fees.manage_manual_charges` for manual charges
-  - managers and finance operators use `fees.manage_fund_flows` for fund-flow records
-  - managers and finance operators use `fees.manage_rent_details` for rent accrual detail
-  - managers and finance operators use `fees.manage_business_expenses` for business-expense tracking
-  - managers and finance operators use `fees.manage_receivable_bills` for receivable bills
-  - managers and finance operators use `fees.manage_profit_calculations` for profitability snapshots
+### `GET /api/v1/organizations/{organization_id}/warehouses/`
+Lists organization warehouses.
 
-## Portal rule of thumb
+### `GET /api/v1/organizations/{organization_id}/fees/*`
+Operational finance surfaces now live under the organization-scoped `fees` API for recharge/deduction requests, vouchers, manual charges, receivable bills, and related fee records.
 
-Suppliers are partner records, not login identities, unless a real supplier portal use case appears.
+## Typing and service boundaries
+- New core apps use typed service modules instead of embedding orchestration in views.
+- `pyrightconfig.json` enables strict type checking for `backend/apps` and `backend/config`.
+- Local stubs for `rest_framework`, `django_filters`, and `dj_database_url` live under `backend/typings`.
+- The backend should be extended under `apps/*`; do not introduce a second Django app tree for compatibility code.
 
-Customers/clients are the external login use case. Their access should be:
+## Test commands
+```bash
+. .venv/bin/activate
+python backend/manage.py check --settings=config.settings.dev
+python backend/manage.py test apps.accounts.tests apps.fees.tests apps.iam.tests apps.organizations.tests apps.partners.tests apps.warehouse.tests --settings=config.settings.test
+```
 
-- account-scoped
-- read-only by default
-- expanded only when a workflow requires it, such as inbound submission
+## Current boundary
+- Auth bootstrap, workspace switching, and the current security administration page are available from first-class apps in the `config` project.
+- Invite acceptance and password-reset completion are first-class flows.
+- Any remaining frontend compatibility is implemented inside `apps.accounts` and `apps.organizations`, not through a separate runtime.

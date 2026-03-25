@@ -18,7 +18,7 @@ RUN pip install -r requirements.txt
 COPY . .
 
 # Pre-collect Django static assets for production-serving paths.
-RUN DJANGO_SETTINGS_MODULE=dachong_wms.settings \
+RUN DJANGO_SETTINGS_MODULE=config.settings.prod \
     DJANGO_SECRET_KEY=build-time-static-secret \
     DJANGO_DEBUG=false \
     DATABASE_URL=sqlite:////tmp/dachongwms-build.sqlite3 \
@@ -31,4 +31,4 @@ EXPOSE 8000
 ENV PYTHONPATH=/app:$PYTHONPATH
 
 # Production default; development overrides this with runserver.
-CMD ["gunicorn", "dachong_wms.wsgi:application", "--bind", "0.0.0.0:8000"]
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]

@@ -1,36 +1,31 @@
 # Outbound Operations
 
-`operations.outbound` owns sales orders, allocation, picking, explicit short-pick capture, shipment posting, dock-load verification, outbound waves, package execution, shipment documents, and logistics tracking.
+`apps.outbound` is now the first-class modular outbound core. It owns sales orders, allocation, pick completion, and shipment posting on top of the modular `inventory`, `locations`, `products`, `partners`, `warehouse`, and `organizations` apps.
 
 It also owns the outbound order catalog that powers the package board in the UI. In practice that means `SalesOrder` is the operational order/package header, not just a minimal ERP reference.
 
-The B2B workbench is now backed by a real outbound partition instead of a frontend-only view. `SalesOrder` and `OutboundWave` carry `order_type` (`STANDARD`, `B2B`, `DROPSHIP`), and outbound operational records are filtered through that root order type.
+The migrated first-class surface is intentionally narrower than the legacy one: waves, package execution, shipment documents, logistics tracking, dock-load verification, and short-pick exception management are still legacy references for now.
 
 ## Scope
 
 - `SalesOrder` and `SalesOrderLine`
 - `PickTask`
-- `ShortPickRecord`
 - `Shipment` and `ShipmentLine`
-- `OutboundWave` and `OutboundWaveOrder`
-- `PackageExecutionRecord`
-- `ShipmentDocumentRecord`
-- `LogisticsTrackingEvent`
-- `DockLoadVerification`
 
 ## Order Type Partition
 
 - `SalesOrder.order_type` is the root outbound partition key.
-- `OutboundWave.order_type` is derived from its assigned sales orders, and a wave cannot mix order types.
-- Pick tasks, shipments, package executions, shipment documents, tracking events, short picks, and dock-load verifications inherit partition scope through their linked sales order.
-- Package execution requests can include `requested_order_type`; mismatches are rejected so B2B panels cannot accidentally write into standard or dropship orders.
+- The first-class app already supports `STANDARD`, `B2B`, and `DROPSHIP`.
+- Pick tasks and shipments inherit partition scope through their linked sales order.
 - The B2B UI should query outbound queues and reference selectors with `order_type=B2B`.
+- Dropshipping orders must point at a first-class `CustomerAccount`.
 
 ## Sales Order Header Contract
 
-`SalesOrder` now includes the metadata required by the package board:
+`SalesOrder` now includes the metadata required by the package board and the client/account context needed for dropshipping:
 
-- warehouse, customer, staging location
+- warehouse, customer account, staging location
+- customer-account snapshot fields: `customer_code`, `customer_name`, `customer_contact_name`, `customer_contact_email`, `customer_contact_phone`
 - order number, order time, requested ship date, expiration time
 - logistics provider, shipping method, tracking number, waybill number
 - waybill print state and print timestamp
@@ -44,42 +39,11 @@ The B2B workbench is now backed by a real outbound partition instead of a fronte
 
 ## Workflow
 
-1. Create a sales order.
-2. Optionally batch released work into an `OutboundWave`.
-3. Allocate inventory and generate pick tasks.
-4. Complete picks into the staging location or report an explicit short-pick against the pick task.
-5. Optional LPN capture moves the pallet/carton to `scanner.LicensePlateStatus.STAGED`.
-6. Record package execution milestones for relabel, pack, inspect, and weigh.
-7. Generate manifest, photo, and scanform records as shipment-supporting documents.
-8. Post shipment confirmation and record the `SHIP` inventory movement.
-9. Record logistics tracking events after handover to the carrier.
-10. Optional dock-load verification records trailer/dock confirmation and transitions the LPN to `LOADED`.
-11. Capture a billing charge event for shipment handling.
-
-## Additional Operational Records
-
-### Waves
-
-- `OutboundWave` groups active sales orders for warehouse-controlled release.
-- `OutboundWaveOrder` stores the per-wave sales order assignments and sequence.
-- A sales order can only belong to one active wave at a time.
-
-### Package execution
-
-- `PackageExecutionRecord.step_type` supports `RELABEL`, `PACK`, `INSPECT`, and `WEIGH`.
-- `RELABEL` is intended for B2B or channel-specific relabel execution before final packing.
-- Pack and weigh records can advance the order into the packed / `TO_SHIP` state by setting `SalesOrder.packed_at`.
-- Flagged inspect or weigh records mark the order as `ABNORMAL_PACKAGE` unless the order is already explicitly intercepted.
-
-### Shipment documents
-
-- `ShipmentDocumentRecord.document_type` supports `MANIFEST`, `PHOTO`, and `SCANFORM`.
-- `SCANFORM` generation marks the order waybill as printed.
-
-### Logistics tracking
-
-- `LogisticsTrackingEvent` stores carrier or handover milestones by tracking number.
-- Exception tracking events can promote the order into the abnormal package queue.
+1. Create a sales order and snapshot the linked customer account onto the order header.
+2. Allocate inventory and generate pick tasks from pickable balances.
+3. Complete picks into the staging location.
+4. Post shipment confirmation and decrement staged stock.
+5. Hand off richer package execution, tracking, and dock-load workflows to the remaining legacy outbound references until those slices are migrated.
 
 ## Package Board Buckets
 
@@ -106,61 +70,31 @@ Stage derivation rules:
 - orders with label / tracking data but no warehouse work yet are `TO_MOVE`
 - orders with no label / tracking data yet are `GET_TRACKING_NO`
 
-Exception rules:
-
-- reporting a short-pick marks the sales order as `ABNORMAL_PACKAGE`
-- resolving the last open short-pick clears the order back to `NORMAL`
-- manual intercepts should use `ORDER_INTERCEPTION`
-
-## Scan-First Slice
-
-- `POST /api/outbound/pick-tasks/scan-complete/` accepts task number, source barcode, destination barcode, SKU barcode, and optional LPN barcode.
-- `POST /api/outbound/shipments/scan-ship/` accepts sales-order number, shipment number, staging-location barcode, SKU barcode, shipped quantity, optional dock/LPN scans, and optional lot/serial attribute data.
-- Shipping scans append to an existing shipment when the shipment number already exists, otherwise they create the shipment header on first scan.
-- Scan resolution now supports direct codes plus `scanner.BarcodeAlias` matches.
-- LPN-based shipping requires the scanned quantity to match the LPN quantity.
+Exception rules remain on the order header, but detailed short-pick / package-exception records are still legacy.
 
 ## Validation Rules
 
 - Allocation ignores locked, maintenance, or non-pickable locations.
 - Pick completion must move stock from the source location into staging atomically.
 - Shipment posting and scan-ship must use the sales order warehouse and staging location.
-- Assigned pick tasks can only be completed by the assigned operator.
-- Reporting a short pick places the missing quantity into an explicit exception record instead of relying on derived overdue-order heuristics.
-- Resolving a short pick requires the same outbound-capable roles as pick completion and records the operator plus resolution note.
-- Scan-ship requires an already picked quantity for the matching sales-order line.
-- When scan-ship includes a dock location, the dock location must still be an active shipping-zone location in the same warehouse.
+- Dropshipping orders must reference a `CustomerAccount` that allows dropshipping.
+- Each dropshipping order persists customer-account snapshot fields so downstream reporting and client-facing order views do not depend on mutable master data alone.
 
 ## API Surface
 
-- `GET/POST /api/outbound/sales-orders/`
-- `GET/PUT/PATCH/DELETE /api/outbound/sales-orders/{id}/`
-- `POST /api/outbound/sales-orders/{id}/allocate/`
-- `GET /api/outbound/pick-tasks/`
-- `POST /api/outbound/pick-tasks/scan-complete/`
-- `GET/PUT/PATCH /api/outbound/pick-tasks/{id}/`
-- `POST /api/outbound/pick-tasks/{id}/complete/`
-- `POST /api/outbound/pick-tasks/{id}/report-short-pick/`
-- `GET /api/outbound/short-picks/`
-- `GET /api/outbound/short-picks/{id}/`
-- `POST /api/outbound/short-picks/{id}/resolve/`
-- `GET/POST /api/outbound/shipments/`
-- `POST /api/outbound/shipments/scan-ship/`
-- `GET /api/outbound/shipments/{id}/`
-- `GET/POST /api/outbound/waves/`
-- `GET/PUT/PATCH /api/outbound/waves/{id}/`
-- `GET/POST /api/outbound/package-executions/`
-- `GET /api/outbound/package-executions/{id}/`
-- `GET/POST /api/outbound/shipment-documents/`
-- `GET /api/outbound/shipment-documents/{id}/`
-- `GET/POST /api/outbound/tracking-events/`
-- `GET /api/outbound/tracking-events/{id}/`
-- `GET /api/outbound/dock-load-verifications/`
-- `GET /api/outbound/dock-load-verifications/{id}/`
+- `GET/POST /api/v1/organizations/{organization_id}/outbound/sales-orders/`
+- `GET/PATCH /api/v1/organizations/{organization_id}/outbound/sales-orders/{id}/`
+- `POST /api/v1/organizations/{organization_id}/outbound/sales-orders/{id}/allocate/`
+- `POST /api/v1/organizations/{organization_id}/outbound/sales-orders/{id}/ship/`
+- `GET /api/v1/organizations/{organization_id}/outbound/pick-tasks/`
+- `GET /api/v1/organizations/{organization_id}/outbound/pick-tasks/{id}/`
+- `POST /api/v1/organizations/{organization_id}/outbound/pick-tasks/{id}/complete/`
+- `GET /api/v1/organizations/{organization_id}/outbound/shipments/`
+- `GET /api/v1/organizations/{organization_id}/outbound/shipments/{id}/`
 
 ## Operator UI Expectation
 
 - The frontend outbound console should show both low-level workflow status and the higher-level package-board bucket.
-- Supervisors need short-pick exceptions, intercept/anomaly queues, wave status, package execution, shipping documents, tracking events, and dock-load verification in the same workspace so they can move from exception review to trailer confirmation without context switching.
 - Customer-facing or client-portal views should use the same order header but must be permission-scoped so external users only see their own orders, packages, stock, and charges.
-- The frontend B2B workbench exposes a narrower outbound path on top of this module and now enforces that path through the shared `order_type=B2B` partition instead of a separate outbound data model.
+- The dropshipping order detail should surface both ship-to fields and the persisted customer-account snapshot.
+- The remaining wave / package-execution / tracking depth is still legacy and should be migrated separately rather than reintroduced into this first-class core ad hoc.

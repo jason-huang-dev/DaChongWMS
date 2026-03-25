@@ -26,8 +26,8 @@ export function AuthShell({
   description,
   eyebrow = "DaChongWMS",
   heroPoints = defaultHeroPoints,
-  heroSummary = "Golden metal branding, dark-control surfaces, and warm enterprise tones now define the product shell and operator flows.",
-  heroTitle = "Warehouse control with a branded operator surface",
+  heroSummary = "Surface layering, restrained accent highlights, and industrial typography now shape the operator shell and sign-in flows.",
+  heroTitle = "Warehouse control with precision-first operator surfaces",
   title,
 }: AuthShellProps) {
   const theme = useTheme();
@@ -39,8 +39,8 @@ export function AuthShell({
       sx={{
         alignItems: "center",
         background: isDark
-          ? "radial-gradient(circle at top left, rgba(243, 197, 74, 0.2), transparent 36%), linear-gradient(135deg, #100c08 0%, #1a120b 42%, #26170e 100%)"
-          : brandGradients.authBackdrop,
+          ? brandGradients.authBackdropDark
+          : brandGradients.authBackdropLight,
         display: "flex",
         minHeight: "100vh",
         px: { xs: 2, md: 4 },
@@ -53,8 +53,8 @@ export function AuthShell({
             sx={{
               backdropFilter: "blur(10px)",
               backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.94 : 0.96),
-              border: `1px solid ${alpha(isDark ? brandColors.goldLight : brandColors.goldDark, 0.18)}`,
-              boxShadow: brandShadows.cardStrong,
+              border: `1px solid ${alpha(isDark ? brandColors.outlineDark : brandColors.outlineLight, 0.22)}`,
+              boxShadow: isDark ? brandShadows.panelDark : brandShadows.panelLight,
             }}
           >
             <CardContent sx={{ p: { xs: 3, md: 4 } }}>
@@ -84,10 +84,10 @@ export function AuthShell({
         <Grid size={{ xs: 12, lg: 7 }}>
           <Card
             sx={{
-              background: brandGradients.shellDrawer,
-              border: `1px solid ${alpha(brandColors.gold, 0.2)}`,
-              boxShadow: brandShadows.cardStrong,
-              color: brandColors.inkSoft,
+              background: isDark ? brandGradients.shellDrawerDark : brandGradients.shellDrawerLight,
+              border: `1px solid ${alpha(isDark ? brandColors.outlineDark : brandColors.outlineLight, 0.26)}`,
+              boxShadow: isDark ? brandShadows.panelDark : brandShadows.panelLight,
+              color: isDark ? brandColors.textPrimaryDark : brandColors.textPrimaryLight,
               display: { xs: "none", lg: "block" },
               height: "100%",
               overflow: "hidden",
@@ -97,7 +97,9 @@ export function AuthShell({
             <Box
               sx={{
                 background:
-                  "radial-gradient(circle at 30% 30%, rgba(243, 197, 74, 0.26), transparent 28%), radial-gradient(circle at 78% 72%, rgba(184, 74, 36, 0.24), transparent 26%)",
+                  isDark
+                    ? "radial-gradient(circle at 30% 30%, rgba(249, 195, 68, 0.22), transparent 28%), radial-gradient(circle at 78% 72%, rgba(140, 146, 134, 0.16), transparent 26%)"
+                    : "radial-gradient(circle at 24% 24%, rgba(249, 195, 68, 0.16), transparent 24%), radial-gradient(circle at 74% 68%, rgba(31, 35, 32, 0.08), transparent 26%)",
                 inset: 0,
                 position: "absolute",
               }}
@@ -107,10 +109,16 @@ export function AuthShell({
                 <Stack spacing={3}>
                   <BrandLogo alt={t("ui.brandLogoAlt")} kind="lockup" sx={{ width: 260 }} variant="gold" />
                   <Stack spacing={1.5}>
-                    <Typography sx={{ color: brandColors.goldLight, maxWidth: 520 }} variant="h3">
+                    <Typography
+                      sx={{ color: isDark ? brandColors.accentSoft : brandColors.accentStrong, maxWidth: 520 }}
+                      variant="h3"
+                    >
                       {translateText(heroTitle)}
                     </Typography>
-                    <Typography sx={{ color: alpha(brandColors.inkSoft, 0.82), maxWidth: 540 }} variant="body1">
+                    <Typography
+                      sx={{ color: alpha(isDark ? brandColors.textPrimaryDark : brandColors.textPrimaryLight, 0.78), maxWidth: 540 }}
+                      variant="body1"
+                    >
                       {translateText(heroSummary)}
                     </Typography>
                   </Stack>
@@ -121,9 +129,9 @@ export function AuthShell({
                       key={point}
                       label={translateText(point)}
                       sx={{
-                        backgroundColor: alpha(brandColors.gold, 0.12),
-                        border: `1px solid ${alpha(brandColors.gold, 0.28)}`,
-                        color: brandColors.inkSoft,
+                        backgroundColor: alpha(brandColors.accent, isDark ? 0.14 : 0.12),
+                        border: `1px solid ${alpha(brandColors.accentStrong, isDark ? 0.22 : 0.16)}`,
+                        color: isDark ? brandColors.textPrimaryDark : brandColors.textPrimaryLight,
                         fontWeight: 600,
                       }}
                     />

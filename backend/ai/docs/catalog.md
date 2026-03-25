@@ -16,7 +16,7 @@ Core models:
 | `ProductPackaging` | Unit/carton/pallet/custom packaging specs with dimensions, weight, and default-pack flag. |
 | `ProductMark` | Handling/compliance/operator-facing marks such as fragile, battery, temperature, or custom labels. |
 
-The old `backend/catalog/` package is still present as legacy data-modeling material, but new browser-facing product work should target `apps/products`.
+The old grouped catalog models now live under `backend/apps/legacy/catalog/` as legacy data-modeling material, but new browser-facing product work should target `apps/products`.
 
 Rules for the new module:
 
@@ -37,7 +37,7 @@ Frontend guidance:
 
 ## 2. Order Catalog / Package Board
 
-The order catalog is the operational package board used by fulfillment teams. It lives in `backend/operations/outbound/` and is implemented on top of `SalesOrder`.
+The order catalog is the operational package board used by fulfillment teams. It lives in `backend/apps/legacy/operations/outbound/` and is implemented on top of `SalesOrder`.
 
 `SalesOrder` is no longer just a thin order header. It now carries the metadata needed for the board shown in the package console:
 

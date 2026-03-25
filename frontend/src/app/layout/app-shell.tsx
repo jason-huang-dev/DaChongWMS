@@ -22,7 +22,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
 import { useWorkspaceTabs } from "@/app/workspace-preferences";
-import { brandColors, brandGradients, brandShadows } from "@/app/brand";
+import { brandColors, brandGradients, brandMotion, brandShadows, brandStatusColors } from "@/app/brand";
 import { ModuleTopNav } from "@/app/layout/module-top-nav";
 import { navigationItems } from "@/app/layout/navigation-items";
 import { RouteBreadcrumbs } from "@/app/layout/route-breadcrumbs";
@@ -36,6 +36,7 @@ import { WorkspaceContextSwitcher } from "@/shared/components/workspace-context-
 import { hasAnyRole } from "@/shared/utils/permissions";
 
 const mobileDrawerWidth = 300;
+const shellNavPillHeight = 32;
 
 export function AppShell() {
   const theme = useTheme();
@@ -58,20 +59,48 @@ export function AppShell() {
     <Box
       sx={{
         background: isDark
-          ? "linear-gradient(180deg, #120d09 0%, #1b120c 52%, #23150d 100%)"
-          : brandGradients.shellDrawer,
-        color: brandColors.inkSoft,
+          ? brandGradients.shellDrawerDark
+          : brandGradients.shellDrawerLight,
+        color: theme.palette.text.primary,
         display: "flex",
         flexDirection: "column",
         height: "100%",
       }}
     >
-      <Toolbar sx={{ alignItems: "flex-start", px: 3, py: 3 }}>
+      <Toolbar sx={{ alignItems: "flex-start", minHeight: 64, px: 2.5, py: 2 }}>
         <Stack spacing={1.5} sx={{ width: "100%" }}>
-          <BrandLogo alt={t("ui.brandLogoAlt")} kind="lockup" sx={{ width: 150 }} variant="gold" />
-          <Typography color={alpha(brandColors.inkSoft, 0.7)} variant="body2">
+          <BrandLogo alt={t("ui.brandLogoAlt")} kind="lockup" sx={{ maxWidth: 50, width: "100%" }} variant="gold" />
+          <Typography color="text.secondary" sx={{ lineHeight: 1.35 }} variant="caption">
             {t("shell.multiTenantTagline")}
           </Typography>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+            <Box
+              sx={{
+                alignItems: "center",
+                backgroundColor: alpha(brandColors.accent, isDark ? 0.14 : 0.1),
+                border: `1px solid ${alpha(brandColors.accentStrong, isDark ? 0.3 : 0.18)}`,
+                borderRadius: 999,
+                color: theme.palette.text.primary,
+                display: "inline-flex",
+                gap: 0.75,
+                px: 0.5,
+                py: 0.2,
+              }}
+            >
+              <Box
+                sx={{
+                  backgroundColor: isDark ? brandStatusColors.success.dark : brandStatusColors.success.light,
+                  borderRadius: "50%",
+                  boxShadow: `0 0 0 3px ${alpha(isDark ? brandStatusColors.success.dark : brandStatusColors.success.light, 0.16)}`,
+                  height: 6,
+                  width: 6,
+                }}
+              />
+              <Typography sx={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                Active Workspace
+              </Typography>
+            </Box>
+          </Stack>
           <WorkspaceContextSwitcher
             activeMembershipId={activeMembershipId}
             activeWarehouseId={activeWarehouseId}
@@ -83,7 +112,7 @@ export function AppShell() {
           />
         </Stack>
       </Toolbar>
-      <Divider sx={{ borderColor: alpha(brandColors.gold, 0.16) }} />
+      <Divider sx={{ borderColor: alpha(theme.palette.divider, 0.9) }} />
       <List sx={{ flexGrow: 1, px: 1.5, py: 2 }}>
         {filteredItems.map((item) => {
           const Icon = item.icon;
@@ -98,18 +127,34 @@ export function AppShell() {
               selected={selected}
               sx={{
                 "& .MuiListItemIcon-root": {
-                  color: selected ? brandColors.goldLight : alpha(brandColors.inkSoft, 0.76),
+                  color: selected ? brandColors.accent : alpha(theme.palette.text.primary, 0.68),
                   minWidth: 40,
                 },
                 "&.Mui-selected": {
-                  backgroundColor: alpha(brandColors.gold, 0.12),
-                  border: `1px solid ${alpha(brandColors.gold, 0.18)}`,
-                  boxShadow: brandShadows.glow,
-                  color: brandColors.goldLight,
+                  backgroundColor: alpha(brandColors.accent, isDark ? 0.14 : 0.1),
+                  border: `1px solid ${alpha(brandColors.accentStrong, isDark ? 0.28 : 0.18)}`,
+                  boxShadow: `inset 3px 0 0 ${brandColors.accent}`,
+                  color: theme.palette.text.primary,
+                },
+                "&::before": {
+                  backgroundColor: selected ? brandColors.accent : "transparent",
+                  borderRadius: 999,
+                  content: "\"\"",
+                  height: 18,
+                  left: 8,
+                  position: "absolute",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 3,
+                },
+                "&:hover": {
+                  backgroundColor: alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
                 },
                 borderRadius: 2.5,
-                color: selected ? brandColors.goldLight : alpha(brandColors.inkSoft, 0.86),
+                color: selected ? theme.palette.text.primary : alpha(theme.palette.text.primary, 0.82),
                 mb: 0.75,
+                overflow: "hidden",
+                position: "relative",
               }}
             >
               <ListItemIcon>
@@ -124,16 +169,48 @@ export function AppShell() {
   );
 
   return (
-    <Box sx={{ minHeight: "100vh" }}>
-      <AppBar color="inherit" elevation={0} position="fixed">
-        <Toolbar sx={{ gap: 2, minHeight: 72 }}>
+    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100dvh", width: "100%" }}>
+      <AppBar color="inherit" elevation={0} position="sticky">
+        <Toolbar sx={{ gap: 1, minHeight: { xs: 50, md: 54 }, px: { xs: 1.25, lg: 2 } }}>
           <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { lg: "none" } }}>
             <MenuIcon />
           </IconButton>
-          <Stack direction="row" spacing={1.5} sx={{ minWidth: 0, width: { xs: "auto", lg: 220 } }}>
-            <BrandLogo alt={t("ui.brandLogoAlt")} kind="lockup" sx={{ width: 150 }} variant="gold" />
+          <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", minWidth: 0 }}>
+            <BrandLogo
+              alt={t("ui.brandLogoAlt")}
+              kind="lockup"
+              sx={{ maxWidth: { xs: 25, md: 50 }, width: "100%" }}
+              variant="gold"
+            />
+          </Box>
+          <Stack
+            spacing={0.15}
+            sx={{
+              display: { xs: "none", sm: "flex" },
+              minWidth: 0,
+              mr: 0.75,
+            }}
+          >
+            <Typography
+              sx={{
+                color: alpha(theme.palette.text.secondary, 0.94),
+                fontSize: 9,
+                fontWeight: 800,
+                letterSpacing: "0.12em",
+                lineHeight: 1.2,
+                textTransform: "uppercase",
+              }}
+            >
+              Operational Workspace
+            </Typography>
+            <Typography noWrap sx={{ fontSize: 10, fontWeight: 700, lineHeight: 1.2, maxWidth: 180 }}>
+              {company?.label ?? "DaChong WMS"}
+            </Typography>
           </Stack>
-          <Box sx={{ flexGrow: 1 }} />
+          <Box sx={{ display: { xs: "none", md: "block" }, flexGrow: 1, minWidth: 0 }}>
+            <ModuleTopNav activePath={location.pathname} items={filteredItems} onNavigate={navigate} />
+          </Box>
+          <Box sx={{ display: { xs: "block", md: "none" }, flexGrow: 1 }} />
           <Box sx={{ display: { xs: "none", xl: "block" } }}>
             <WorkspaceContextSwitcher
               activeMembershipId={activeMembershipId}
@@ -145,24 +222,81 @@ export function AppShell() {
               warehouses={warehouses}
             />
           </Box>
-          <UiPreferencesControls compact />
-          <Stack alignItems="center" direction="row" onClick={(event) => setMenuAnchor(event.currentTarget)} spacing={1.5} sx={{ cursor: "pointer" }}>
+          <Box
+            data-testid="navbar-preferences-pill"
+            sx={{
+              alignItems: "center",
+              backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.62 : 0.74),
+              border: `1px solid ${alpha(theme.palette.divider, 0.72)}`,
+              borderRadius: 999,
+              display: "flex",
+              gap: 0.75,
+              height: shellNavPillHeight,
+              minHeight: shellNavPillHeight,
+              px: 0.25,
+              py: 0.175,
+            }}
+          >
+            <UiPreferencesControls compact />
+          </Box>
+          <Stack
+            alignItems="center"
+            data-testid="navbar-profile-pill"
+            direction="row"
+            onClick={(event) => setMenuAnchor(event.currentTarget)}
+            spacing={1.5}
+            sx={{
+              backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.66 : 0.78),
+              border: `1px solid ${alpha(theme.palette.divider, 0.76)}`,
+              borderRadius: 999,
+              cursor: "pointer",
+              height: shellNavPillHeight,
+              minHeight: shellNavPillHeight,
+              px: 0.375,
+              py: 0.175,
+              transition: [
+                `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                `border-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
+                `transform ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+              ].join(", "),
+              "&:hover": {
+                boxShadow: isDark ? brandShadows.floatingDark : brandShadows.floatingLight,
+                transform: "translateY(-1px)",
+              },
+            }}
+          >
             <Avatar
               sx={{
-                backgroundImage: brandGradients.goldAccent,
-                boxShadow: brandShadows.glow,
-                color: brandColors.ink,
-                height: 36,
-                width: 36,
+                backgroundImage: brandGradients.accent,
+                boxShadow: brandShadows.accentGlow,
+                color: brandColors.textPrimaryLight,
+                fontSize: 12,
+                height: 24,
+                width: 24,
               }}
             >
               {session?.operatorName?.slice(0, 1) ?? "U"}
             </Avatar>
-            <Box sx={{ display: { xs: "none", sm: "block" } }}>
-              <Typography variant="body2">{session?.operatorName}</Typography>
-              <Typography color="text.secondary" variant="caption">
-                {session?.operatorRole ? translateText(session.operatorRole) : session?.operatorRole}
-              </Typography>
+            <Box sx={{ display: { xs: "none", lg: "block" } }}>
+              <Typography sx={{ fontSize: 12 }} variant="body2">{session?.operatorName}</Typography>
+              <Stack alignItems="center" direction="row" spacing={0.75}>
+                <Typography color="text.secondary" sx={{ fontSize: 10 }} variant="caption">
+                  {session?.operatorRole ? translateText(session.operatorRole) : session?.operatorRole}
+                </Typography>
+                <Box
+                  sx={{
+                    backgroundColor: isDark ? brandStatusColors.success.dark : brandStatusColors.success.light,
+                    borderRadius: "50%",
+                    boxShadow: `0 0 0 3px ${alpha(
+                      isDark ? brandStatusColors.success.dark : brandStatusColors.success.light,
+                      0.14,
+                    )}`,
+                    height: 6,
+                    width: 6,
+                  }}
+                />
+              </Stack>
             </Box>
           </Stack>
           <Menu anchorEl={menuAnchor} onClose={() => setMenuAnchor(null)} open={Boolean(menuAnchor)}>
@@ -177,37 +311,25 @@ export function AppShell() {
             </MenuItem>
           </Menu>
         </Toolbar>
-        <Box sx={{ borderTop: `1px solid ${alpha(brandColors.goldDark, 0.12)}`, px: { xs: 2, lg: 3 }, py: 1 }}>
-          <Stack spacing={1.25}>
-            <Box sx={{ display: { xs: "none", lg: "block" }, minWidth: 0 }}>
-              <ModuleTopNav activePath={location.pathname} items={filteredItems} onNavigate={navigate} />
-            </Box>
-            <Stack alignItems={{ sm: "center" }} direction={{ xs: "column", sm: "row" }} justifyContent="space-between" spacing={1.25}>
-              <Box sx={{ minWidth: 0, overflow: "hidden" }}>
-                <RouteBreadcrumbs />
-              </Box>
-              <Box sx={{ display: { xs: "block", xl: "none" }, width: { xs: "100%", sm: "auto" } }}>
-                <WorkspaceContextSwitcher
-                  activeMembershipId={activeMembershipId}
-                  activeWarehouseId={activeWarehouseId}
-                  company={company}
-                  memberships={memberships}
-                  onMembershipChange={switchMembership}
-                  onWarehouseChange={setActiveWarehouseId}
-                  warehouses={warehouses}
-                />
-              </Box>
-            </Stack>
-            <WorkspaceTabsBar activePath={location.pathname} isClosingTab={isClosingTab} onActivate={activateTab} onClose={closeTab} tabs={tabs} />
-          </Stack>
-        </Box>
+        <Box
+          data-testid="top-info-bar"
+          sx={{
+            background: isDark
+              ? brandGradients.topRailDark
+              : brandGradients.topRailLight,
+            borderTop: `1px solid ${alpha(brandColors.accentStrong, 0.12)}`,
+            height: 6,
+            maxHeight: 6,
+            minHeight: 6,
+          }}
+        />
       </AppBar>
       <Drawer
         onClose={() => setMobileOpen(false)}
         open={mobileOpen}
         sx={{
           "& .MuiDrawer-paper": {
-            background: brandGradients.shellDrawer,
+            background: isDark ? brandGradients.shellDrawerDark : brandGradients.shellDrawerLight,
             boxSizing: "border-box",
             width: mobileDrawerWidth,
           },
@@ -217,7 +339,40 @@ export function AppShell() {
       >
         {drawerContent}
       </Drawer>
-      <Box component="main" sx={{ p: 3, pt: { xs: 24, md: 22 } }}>
+      <Box
+        component="main"
+        sx={{
+          boxSizing: "border-box",
+          flex: "1 1 auto",
+          overflowX: "hidden",
+          p: { xs: 1.25, md: 1.5 },
+          transition: `padding ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+          width: "100%",
+        }}
+      >
+        <Stack spacing={0.75} sx={{ mb: 1.75 }}>
+          <Box sx={{ minWidth: 0, overflow: "hidden" }}>
+            <RouteBreadcrumbs />
+          </Box>
+          <Box sx={{ display: { xs: "block", xl: "none" }, width: { xs: "100%", sm: "auto" } }}>
+            <WorkspaceContextSwitcher
+              activeMembershipId={activeMembershipId}
+              activeWarehouseId={activeWarehouseId}
+              company={company}
+              memberships={memberships}
+              onMembershipChange={switchMembership}
+              onWarehouseChange={setActiveWarehouseId}
+              warehouses={warehouses}
+            />
+          </Box>
+          <WorkspaceTabsBar
+            activePath={location.pathname}
+            isClosingTab={isClosingTab}
+            onActivate={activateTab}
+            onClose={closeTab}
+            tabs={tabs}
+          />
+        </Stack>
         <Outlet />
       </Box>
     </Box>

@@ -42,10 +42,33 @@ class PermissionCode:
     VIEW_WORK_ORDER: Final[str] = "workorders.view_workorder"
     MANAGE_WORK_ORDER_TYPES: Final[str] = "workorders.manage_work_order_types"
     MANAGE_WORK_ORDERS: Final[str] = "workorders.manage_work_orders"
+    VIEW_REPORTING: Final[str] = "reporting.view_reporting"
+    MANAGE_REPORTING: Final[str] = "reporting.manage_reporting"
     VIEW_WAREHOUSE: Final[str] = "warehouse.view_warehouse"
     ADD_WAREHOUSE: Final[str] = "warehouse.add_warehouse"
     CHANGE_WAREHOUSE: Final[str] = "warehouse.change_warehouse"
     DELETE_WAREHOUSE: Final[str] = "warehouse.delete_warehouse"
+    VIEW_LOCATIONS: Final[str] = "locations.view_locations"
+    MANAGE_LOCATION_TOPOLOGY: Final[str] = "locations.manage_location_topology"
+    MANAGE_LOCATION_LOCKS: Final[str] = "locations.manage_location_locks"
+    VIEW_INVENTORY: Final[str] = "inventory.view_inventory"
+    MANAGE_INVENTORY_RECORDS: Final[str] = "inventory.manage_inventory_records"
+    MANAGE_INVENTORY_CONFIGURATION: Final[str] = "inventory.manage_inventory_configuration"
+    VIEW_TRANSFERS: Final[str] = "transfers.view_transfers"
+    MANAGE_TRANSFER_ORDERS: Final[str] = "transfers.manage_transfer_orders"
+    MANAGE_REPLENISHMENT: Final[str] = "transfers.manage_replenishment"
+    VIEW_COUNTING: Final[str] = "counting.view_counting"
+    MANAGE_COUNTING: Final[str] = "counting.manage_counting"
+    MANAGE_COUNT_APPROVALS: Final[str] = "counting.manage_count_approvals"
+    VIEW_INBOUND: Final[str] = "inbound.view_inbound"
+    MANAGE_INBOUND_ORDERS: Final[str] = "inbound.manage_inbound_orders"
+    MANAGE_INBOUND_EXECUTION: Final[str] = "inbound.manage_inbound_execution"
+    VIEW_OUTBOUND: Final[str] = "outbound.view_outbound"
+    MANAGE_OUTBOUND_ORDERS: Final[str] = "outbound.manage_outbound_orders"
+    MANAGE_OUTBOUND_EXECUTION: Final[str] = "outbound.manage_outbound_execution"
+    VIEW_RETURNS: Final[str] = "returns.view_returns"
+    MANAGE_RETURN_ORDERS: Final[str] = "returns.manage_return_orders"
+    MANAGE_RETURN_EXECUTION: Final[str] = "returns.manage_return_execution"
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,10 +120,33 @@ SYSTEM_ROLE_SPECS: Final[tuple[SystemRoleSpec, ...]] = (
             PermissionCode.VIEW_WORK_ORDER,
             PermissionCode.MANAGE_WORK_ORDER_TYPES,
             PermissionCode.MANAGE_WORK_ORDERS,
+            PermissionCode.VIEW_REPORTING,
+            PermissionCode.MANAGE_REPORTING,
             PermissionCode.VIEW_WAREHOUSE,
             PermissionCode.ADD_WAREHOUSE,
             PermissionCode.CHANGE_WAREHOUSE,
             PermissionCode.DELETE_WAREHOUSE,
+            PermissionCode.VIEW_LOCATIONS,
+            PermissionCode.MANAGE_LOCATION_TOPOLOGY,
+            PermissionCode.MANAGE_LOCATION_LOCKS,
+            PermissionCode.VIEW_INVENTORY,
+            PermissionCode.MANAGE_INVENTORY_RECORDS,
+            PermissionCode.MANAGE_INVENTORY_CONFIGURATION,
+            PermissionCode.VIEW_TRANSFERS,
+            PermissionCode.MANAGE_TRANSFER_ORDERS,
+            PermissionCode.MANAGE_REPLENISHMENT,
+            PermissionCode.VIEW_COUNTING,
+            PermissionCode.MANAGE_COUNTING,
+            PermissionCode.MANAGE_COUNT_APPROVALS,
+            PermissionCode.VIEW_INBOUND,
+            PermissionCode.MANAGE_INBOUND_ORDERS,
+            PermissionCode.MANAGE_INBOUND_EXECUTION,
+            PermissionCode.VIEW_OUTBOUND,
+            PermissionCode.MANAGE_OUTBOUND_ORDERS,
+            PermissionCode.MANAGE_OUTBOUND_EXECUTION,
+            PermissionCode.VIEW_RETURNS,
+            PermissionCode.MANAGE_RETURN_ORDERS,
+            PermissionCode.MANAGE_RETURN_EXECUTION,
         ),
     ),
     SystemRoleSpec(
@@ -141,9 +187,32 @@ SYSTEM_ROLE_SPECS: Final[tuple[SystemRoleSpec, ...]] = (
             PermissionCode.VIEW_WORK_ORDER,
             PermissionCode.MANAGE_WORK_ORDER_TYPES,
             PermissionCode.MANAGE_WORK_ORDERS,
+            PermissionCode.VIEW_REPORTING,
+            PermissionCode.MANAGE_REPORTING,
             PermissionCode.VIEW_WAREHOUSE,
             PermissionCode.ADD_WAREHOUSE,
             PermissionCode.CHANGE_WAREHOUSE,
+            PermissionCode.VIEW_LOCATIONS,
+            PermissionCode.MANAGE_LOCATION_TOPOLOGY,
+            PermissionCode.MANAGE_LOCATION_LOCKS,
+            PermissionCode.VIEW_INVENTORY,
+            PermissionCode.MANAGE_INVENTORY_RECORDS,
+            PermissionCode.MANAGE_INVENTORY_CONFIGURATION,
+            PermissionCode.VIEW_TRANSFERS,
+            PermissionCode.MANAGE_TRANSFER_ORDERS,
+            PermissionCode.MANAGE_REPLENISHMENT,
+            PermissionCode.VIEW_COUNTING,
+            PermissionCode.MANAGE_COUNTING,
+            PermissionCode.MANAGE_COUNT_APPROVALS,
+            PermissionCode.VIEW_INBOUND,
+            PermissionCode.MANAGE_INBOUND_ORDERS,
+            PermissionCode.MANAGE_INBOUND_EXECUTION,
+            PermissionCode.VIEW_OUTBOUND,
+            PermissionCode.MANAGE_OUTBOUND_ORDERS,
+            PermissionCode.MANAGE_OUTBOUND_EXECUTION,
+            PermissionCode.VIEW_RETURNS,
+            PermissionCode.MANAGE_RETURN_ORDERS,
+            PermissionCode.MANAGE_RETURN_EXECUTION,
         ),
     ),
     SystemRoleSpec(
@@ -156,7 +225,22 @@ SYSTEM_ROLE_SPECS: Final[tuple[SystemRoleSpec, ...]] = (
             PermissionCode.VIEW_FEES,
             PermissionCode.VIEW_WORK_ORDER,
             PermissionCode.MANAGE_WORK_ORDERS,
+            PermissionCode.VIEW_REPORTING,
             PermissionCode.VIEW_WAREHOUSE,
+            PermissionCode.VIEW_LOCATIONS,
+            PermissionCode.VIEW_INVENTORY,
+            PermissionCode.MANAGE_INVENTORY_RECORDS,
+            PermissionCode.VIEW_TRANSFERS,
+            PermissionCode.MANAGE_TRANSFER_ORDERS,
+            PermissionCode.MANAGE_REPLENISHMENT,
+            PermissionCode.VIEW_COUNTING,
+            PermissionCode.MANAGE_COUNTING,
+            PermissionCode.VIEW_INBOUND,
+            PermissionCode.MANAGE_INBOUND_EXECUTION,
+            PermissionCode.VIEW_OUTBOUND,
+            PermissionCode.MANAGE_OUTBOUND_EXECUTION,
+            PermissionCode.VIEW_RETURNS,
+            PermissionCode.MANAGE_RETURN_EXECUTION,
         ),
     ),
     SystemRoleSpec(

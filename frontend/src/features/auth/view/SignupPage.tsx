@@ -47,8 +47,8 @@ export function SignupPage() {
     <AuthShell
       description="Create a manager account backed by Django auth, a tenant user profile, and a matching staff record. Email is required so MFA enrollment and recovery can be added without changing the account model later."
       heroPoints={["Tenant bootstrap ready", "Manager role by default", "Immediate MFA enrollment"]}
-      heroSummary="The signup surface now matches the DaChong brand system: warm ivory cards, copper dividers, and the gold mark on dark enterprise panels."
-      heroTitle="Provision a branded workspace entry point"
+      heroSummary="The signup flow now follows the same industrial kinetic system as the operator shell, with cleaner surfaces and a tighter operational hierarchy."
+      heroTitle="Provision a workspace with industrial clarity"
       title="Create workspace account"
     >
       <Stack spacing={3}>

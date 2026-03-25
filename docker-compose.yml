@@ -2,14 +2,14 @@ services:
   backend:
     build:
       context: ./backend
-    container_name: dachong_wms_backend
+    container_name: dachong_backend
     environment:
-      DJANGO_SETTINGS_MODULE: dachong_wms.settings
+      DJANGO_SETTINGS_MODULE: config.settings.dev
     depends_on:
       - db
 
   frontend:
-    container_name: dachong_wms_frontend
+    container_name: dachong_frontend
     depends_on:
       - backend
 

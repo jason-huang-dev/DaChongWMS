@@ -1,48 +1,140 @@
-import { Box, ButtonBase, Stack, Typography } from "@mui/material";
+import { Box, Tab, Tabs, Tooltip } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { brandColors } from "@/app/brand";
+import { brandColors, brandMotion, brandShadows } from "@/app/brand";
 import { useI18n } from "@/app/ui-preferences";
 import type { NavigationItem } from "@/app/layout/navigation-items";
 
 interface ModuleTopNavProps {
   activePath: string;
+  compact?: boolean;
   items: NavigationItem[];
   onNavigate: (path: string) => void;
 }
 
-export function ModuleTopNav({ activePath, items, onNavigate }: ModuleTopNavProps) {
+export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: ModuleTopNavProps) {
   const theme = useTheme();
   const { translateText } = useI18n();
   const isDark = theme.palette.mode === "dark";
+  const activeValue = items.find((item) => activePath === item.path || activePath.startsWith(`${item.path}/`))?.path ?? false;
 
   return (
-    <Stack direction="row" spacing={1} sx={{ minWidth: 0, overflowX: "auto", pb: 0.5 }}>
+    <Box sx={{ display: "flex", justifyContent: "center", minWidth: 0 }}>
+      <Tabs
+        aria-label="Primary navigation"
+        allowScrollButtonsMobile={false}
+        onChange={(_event, nextValue: string) => onNavigate(nextValue)}
+        scrollButtons={false}
+        textColor="inherit"
+        value={activeValue}
+        variant="scrollable"
+        sx={{
+          maxWidth: "100%",
+          minHeight: compact ? 32 : 36,
+          width: "fit-content",
+          "& .MuiTabs-flexContainer": {
+            gap: compact ? 0.35 : 0.5,
+          },
+          "& .MuiTabs-indicator": {
+            backgroundColor: brandColors.accent,
+            borderRadius: 999,
+            height: 2,
+          },
+          "& .MuiTabs-scrollButtons": {
+            display: "none !important",
+          },
+          "& .MuiTabs-scroller": {
+            overflow: "visible",
+          },
+        }}
+      >
       {items.map((item) => {
-        const isActive = activePath === item.path || activePath.startsWith(`${item.path}/`);
         const Icon = item.icon;
+        const label = translateText(item.label);
         return (
-          <ButtonBase
+          <Tab
+            aria-label={label}
+            icon={
+              <Tooltip enterDelay={250} placement="bottom" title={label}>
+                <Box component="span" sx={{ display: "inline-flex" }}>
+                  <Icon fontSize="small" />
+                </Box>
+              </Tooltip>
+            }
             key={item.path}
-            onClick={() => onNavigate(item.path)}
             sx={{
               alignItems: "center",
-              borderBottom: `2px solid ${isActive ? brandColors.gold : "transparent"}`,
-              borderRadius: 0,
-              color: isActive ? theme.palette.text.primary : alpha(theme.palette.text.primary, isDark ? 0.76 : 0.72),
-              gap: 1,
-              minWidth: "max-content",
-              px: 1.25,
-              py: 1,
+              borderRadius: 999,
+              border: `1px solid ${alpha(
+                brandColors.accentStrong,
+                activeValue === item.path ? (isDark ? 0.28 : 0.18) : 0,
+              )}`,
+              color: alpha(theme.palette.text.primary, isDark ? 0.78 : 0.72),
+              fontSize: compact ? 11 : 13,
+              position: "relative",
+              transition: [
+                `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                `border-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
+                `color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                `transform ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+              ].join(", "),
+              "&::after": {
+                backgroundColor: brandColors.accent,
+                borderRadius: 999,
+                bottom: 4,
+                content: "\"\"",
+                height: 3,
+                left: 12,
+                opacity: activeValue === item.path ? 1 : 0,
+                position: "absolute",
+                right: 12,
+                transform: activeValue === item.path ? "scaleX(1)" : "scaleX(0.6)",
+                transformOrigin: "center",
+                transition: [
+                  `opacity ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                  `transform ${brandMotion.duration.standard} ${brandMotion.easing.emphasized}`,
+                ].join(", "),
+              },
+              "&:hover": {
+                backgroundColor: alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
+                boxShadow: isDark ? brandShadows.floatingDark : brandShadows.floatingLight,
+                transform: "translateY(-1px)",
+              },
+              minHeight: compact ? 32 : 36,
+              justifyContent: "center",
+              minWidth: compact ? 28 : 32,
+              px: compact ? 0.35 : 0.5,
+              py: compact ? 0.125 : 0.2,
+              textTransform: "none",
+              "&.Mui-selected": {
+                backgroundColor: alpha(brandColors.accent, isDark ? 0.14 : 0.1),
+                boxShadow: `0 8px 18px ${alpha(brandColors.accentStrong, isDark ? 0.18 : 0.1)}`,
+                color: theme.palette.text.primary,
+              },
+              "& .MuiSvgIcon-root": {
+                fontSize: compact ? 20 : 22,
+                marginBottom: "0 !important",
+              },
+              "& .MuiTab-iconWrapper": {
+                marginRight: 0,
+              },
+              "& .MuiTab-wrapper": {
+                gap: 0,
+              },
+              "& .MuiTab-icon": {
+                marginBottom: "0 !important",
+                marginRight: 0,
+              },
+              "& .MuiTab-root": {
+                fontWeight: 600,
+              },
             }}
-          >
-            <Icon fontSize="small" />
-            <Typography sx={{ fontSize: 13, fontWeight: isActive ? 700 : 600 }} variant="body2">
-              {translateText(item.label)}
-            </Typography>
-          </ButtonBase>
+            value={item.path}
+          />
         );
       })}
-    </Stack>
+      </Tabs>
+    </Box>
   );
 }

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import { expect, test } from "vitest";
 
 import { saveStoredSession } from "@/shared/storage/auth-storage";
@@ -9,7 +9,8 @@ import { renderWithRouter } from "@/test/render";
 test("redirects anonymous users to the login page for protected routes", async () => {
   const { router } = renderWithRouter(["/dashboard"]);
 
-  expect(await screen.findByText("DaChongWMS")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Sign in to the operator console" })).toBeInTheDocument();
+  expect(screen.getByAltText("DaChong brand logo")).toBeInTheDocument();
   expect(screen.getByText(/Sign in with your warehouse account/i)).toBeInTheDocument();
   expect(router.state.location.pathname).toBe("/login");
 });
@@ -58,8 +59,10 @@ test("redirects unauthorized users away from finance routes", async () => {
 
   const { router } = renderWithRouter(["/finance"]);
 
-  expect(await screen.findByText("Not authorized")).toBeInTheDocument();
-  expect(router.state.location.pathname).toBe("/not-authorized");
+  await waitFor(() => {
+    expect(router.state.location.pathname).toBe("/not-authorized");
+  });
+  expect(await screen.findByRole("heading", { name: "Not authorized" })).toBeInTheDocument();
 });
 
 test("renders the inventory operations workbench for authorized operators", async () => {

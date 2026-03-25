@@ -1,1 +1,0 @@
-"""Goods Shape app."""
