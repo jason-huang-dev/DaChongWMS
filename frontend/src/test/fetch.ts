@@ -103,9 +103,14 @@ export function installFetchMock(...handlers: FetchHandler[]) {
         membership_id: 1,
         page_key: "dashboard",
         time_window: "WEEK",
-        visible_widget_keys: [],
-        right_rail_widget_keys: [],
-        layout_payload: {},
+        visible_widget_keys: ["metrics", "ops-summary", "queues"],
+        right_rail_widget_keys: ["alerts", "help"],
+        layout_payload: {
+          hidden_widget_keys: [],
+          hidden_right_rail_widget_keys: [],
+          hidden_queue_section_keys: [],
+          hidden_queue_metric_keys: [],
+        },
         create_time: "2026-03-15T00:00:00Z",
         update_time: "2026-03-15T00:00:00Z",
       });

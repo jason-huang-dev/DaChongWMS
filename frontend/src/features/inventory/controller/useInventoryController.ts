@@ -6,30 +6,25 @@ import { useTenantScope } from "@/app/scope-context";
 import { runInventoryAdjustmentCreate, runInventoryAgingReportCreate } from "@/features/inventory/controller/actions";
 import { inventoryApi } from "@/features/inventory/model/api";
 import type {
-  CountApprovalQueueRecord,
-  CountingDashboardSummary,
   InventoryAdjustmentApprovalRuleRecord,
   InventoryAdjustmentReasonRecord,
   InventoryAdjustmentValues,
   InventoryBalanceRecord,
   InventoryMovementRecord,
   OperationalReportExportRecord,
-  ReplenishmentTaskRecord,
-  TransferOrderRecord,
 } from "@/features/inventory/model/types";
-import { countingApi } from "@/features/counting/model/api";
 import { reportingApi } from "@/features/reporting/model/api";
-import { transfersApi } from "@/features/transfers/model/api";
 import { useInventoryBalanceReferenceOptions } from "@/shared/hooks/use-reference-options";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { usePaginatedResource } from "@/shared/hooks/use-paginated-resource";
-import { useResource } from "@/shared/hooks/use-resource";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
 const balancesPageSize = 15;
+type InventoryPageKey = "balances" | "aging" | "adjustments" | "crossWarehouse";
 
 interface UseInventoryControllerOptions {
+  page?: InventoryPageKey;
   initialBalancesFilters?: {
     search?: string;
     stock_status?: string;
@@ -41,6 +36,7 @@ interface UseInventoryControllerOptions {
 export function useInventoryController(options: UseInventoryControllerOptions = {}) {
   const { company, activeWarehouse, activeWarehouseId, warehouses } = useTenantScope();
   const queryClient = useQueryClient();
+  const page = options.page ?? "balances";
   const [adjustmentSuccessMessage, setAdjustmentSuccessMessage] = useState<string | null>(null);
   const [adjustmentErrorMessage, setAdjustmentErrorMessage] = useState<string | null>(null);
   const [reportSuccessMessage, setReportSuccessMessage] = useState<string | null>(null);
@@ -68,6 +64,9 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
       ...warehouseQuery,
       ...dataView.queryFilters,
     },
+    {
+      enabled: page === "balances",
+    },
   );
 
   const stockAgeBalancesQuery = usePaginatedResource<InventoryBalanceRecord>(
@@ -76,6 +75,9 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
     1,
     200,
     warehouseQuery,
+    {
+      enabled: page === "aging",
+    },
   );
 
   const crossWarehouseBalancesQuery = usePaginatedResource<InventoryBalanceRecord>(
@@ -85,46 +87,7 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
     200,
     undefined,
     {
-      enabled: warehouses.length > 1,
-    },
-  );
-
-  const countDashboardQuery = useResource<CountingDashboardSummary>(
-    ["inventory", "counting", "dashboard"],
-    countingApi.approvalsDashboard,
-    warehouseQuery,
-  );
-
-  const countQueueQuery = usePaginatedResource<CountApprovalQueueRecord>(
-    ["inventory", "counting", "queue"],
-    countingApi.approvalsQueue,
-    1,
-    6,
-    {
-      ...warehouseQuery,
-      status: "PENDING",
-    },
-  );
-
-  const transferOrdersQuery = usePaginatedResource<TransferOrderRecord>(
-    ["inventory", "transfers", "orders"],
-    transfersApi.transferOrders,
-    1,
-    6,
-    {
-      ...warehouseQuery,
-      status: "OPEN",
-    },
-  );
-
-  const replenishmentTasksQuery = usePaginatedResource<ReplenishmentTaskRecord>(
-    ["inventory", "transfers", "replenishment-tasks"],
-    transfersApi.replenishmentTasks,
-    1,
-    6,
-    {
-      ...warehouseQuery,
-      status: "OPEN",
+      enabled: page === "crossWarehouse" && warehouses.length > 1,
     },
   );
 
@@ -134,6 +97,9 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
     1,
     100,
     { is_active: true },
+    {
+      enabled: page === "adjustments",
+    },
   );
 
   const adjustmentRulesQuery = usePaginatedResource<InventoryAdjustmentApprovalRuleRecord>(
@@ -144,6 +110,9 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
     {
       is_active: true,
       warehouse: activeWarehouseId ?? undefined,
+    },
+    {
+      enabled: page === "adjustments",
     },
   );
 
@@ -156,6 +125,9 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
       ...warehouseQuery,
       movement_type: "ADJUSTMENT_IN",
     },
+    {
+      enabled: page === "adjustments",
+    },
   );
 
   const adjustmentOutQuery = usePaginatedResource<InventoryMovementRecord>(
@@ -166,6 +138,9 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
     {
       ...warehouseQuery,
       movement_type: "ADJUSTMENT_OUT",
+    },
+    {
+      enabled: page === "adjustments",
     },
   );
 
@@ -178,9 +153,14 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
       ...warehouseQuery,
       report_type: "INVENTORY_AGING",
     },
+    {
+      enabled: page === "aging",
+    },
   );
 
-  const adjustmentBalanceReference = useInventoryBalanceReferenceOptions(activeWarehouseId);
+  const adjustmentBalanceReference = useInventoryBalanceReferenceOptions(activeWarehouseId, {
+    enabled: page === "adjustments",
+  });
   const adjustmentBalancesById = new Map(
     adjustmentBalanceReference.options.map((option) => [option.value, option.record]),
   );
@@ -230,8 +210,6 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
     adjustmentOutQuery,
     adjustmentSuccessMessage,
     balancesQuery,
-    countDashboardQuery,
-    countQueueQuery,
     createAdjustmentMutation,
     crossWarehouseBalancesQuery,
     dataView,
@@ -239,9 +217,7 @@ export function useInventoryController(options: UseInventoryControllerOptions = 
     reportErrorMessage,
     reportExportsQuery,
     reportSuccessMessage,
-    replenishmentTasksQuery,
     stockAgeBalancesQuery,
-    transferOrdersQuery,
     warehouses,
   };
 }

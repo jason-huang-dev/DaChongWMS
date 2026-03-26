@@ -23,14 +23,16 @@ export function UiPreferencesControls({ compact = false }: UiPreferencesControls
           sx={
             compact
               ? {
-                  height: 24,
+                  height: 28,
                   p: 0.375,
-                  width: 24,
+                  width: 28,
                 }
               : undefined
           }
         >
-          {themeMode === "light" ? <DarkModeRoundedIcon fontSize="small" /> : <LightModeRoundedIcon fontSize="small" />}
+          {themeMode === "light"
+            ? <DarkModeRoundedIcon sx={{ fontSize: compact ? 22 : 24 }} />
+            : <LightModeRoundedIcon sx={{ fontSize: compact ? 22 : 24 }} />}
         </IconButton>
       </Tooltip>
       <TextField

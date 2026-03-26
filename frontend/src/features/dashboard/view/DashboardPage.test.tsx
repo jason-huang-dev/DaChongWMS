@@ -1,4 +1,5 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
 
@@ -20,30 +21,15 @@ beforeEach(() => {
 });
 
 test("renders warehouse-scoped queue cards and links them into filtered queues", async () => {
+  const user = userEvent.setup();
   const setActiveWarehouseId = vi.fn();
+  const updateWorkbenchPreference = { isPending: false, mutate: vi.fn() };
 
   mockUseDashboardController.mockReturnValue({
-    activeWarehouse: {
-      id: 1,
-      warehouse_name: "Main Warehouse",
-      warehouse_city: "Shenzhen",
-      warehouse_address: "1 Warehouse Road",
-      warehouse_contact: "Ops Desk",
-      warehouse_manager: "Alice",
-      creator: "Seeder",
-      create_time: "2026-03-20 09:00:00",
-      update_time: "2026-03-20 09:00:00",
-    },
     activeWarehouseId: 1,
     approvalsSummaryQuery: { data: { pending_count: 5 } },
     canViewFinance: true,
     canViewOps: true,
-    company: {
-      id: 1,
-      openid: "tenant-openid",
-      label: "DaChong WMS",
-      description: "Test tenant",
-    },
     countingDashboardQuery: {
       data: {
         pending_sla_breach_count: 2,
@@ -88,8 +74,7 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
     rightRailWidgetKeys: [],
     salesOrdersQuery: { data: { count: 8, results: [] } },
     setActiveWarehouseId,
-    timeWindow: "WEEK",
-    updateWorkbenchPreference: { mutate: vi.fn() },
+    updateWorkbenchPreference,
     visibleOnHand: 1250,
     visibleWidgetKeys: [],
     warehouses: [
@@ -116,6 +101,7 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
         update_time: "2026-03-20 09:00:00",
       },
     ],
+    workbenchPreferenceQuery: { data: undefined },
   });
 
   renderWithProviders(
@@ -124,9 +110,13 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
     </MemoryRouter>,
   );
 
+  expect(screen.queryByRole("heading", { name: "Operations dashboard" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Operational queues")).not.toBeInTheDocument();
   expect(screen.getByText("Stock In")).toBeInTheDocument();
   expect(screen.getByText("Dropshipping Stock-Out")).toBeInTheDocument();
   expect(screen.getByText("Dispatch / Handover")).toBeInTheDocument();
+  expect(screen.getByText("Operations workbench")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Customize dashboard" })).toBeInTheDocument();
 
   const stockInLink = screen.getByRole("link", { name: /Pending Stock In/i });
   expect(stockInLink).toHaveAttribute("href", "/inbound?poStatuses=OPEN%2CPARTIAL#purchase-orders");
@@ -145,4 +135,30 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
   fireEvent.click(await screen.findByRole("option", { name: "Overflow Warehouse" }));
 
   expect(setActiveWarehouseId).toHaveBeenCalledWith(2);
+
+  await user.click(screen.getByRole("button", { name: "Customize dashboard" }));
+
+  const customizeDialog = screen.getByRole("dialog", { name: "Customize dashboard" });
+  const pendingStockInCheckbox = within(customizeDialog).getByRole("checkbox", { name: "Pending Stock In" });
+  const stockInCheckbox = within(customizeDialog).getByRole("checkbox", { name: "Stock In" });
+  await user.click(pendingStockInCheckbox);
+  await user.click(stockInCheckbox);
+  expect(pendingStockInCheckbox).toBeDisabled();
+  await user.click(within(customizeDialog).getByRole("checkbox", { name: "Operational queues" }));
+  expect(stockInCheckbox).toBeDisabled();
+  await user.click(within(customizeDialog).getByRole("button", { name: "Apply" }));
+
+  expect(updateWorkbenchPreference.mutate).toHaveBeenCalledTimes(1);
+  const mutationPayload = updateWorkbenchPreference.mutate.mock.calls[0][0];
+  expect(mutationPayload).toEqual(
+    expect.objectContaining({
+      layout_payload: expect.objectContaining({
+        hidden_queue_section_keys: [],
+      }),
+      right_rail_widget_keys: expect.arrayContaining(["alerts", "help"]),
+      visible_widget_keys: expect.arrayContaining(["metrics", "queues"]),
+    }),
+  );
+  expect(mutationPayload.layout_payload.hidden_queue_metric_keys).not.toContain("stock-in-pending");
+  expect(mutationPayload.visible_widget_keys).not.toContain("ops-summary");
 });

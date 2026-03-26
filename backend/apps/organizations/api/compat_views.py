@@ -54,6 +54,7 @@ from apps.organizations.services.access_admin_service import (
     revoke_password_reset,
     update_company_membership,
 )
+from apps.user_settings.services import get_workbench_setting, update_workbench_setting
 
 COMPATIBLE_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -769,38 +770,36 @@ class CompatibilityWorkbenchPreferenceAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        return Response(self._build_payload(request))
+        current_membership = _get_current_membership(request)
+        if current_membership is None:
+            return Response({"detail": "Authenticated membership not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        page_key = str(request.query_params.get("page_key") or "dashboard").strip() or "dashboard"
+        return Response(self._serialize_payload(membership=current_membership, page_key=page_key))
 
     def patch(self, request: Request) -> Response:
-        return Response(self._build_payload(request, overrides=request.data))
-
-    def _build_payload(
-        self,
-        request: Request,
-        *,
-        overrides: dict[str, Any] | None = None,
-    ) -> dict[str, object]:
         current_membership = _get_current_membership(request)
-        timestamp = _format_datetime(timezone.now())
-        base_payload: dict[str, object] = {
-            "id": 0,
-            "membership_id": current_membership.id if current_membership is not None else 0,
-            "page_key": str(request.query_params.get("page_key") or request.data.get("page_key") or "dashboard"),
-            "time_window": "7d",
-            "visible_widget_keys": [],
-            "right_rail_widget_keys": [],
-            "layout_payload": {},
-            "create_time": timestamp,
-            "update_time": timestamp,
+        if current_membership is None:
+            return Response({"detail": "Authenticated membership not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        page_key = str(request.data.get("page_key") or request.query_params.get("page_key") or "dashboard").strip() or "dashboard"
+        payload = update_workbench_setting(
+            membership=current_membership,
+            page_key=page_key,
+            overrides=request.data if isinstance(request.data, dict) else {},
+        )
+        return Response(self._serialize_payload(membership=current_membership, page_key=page_key, payload=payload))
+
+    def _serialize_payload(
+        self,
+        *,
+        membership: OrganizationMembership,
+        page_key: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, object]:
+        resolved_payload = payload or get_workbench_setting(membership=membership, page_key=page_key)
+        return {
+            **resolved_payload,
+            "create_time": _format_datetime(resolved_payload.get("create_time")),
+            "update_time": _format_datetime(resolved_payload.get("update_time")),
         }
-        if overrides:
-            base_payload.update(
-                {
-                    "page_key": str(overrides.get("page_key") or base_payload["page_key"]),
-                    "time_window": str(overrides.get("time_window") or base_payload["time_window"]),
-                    "visible_widget_keys": list(overrides.get("visible_widget_keys") or []),
-                    "right_rail_widget_keys": list(overrides.get("right_rail_widget_keys") or []),
-                    "layout_payload": overrides.get("layout_payload") or {},
-                }
-            )
-        return base_payload

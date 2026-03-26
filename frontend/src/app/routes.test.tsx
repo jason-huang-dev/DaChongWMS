@@ -65,7 +65,7 @@ test("redirects unauthorized users away from finance routes", async () => {
   expect(await screen.findByRole("heading", { name: "Not authorized" })).toBeInTheDocument();
 });
 
-test("renders the inventory operations workbench for authorized operators", async () => {
+test("renders the focused inventory workspace for authorized operators", async () => {
   saveStoredSession({
     username: "manager",
     openid: "tenant-openid",
@@ -106,6 +106,9 @@ test("renders the inventory operations workbench for authorized operators", asyn
         ]),
       );
     }
+    if (url.pathname === "/api/reporting/report-exports/") {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
     return undefined;
   });
 
@@ -113,9 +116,65 @@ test("renders the inventory operations workbench for authorized operators", asyn
 
   expect(await screen.findByText("Inventory operations")).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Inventory Information" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Stock Count" })).not.toBeInTheDocument();
   expect((await screen.findAllByText("SKU-001")).length).toBeGreaterThan(0);
   expect(screen.getAllByText("A-01-01").length).toBeGreaterThan(0);
   expect(screen.getAllByText("Main WH").length).toBeGreaterThan(0);
+  expect(screen.getByRole("link", { name: "Stock Age Report" })).toHaveAttribute("href", "/inventory/aging");
+});
+
+test("renders the inventory aging page inside the inventory workspace", async () => {
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/inventory/balances/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            location: 15,
+            location_code: "A-01-01",
+            goods: 101,
+            goods_code: "SKU-001",
+            stock_status: "AVAILABLE",
+            lot_number: "LOT-1",
+            serial_number: "",
+            on_hand_qty: "12.0000",
+            allocated_qty: "2.0000",
+            hold_qty: "1.0000",
+            available_qty: "9.0000",
+            unit_cost: "4.5000",
+            currency: "USD",
+            creator: "Route Tester",
+            last_movement_at: "2026-03-14T10:00:00Z",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:15:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/reporting/report-exports/") {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/inventory/aging"]);
+
+  expect(await screen.findByText("Inventory operations")).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Stock Age Report" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Inventory Information" })).not.toBeInTheDocument();
 });
 
 test("renders the MFA enrollment page for authenticated operators", async () => {

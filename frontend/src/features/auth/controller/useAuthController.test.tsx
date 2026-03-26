@@ -43,6 +43,21 @@ function SignupProbe() {
   );
 }
 
+function LoginProbe() {
+  const { login, session, status } = useAuth();
+
+  return (
+    <div>
+      <button onClick={() => login("login-user", "StrongPassword123!")} type="button">
+        Sign in
+      </button>
+      <span>{status}</span>
+      <span>{session?.username ?? "--"}</span>
+      <span>{session?.operatorName ?? "--"}</span>
+    </div>
+  );
+}
+
 function LoginChallengeProbe() {
   const { completeMfaChallenge, login, pendingChallenge, session, status } = useAuth();
 
@@ -159,6 +174,76 @@ test("signs up a new workspace user and hydrates the operator profile", async ()
   });
   expect(screen.getByText("new-manager")).toBeInTheDocument();
   expect(screen.getByText("New Manager")).toBeInTheDocument();
+});
+
+test("prefetches dashboard workbench preferences after a successful login", async () => {
+  const user = userEvent.setup();
+
+  const fetchMock = installFetchMock((url, init) => {
+    if (url.pathname === "/api/login/") {
+      expect(init?.method).toBe("POST");
+      return jsonResponse({
+        code: "200",
+        data: {
+          name: "login-user",
+          openid: "tenant-openid",
+          token: "login-token-11",
+          user_id: 11,
+          company_id: 5,
+          company_name: "Test System Organization",
+          membership_id: 13,
+          mfa_enrollment_required: false,
+        },
+        msg: "success",
+      });
+    }
+
+    if (url.pathname === "/api/staff/11/") {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("TOKEN")).toBe("login-token-11");
+      expect(headers.get("OPERATOR")).toBe("11");
+      return jsonResponse({
+        id: 11,
+        staff_name: "Login Manager",
+        staff_type: "Manager",
+        check_code: 8888,
+        create_time: "2026-03-25 09:00:00",
+        update_time: "2026-03-25 09:00:00",
+        error_check_code_counter: 0,
+        is_lock: false,
+      });
+    }
+
+    return undefined;
+  });
+
+  renderWithProviders(<LoginProbe />, { includeAuth: true });
+  await user.click(screen.getByRole("button", { name: "Sign in" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("authenticated")).toBeInTheDocument();
+  });
+  expect(screen.getByText("login-user")).toBeInTheDocument();
+  expect(screen.getByText("Login Manager")).toBeInTheDocument();
+
+  await waitFor(() => {
+    expect(
+      fetchMock.mock.calls.some(([input, init]) => {
+        const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+        const url = new URL(rawUrl, "http://localhost");
+        if (url.pathname !== "/api/access/workbench-preferences/current/") {
+          return false;
+        }
+        const headers = new Headers(init?.headers);
+        return (
+          url.searchParams.get("page_key") === "dashboard" &&
+          headers.get("TOKEN") === "login-token-11" &&
+          headers.get("OPERATOR") === "11" &&
+          headers.get("OPENID") === "tenant-openid"
+        );
+      }),
+    ).toBe(true);
+  });
 });
 
 test("stores a pending MFA challenge and completes it into an authenticated session", async () => {

@@ -28,9 +28,22 @@ const MfaEnrollmentPage = lazyNamedPage(() => import("@/features/mfa/view/MfaEnr
 const NotAuthorizedPage = lazyNamedPage(() => import("@/features/auth/view/NotAuthorizedPage"), "NotAuthorizedPage");
 const SecurityPage = lazyNamedPage(() => import("@/features/security/view/SecurityPage"), "SecurityPage");
 const DashboardPage = lazyNamedPage(() => import("@/features/dashboard/view/DashboardPage"), "DashboardPage");
+const InventoryWorkspaceLayout = lazyNamedPage(
+  () => import("@/features/inventory/view/InventoryWorkspaceLayout"),
+  "InventoryWorkspaceLayout",
+);
 const InventoryBalancesPage = lazyNamedPage(
   () => import("@/features/inventory/view/InventoryBalancesPage"),
   "InventoryBalancesPage",
+);
+const InventoryAgingPage = lazyNamedPage(() => import("@/features/inventory/view/InventoryAgingPage"), "InventoryAgingPage");
+const InventoryAdjustmentsPage = lazyNamedPage(
+  () => import("@/features/inventory/view/InventoryAdjustmentsPage"),
+  "InventoryAdjustmentsPage",
+);
+const InventoryCrossWarehousePage = lazyNamedPage(
+  () => import("@/features/inventory/view/InventoryCrossWarehousePage"),
+  "InventoryCrossWarehousePage",
 );
 const InboundPage = lazyNamedPage(() => import("@/features/inbound/view/InboundPage"), "InboundPage");
 const PurchaseOrderDetailPage = lazyNamedPage(
@@ -141,8 +154,30 @@ export const appRoutes: RouteObject[] = [
             children: [
               {
                 path: "/inventory",
-                element: withSuspense(<InventoryBalancesPage />),
+                element: withSuspense(<InventoryWorkspaceLayout />),
                 handle: { crumb: "Inventory" },
+                children: [
+                  {
+                    index: true,
+                    element: withSuspense(<InventoryBalancesPage />),
+                    handle: { crumb: "Inventory information" },
+                  },
+                  {
+                    path: "aging",
+                    element: withSuspense(<InventoryAgingPage />),
+                    handle: { crumb: "Stock age report" },
+                  },
+                  {
+                    path: "adjustments",
+                    element: withSuspense(<InventoryAdjustmentsPage />),
+                    handle: { crumb: "Inventory adjustment" },
+                  },
+                  {
+                    path: "cross-warehouse",
+                    element: withSuspense(<InventoryCrossWarehousePage />),
+                    handle: { crumb: "Inter-warehouse transfer" },
+                  },
+                ],
               },
               {
                 path: "/inventory/balances",

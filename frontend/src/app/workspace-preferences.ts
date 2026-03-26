@@ -3,11 +3,12 @@ import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useMatches, useNavigate } from "react-router-dom";
 
+import { queryClient } from "@/lib/query-client";
 import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/http";
 import type { PaginatedResponse } from "@/shared/types/api";
-import type { WorkspaceTabPreferenceRecord, WorkbenchPreferenceRecord } from "@/shared/types/domain";
+import type { AuthSession, WorkspaceTabPreferenceRecord, WorkbenchPreferenceRecord } from "@/shared/types/domain";
 
 const accessPreferenceApi = {
   workspaceTabs: "/api/access/workspace-tabs/",
@@ -50,12 +51,34 @@ function closeWorkspaceTab(tabId: number) {
   return apiDelete<void>(`${accessPreferenceApi.workspaceTabs}${tabId}/`);
 }
 
-function fetchWorkbenchPreference(pageKey: string) {
-  return apiGet<WorkbenchPreferenceRecord>(accessPreferenceApi.workbenchPreference, { page_key: pageKey });
+export function getWorkbenchPreferenceQueryKey(activeMembershipId: number | null, pageKey: string) {
+  return ["app", "workbench-preference", activeMembershipId, pageKey] as const;
+}
+
+export function fetchWorkbenchPreference(
+  pageKey: string,
+  session?: Pick<AuthSession, "openid" | "operatorId"> & Partial<AuthSession>,
+) {
+  return apiGet<WorkbenchPreferenceRecord>(accessPreferenceApi.workbenchPreference, { page_key: pageKey }, session);
 }
 
 function patchWorkbenchPreference(payload: WorkbenchPreferencePatchPayload) {
   return apiPatch<WorkbenchPreferenceRecord>(accessPreferenceApi.workbenchPreference, payload);
+}
+
+export async function prefetchWorkbenchPreference(
+  activeMembershipId: number | null,
+  pageKey: string,
+  session: Pick<AuthSession, "openid" | "operatorId"> & Partial<AuthSession>,
+) {
+  if (!activeMembershipId) {
+    return;
+  }
+
+  await queryClient.prefetchQuery({
+    queryKey: getWorkbenchPreferenceQueryKey(activeMembershipId, pageKey),
+    queryFn: () => fetchWorkbenchPreference(pageKey, session),
+  });
 }
 
 function buildRouteKey(pathname: string) {
@@ -151,7 +174,7 @@ export function useWorkbenchPreference(pageKey: string) {
   const { activeMembershipId } = useTenantScope();
 
   const query = useQuery({
-    queryKey: ["app", "workbench-preference", activeMembershipId, pageKey],
+    queryKey: getWorkbenchPreferenceQueryKey(activeMembershipId, pageKey),
     queryFn: () => fetchWorkbenchPreference(pageKey),
     enabled: Boolean(activeMembershipId),
   });

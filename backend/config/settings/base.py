@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.outbound.apps.OutboundConfig",
     "apps.returns.apps.ReturnsConfig",
     "apps.reporting.apps.ReportingConfig",
+    "apps.user_settings.apps.UserSettingsConfig",
 ]
 
 MIDDLEWARE = [

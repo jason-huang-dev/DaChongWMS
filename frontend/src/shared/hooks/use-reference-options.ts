@@ -128,7 +128,7 @@ export function useLocationReferenceOptions(warehouseId?: number | null) {
   );
 }
 
-export function useInventoryBalanceReferenceOptions(warehouseId?: number | null) {
+export function useInventoryBalanceReferenceOptions(warehouseId?: number | null, config?: ReferenceListConfig) {
   return useReferenceList<InventoryBalanceRecord>(
     ["references", "inventory-balances", warehouseId ?? "all"],
     "/api/inventory/balances/",
@@ -139,6 +139,7 @@ export function useInventoryBalanceReferenceOptions(warehouseId?: number | null)
       record: balance,
     }),
     warehouseId ? { warehouse: warehouseId } : undefined,
+    config,
   );
 }
 

@@ -1,4 +1,7 @@
-import { Chip, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { useMemo, useState } from "react";
+
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import { ButtonBase, Chip, Menu, MenuItem, Stack, TextField, Typography } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
 import type { CompanyContextRecord, CompanyMembershipRecord, WarehouseRecord } from "@/shared/types/domain";
@@ -11,6 +14,7 @@ interface WorkspaceContextSwitcherProps {
   warehouses: WarehouseRecord[];
   activeWarehouseId: number | null;
   onWarehouseChange: (warehouseId: number | null) => void;
+  compact?: boolean;
 }
 
 export function WorkspaceContextSwitcher({
@@ -21,13 +25,108 @@ export function WorkspaceContextSwitcher({
   warehouses,
   activeWarehouseId,
   onWarehouseChange,
+  compact = false,
 }: WorkspaceContextSwitcherProps) {
   const { t, translateText } = useI18n();
+  const workspaceFieldWidth = compact ? { md: 124, lg: 136, xl: 152 } : 240;
+  const warehouseFieldWidth = compact ? { md: 112, lg: 124, xl: 140 } : 220;
+  const [workspaceMenuAnchor, setWorkspaceMenuAnchor] = useState<HTMLElement | null>(null);
+  const activeMembership = useMemo(
+    () => memberships.find((membership) => membership.id === activeMembershipId) ?? memberships[0] ?? null,
+    [activeMembershipId, memberships],
+  );
+  const activeWarehouse = useMemo(
+    () => warehouses.find((warehouse) => warehouse.id === activeWarehouseId) ?? warehouses[0] ?? null,
+    [activeWarehouseId, warehouses],
+  );
+
+  if (compact) {
+    return (
+      <>
+        <ButtonBase
+          aria-controls={workspaceMenuAnchor ? "workspace-switcher-menu" : undefined}
+          aria-expanded={workspaceMenuAnchor ? "true" : undefined}
+          aria-haspopup={memberships.length > 1 ? "menu" : undefined}
+          aria-label={`${t("shell.workspaceLabel")}: ${activeMembership?.company_name ?? company?.label ?? t("shell.noWorkspace")}`}
+          disabled={memberships.length <= 1}
+          onClick={(event) => setWorkspaceMenuAnchor(event.currentTarget)}
+          sx={{
+            alignItems: "center",
+            borderRadius: 2,
+            color: "primary.main",
+            display: "flex",
+            gap: 0.5,
+            justifyContent: "flex-start",
+            minWidth: 0,
+            maxWidth: "100%",
+            px: 0.375,
+            py: 0.125,
+            textAlign: "left",
+            width: "auto",
+            "&:hover": {
+              backgroundColor: "action.hover",
+            },
+            "&.Mui-disabled": {
+              color: "primary.main",
+              opacity: 1,
+            },
+          }}
+        >
+          <Typography noWrap sx={{ color: "inherit", fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>
+            {activeMembership?.company_name ?? company?.label ?? t("shell.noWorkspace")}
+          </Typography>
+          {memberships.length > 1 ? (
+            <KeyboardArrowDownRoundedIcon sx={{ color: "inherit", flexShrink: 0, fontSize: 18 }} />
+          ) : null}
+        </ButtonBase>
+        <Menu
+          anchorEl={workspaceMenuAnchor}
+          id="workspace-switcher-menu"
+          onClose={() => setWorkspaceMenuAnchor(null)}
+          open={Boolean(workspaceMenuAnchor)}
+        >
+          {memberships.map((membership) => (
+            <MenuItem
+              key={membership.id}
+              onClick={() => {
+                onMembershipChange(membership.id);
+                setWorkspaceMenuAnchor(null);
+              }}
+              selected={membership.id === activeMembershipId}
+            >
+              <Stack>
+                <Typography variant="body2">{membership.company_name}</Typography>
+                <Typography color="text.secondary" variant="caption">
+                  {membership.staff_name} · {translateText(membership.staff_type)}
+                </Typography>
+              </Stack>
+            </MenuItem>
+          ))}
+        </Menu>
+      </>
+    );
+  }
 
   return (
-    <Stack alignItems={{ xs: "stretch", lg: "center" }} direction={{ xs: "column", lg: "row" }} spacing={1.5}>
+    <Stack
+      alignItems={compact ? "center" : { xs: "stretch", lg: "center" }}
+      direction={compact ? "row" : { xs: "column", lg: "row" }}
+      spacing={compact ? 1 : 1.5}
+      sx={{
+        minWidth: 0,
+        "& .MuiFormControl-root": {
+          flexShrink: 1,
+        },
+      }}
+    >
       {memberships.length <= 1 ? (
-        company ? <Chip label={t("shell.workspaceChip", { label: company.label })} variant="outlined" /> : null
+        company ? (
+          <Chip
+            label={compact ? company.label : t("shell.workspaceChip", { label: company.label })}
+            size={compact ? "small" : "medium"}
+            variant="outlined"
+          />
+        ) : null
       ) : (
         <TextField
           label={t("shell.workspaceLabel")}
@@ -39,7 +138,7 @@ export function WorkspaceContextSwitcher({
           }}
           select
           size="small"
-          sx={{ minWidth: 240 }}
+          sx={{ minWidth: workspaceFieldWidth }}
           value={activeMembershipId ?? ""}
         >
           {memberships.map((membership) => (
@@ -59,9 +158,12 @@ export function WorkspaceContextSwitcher({
           color="primary"
           label={
             warehouses[0]?.warehouse_name
-              ? t("shell.warehouseChip", { label: warehouses[0].warehouse_name })
+              ? compact
+                ? warehouses[0].warehouse_name
+                : t("shell.warehouseChip", { label: warehouses[0].warehouse_name })
               : t("shell.noWarehouse")
           }
+          size={compact ? "small" : "medium"}
           variant="outlined"
         />
       ) : (
@@ -78,7 +180,7 @@ export function WorkspaceContextSwitcher({
           }}
           select
           size="small"
-          sx={{ minWidth: 220 }}
+          sx={{ minWidth: warehouseFieldWidth }}
           value={activeWarehouseId ?? ""}
         >
           {warehouses.map((warehouse) => (

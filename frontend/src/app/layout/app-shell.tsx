@@ -21,12 +21,10 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 
-import { useWorkspaceTabs } from "@/app/workspace-preferences";
 import { brandColors, brandGradients, brandMotion, brandShadows, brandStatusColors } from "@/app/brand";
 import { ModuleTopNav } from "@/app/layout/module-top-nav";
 import { navigationItems } from "@/app/layout/navigation-items";
 import { RouteBreadcrumbs } from "@/app/layout/route-breadcrumbs";
-import { WorkspaceTabsBar } from "@/app/layout/workspace-tabs-bar";
 import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
 import { useAuth } from "@/features/auth/controller/useAuthController";
@@ -46,7 +44,6 @@ export function AppShell() {
   const { t, translateText } = useI18n();
   const { session, logout } = useAuth();
   const { company, memberships, activeMembershipId, switchMembership, warehouses, activeWarehouseId, setActiveWarehouseId } = useTenantScope();
-  const { tabs, activateTab, closeTab, isClosingTab } = useWorkspaceTabs();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
@@ -173,7 +170,7 @@ export function AppShell() {
       <AppBar color="inherit" elevation={0} position="sticky">
         <Toolbar sx={{ gap: 1, minHeight: { xs: 50, md: 54 }, px: { xs: 1.25, lg: 2 } }}>
           <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { lg: "none" } }}>
-            <MenuIcon />
+            <MenuIcon sx={{ fontSize: 28 }} />
           </IconButton>
           <Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto", minWidth: 0 }}>
             <BrandLogo
@@ -183,45 +180,41 @@ export function AppShell() {
               variant="gold"
             />
           </Box>
-          <Stack
-            spacing={0.15}
+          <Box
+            data-testid="navbar-context-switcher"
             sx={{
-              display: { xs: "none", sm: "flex" },
+              alignItems: "center",
+              backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.62 : 0.74),
+              border: `1px solid ${alpha(theme.palette.divider, 0.72)}`,
+              borderRadius: 999,
+              display: { xs: "none", md: "flex" },
+              flex: "0 1 auto",
+              gap: 0.625,
+              height: shellNavPillHeight,
+              maxWidth: { md: 240, lg: 280, xl: 320 },
+              minHeight: shellNavPillHeight,
               minWidth: 0,
-              mr: 0.75,
+              px: 0.5,
+              py: 0.175,
             }}
           >
-            <Typography
-              sx={{
-                color: alpha(theme.palette.text.secondary, 0.94),
-                fontSize: 9,
-                fontWeight: 800,
-                letterSpacing: "0.12em",
-                lineHeight: 1.2,
-                textTransform: "uppercase",
-              }}
-            >
-              Operational Workspace
-            </Typography>
-            <Typography noWrap sx={{ fontSize: 10, fontWeight: 700, lineHeight: 1.2, maxWidth: 180 }}>
-              {company?.label ?? "DaChong WMS"}
-            </Typography>
-          </Stack>
+            <Box sx={{ flex: "0 1 auto", minWidth: 0 }}>
+              <WorkspaceContextSwitcher
+                activeMembershipId={activeMembershipId}
+                activeWarehouseId={activeWarehouseId}
+                company={company}
+                compact
+                memberships={memberships}
+                onMembershipChange={switchMembership}
+                onWarehouseChange={setActiveWarehouseId}
+                warehouses={warehouses}
+              />
+            </Box>
+          </Box>
           <Box sx={{ display: { xs: "none", md: "block" }, flexGrow: 1, minWidth: 0 }}>
             <ModuleTopNav activePath={location.pathname} items={filteredItems} onNavigate={navigate} />
           </Box>
           <Box sx={{ display: { xs: "block", md: "none" }, flexGrow: 1 }} />
-          <Box sx={{ display: { xs: "none", xl: "block" } }}>
-            <WorkspaceContextSwitcher
-              activeMembershipId={activeMembershipId}
-              activeWarehouseId={activeWarehouseId}
-              company={company}
-              memberships={memberships}
-              onMembershipChange={switchMembership}
-              onWarehouseChange={setActiveWarehouseId}
-              warehouses={warehouses}
-            />
-          </Box>
           <Box
             data-testid="navbar-preferences-pill"
             sx={{
@@ -354,24 +347,6 @@ export function AppShell() {
           <Box sx={{ minWidth: 0, overflow: "hidden" }}>
             <RouteBreadcrumbs />
           </Box>
-          <Box sx={{ display: { xs: "block", xl: "none" }, width: { xs: "100%", sm: "auto" } }}>
-            <WorkspaceContextSwitcher
-              activeMembershipId={activeMembershipId}
-              activeWarehouseId={activeWarehouseId}
-              company={company}
-              memberships={memberships}
-              onMembershipChange={switchMembership}
-              onWarehouseChange={setActiveWarehouseId}
-              warehouses={warehouses}
-            />
-          </Box>
-          <WorkspaceTabsBar
-            activePath={location.pathname}
-            isClosingTab={isClosingTab}
-            onActivate={activateTab}
-            onClose={closeTab}
-            tabs={tabs}
-          />
         </Stack>
         <Outlet />
       </Box>

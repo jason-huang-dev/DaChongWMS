@@ -30,7 +30,7 @@ export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: 
         variant="scrollable"
         sx={{
           maxWidth: "100%",
-          minHeight: compact ? 32 : 36,
+          minHeight: compact ? 36 : 40,
           width: "fit-content",
           "& .MuiTabs-flexContainer": {
             gap: compact ? 0.35 : 0.5,
@@ -101,11 +101,11 @@ export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: 
                 boxShadow: isDark ? brandShadows.floatingDark : brandShadows.floatingLight,
                 transform: "translateY(-1px)",
               },
-              minHeight: compact ? 32 : 36,
+              minHeight: compact ? 36 : 40,
               justifyContent: "center",
-              minWidth: compact ? 28 : 32,
-              px: compact ? 0.35 : 0.5,
-              py: compact ? 0.125 : 0.2,
+              minWidth: compact ? 32 : 36,
+              px: compact ? 0.45 : 0.6,
+              py: compact ? 0.2 : 0.25,
               textTransform: "none",
               "&.Mui-selected": {
                 backgroundColor: alpha(brandColors.accent, isDark ? 0.14 : 0.1),
@@ -113,7 +113,7 @@ export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: 
                 color: theme.palette.text.primary,
               },
               "& .MuiSvgIcon-root": {
-                fontSize: compact ? 20 : 22,
+                fontSize: compact ? 24 : 26,
                 marginBottom: "0 !important",
               },
               "& .MuiTab-iconWrapper": {

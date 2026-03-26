@@ -6,6 +6,7 @@ import {
 } from "@/shared/storage/auth-storage";
 import type { AuthSession, PendingMfaChallenge } from "@/shared/types/domain";
 
+import { prefetchWorkbenchPreference } from "@/app/workspace-preferences";
 import { bootstrapRequest, fetchOperatorProfile, loginRequest, signupRequest, switchMembershipRequest } from "@/features/auth/model/api";
 import { mapOperatorToSession } from "@/features/auth/model/mappers";
 import type {
@@ -67,6 +68,7 @@ export async function runMfaChallengeVerification(challenge: PendingMfaChallenge
 
 export function persistSession(session: AuthSession) {
   saveStoredSession(session);
+  void prefetchWorkbenchPreference(session.membershipId ?? null, "dashboard", session);
 }
 
 export function clearSession() {
