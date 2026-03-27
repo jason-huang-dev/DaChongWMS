@@ -3,8 +3,22 @@ import { useTenantScope } from "@/app/scope-context";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { dashboardApi } from "@/features/dashboard/model/api";
 import { getDashboardAccess } from "@/features/dashboard/model/mappers";
-import { buildBalanceTransactionsPath, buildVouchersPath } from "@/features/fees/model/api";
-import type { BalanceTransactionRecord, VoucherRecord } from "@/features/fees/model/types";
+import {
+  buildBalanceTransactionsPath,
+  buildChargeItemsPath,
+  buildFundFlowsPath,
+  buildManualChargesPath,
+  buildRentDetailsPath,
+  buildVouchersPath,
+} from "@/features/fees/model/api";
+import type {
+  BalanceTransactionRecord,
+  ChargeItemRecord,
+  FundFlowRecord,
+  ManualChargeRecord,
+  RentDetailRecord,
+  VoucherRecord,
+} from "@/features/fees/model/types";
 import type {
   AdvanceShipmentNoticeRecord,
   CountApprovalSummary,
@@ -222,6 +236,52 @@ export function useDashboardController() {
       enabled: Boolean(session && canViewFinance && companyId),
     },
   );
+  const vouchersQuery = useResource<VoucherRecord[]>(
+    ["dashboard", "fees", "vouchers", companyId],
+    buildVouchersPath(companyId ?? "0"),
+    undefined,
+    {
+      enabled: Boolean(session && canViewFinance && companyId),
+    },
+  );
+  const chargeItemsQuery = useResource<ChargeItemRecord[]>(
+    ["dashboard", "fees", "charge-items", companyId],
+    buildChargeItemsPath(companyId ?? "0"),
+    undefined,
+    {
+      enabled: Boolean(session && canViewFinance && companyId),
+    },
+  );
+  const manualChargesQuery = useResource<ManualChargeRecord[]>(
+    ["dashboard", "fees", "manual-charges", companyId, activeWarehouseId],
+    buildManualChargesPath(companyId ?? "0"),
+    {
+      warehouse_id: activeWarehouseId ?? undefined,
+    },
+    {
+      enabled: Boolean(session && canViewFinance && companyId),
+    },
+  );
+  const fundFlowsQuery = useResource<FundFlowRecord[]>(
+    ["dashboard", "fees", "fund-flows", companyId, activeWarehouseId],
+    buildFundFlowsPath(companyId ?? "0"),
+    {
+      warehouse_id: activeWarehouseId ?? undefined,
+    },
+    {
+      enabled: Boolean(session && canViewFinance && companyId),
+    },
+  );
+  const rentDetailsQuery = useResource<RentDetailRecord[]>(
+    ["dashboard", "fees", "rent-details", companyId, activeWarehouseId],
+    buildRentDetailsPath(companyId ?? "0"),
+    {
+      warehouse_id: activeWarehouseId ?? undefined,
+    },
+    {
+      enabled: Boolean(session && canViewFinance && companyId),
+    },
+  );
 
   const pendingStockInCount = (pendingStockInOpenQuery.data?.count ?? 0) + (pendingStockInPartialQuery.data?.count ?? 0);
   const inTransitCount = (inTransitOpenQuery.data?.count ?? 0) + (inTransitPartialQuery.data?.count ?? 0);
@@ -252,6 +312,19 @@ export function useDashboardController() {
     activeWarehouseId,
     setActiveWarehouseId,
     firstWarehouse: activeWarehouse ?? warehousesQuery.data?.results[0],
+    revenueOverview: {
+      fundFlows: fundFlowsQuery.data ?? [],
+      chargeItems: chargeItemsQuery.data ?? [],
+      isLoading:
+        chargeItemsQuery.isLoading ||
+        fundFlowsQuery.isLoading ||
+        manualChargesQuery.isLoading ||
+        rentDetailsQuery.isLoading ||
+        vouchersQuery.isLoading,
+      manualCharges: manualChargesQuery.data ?? [],
+      rentDetails: rentDetailsQuery.data ?? [],
+      vouchers: vouchersQuery.data ?? [],
+    },
     queueMetrics: {
       stockIn: {
         pendingStockIn: pendingStockInCount,

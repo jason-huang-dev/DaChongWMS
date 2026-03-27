@@ -44,6 +44,112 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
       },
       isLoading: false,
     },
+    revenueOverview: {
+      chargeItems: [
+        {
+          id: 11,
+          organization_id: 1,
+          code: "HANDLING_ORDER",
+          name: "Order handling",
+          category: "HANDLING",
+          billing_basis: "PER_ORDER",
+          default_unit_price: "4.50",
+          currency: "USD",
+          unit_label: "order",
+          is_taxable: true,
+          is_active: true,
+          notes: "",
+          created_at: "2026-03-20T09:00:00Z",
+          updated_at: "2026-03-20T09:00:00Z",
+        },
+      ],
+      fundFlows: [
+        {
+          id: 41,
+          organization_id: 1,
+          warehouse: 1,
+          warehouse_name: "Main Warehouse",
+          customer_account: 5,
+          customer_account_name: "Acme",
+          flow_type: "INBOUND",
+          source_type: "RECHARGE",
+          reference_code: "FLOW-DEMO-001",
+          status: "POSTED",
+          amount: "500.00",
+          currency: "USD",
+          occurred_at: "2026-03-24T09:00:00Z",
+          notes: "",
+          created_at: "2026-03-24T09:00:00Z",
+          updated_at: "2026-03-24T09:00:00Z",
+        },
+      ],
+      isLoading: false,
+      manualCharges: [
+        {
+          id: 21,
+          organization_id: 1,
+          customer_account: 5,
+          customer_account_name: "Acme",
+          warehouse: 1,
+          warehouse_name: "Main Warehouse",
+          charge_item: 11,
+          charge_item_name: "Order handling",
+          charge_template: null,
+          charge_template_name: "",
+          status: "POSTED",
+          source_reference: "MCH-DEMO-001",
+          description: "Completed handling charge",
+          quantity: "1.00",
+          unit_price: "4.50",
+          amount: "4.50",
+          currency: "USD",
+          charged_at: "2026-03-24T10:00:00Z",
+          notes: "",
+          created_at: "2026-03-24T10:00:00Z",
+          updated_at: "2026-03-24T10:00:00Z",
+        },
+      ],
+      rentDetails: [
+        {
+          id: 31,
+          organization_id: 1,
+          warehouse: 1,
+          warehouse_name: "Main Warehouse",
+          customer_account: 5,
+          customer_account_name: "Acme",
+          period_start: "2026-03-23",
+          period_end: "2026-03-25",
+          pallet_positions: 10,
+          bin_positions: 5,
+          area_sqm: "25.50",
+          amount: "300.00",
+          currency: "USD",
+          status: "BILLED",
+          notes: "",
+          created_at: "2026-03-23T09:00:00Z",
+          updated_at: "2026-03-23T09:00:00Z",
+        },
+      ],
+      vouchers: [
+        {
+          id: 51,
+          organization_id: 1,
+          customer_account: 5,
+          customer_account_name: "Acme",
+          code: "RCG-DEMO-001",
+          voucher_type: "RECHARGE",
+          status: "ACTIVE",
+          face_value: "500.00",
+          remaining_value: "40.00",
+          currency: "USD",
+          valid_from: "2026-03-01",
+          expires_on: "2026-12-31",
+          notes: "",
+          created_at: "2026-03-20T09:00:00Z",
+          updated_at: "2026-03-24T09:00:00Z",
+        },
+      ],
+    },
     queueMetrics: {
       stockIn: {
         pendingStockIn: 12,
@@ -120,6 +226,13 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
   expect(screen.getByText("Dropshipping Stock-Out")).toBeInTheDocument();
   expect(screen.getByText("Dispatch / Handover")).toBeInTheDocument();
   expect(screen.getByText("Order Qty statistics")).toBeInTheDocument();
+  expect(screen.getByText("Generated Revenue")).toBeInTheDocument();
+  expect(screen.getAllByText("Recharged").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("Low Balance").length).toBeGreaterThan(0);
+  expect(screen.getByLabelText("Revenue range start")).toBeInTheDocument();
+  expect(screen.getByLabelText("Revenue range end")).toBeInTheDocument();
+  expect(screen.queryByText("Customer-facing warehouse fees with client recharge and balance signals.")).not.toBeInTheDocument();
+  expect(screen.queryByText("3 fee items across 1 customers")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
   expect(screen.getByText("Storage Capacity")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "SKU Qty" })).toBeInTheDocument();
@@ -198,6 +311,14 @@ test("applies a custom date range from the order statistics card", async () => {
       },
       isLoading: false,
     },
+    revenueOverview: {
+      chargeItems: [],
+      fundFlows: [],
+      isLoading: false,
+      manualCharges: [],
+      rentDetails: [],
+      vouchers: [],
+    },
     queueMetrics: {
       stockIn: {
         pendingStockIn: 12,
@@ -257,8 +378,8 @@ test("applies a custom date range from the order statistics card", async () => {
     </MemoryRouter>,
   );
 
-  fireEvent.change(await screen.findByLabelText("From"), { target: { value: "2026-03-01T08:00" } });
-  fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-03-15T18:00" } });
+  fireEvent.change(await screen.findByLabelText("Range start"), { target: { value: "2026-03-01T08:00" } });
+  fireEvent.change(screen.getByLabelText("Range end"), { target: { value: "2026-03-15T18:00" } });
 
   await waitFor(() =>
     expect(updateWorkbenchPreference.mutate).toHaveBeenCalledWith({

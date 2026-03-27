@@ -106,6 +106,7 @@ export function DashboardPage() {
     customDateTo,
     orderStatisticsQuery,
     queueMetrics,
+    revenueOverview,
     setActiveWarehouseId,
     timeWindow,
     updateWorkbenchPreference,
@@ -505,6 +506,8 @@ export function DashboardPage() {
           customDateTo={customDateTo}
           data={orderStatisticsQuery.data}
           isLoading={orderStatisticsQuery.isLoading}
+          isRevenueLoading={revenueOverview?.isLoading ?? false}
+          isRevenueRestricted={!canViewFinance}
           isRestricted={!canViewOps}
           isSavingPreference={updateWorkbenchPreference.isPending}
           onDateRangeApply={(dateFrom, dateTo) => {
@@ -519,6 +522,7 @@ export function DashboardPage() {
               updateWorkbenchPreference.mutate({ time_window: nextTimeWindow });
             }
           }}
+          revenueOverview={revenueOverview}
           timeWindow={timeWindow}
         />
       ) : null}

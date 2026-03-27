@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import EastRoundedIcon from "@mui/icons-material/EastRounded";
 import IosShareOutlinedIcon from "@mui/icons-material/IosShareOutlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import { Box, Button, Card, CardContent, Skeleton, Stack, TextField, Typography } from "@mui/material";
@@ -10,6 +11,8 @@ import type {
   DashboardOrderStatisticsBucket,
   DashboardTimeWindow,
 } from "@/features/dashboard/model/types";
+import type { DashboardRevenueOverviewSourceData } from "@/features/dashboard/view/components/DashboardRevenueOverviewCard";
+import { DashboardRevenueOverviewCard } from "@/features/dashboard/view/components/DashboardRevenueOverviewCard";
 import { formatNumber } from "@/shared/utils/format";
 
 interface DashboardOrderStatisticsCardProps {
@@ -17,10 +20,13 @@ interface DashboardOrderStatisticsCardProps {
   customDateTo: string | null;
   data?: DashboardOrderStatistics;
   isLoading: boolean;
+  isRevenueLoading?: boolean;
+  isRevenueRestricted?: boolean;
   isRestricted?: boolean;
   isSavingPreference?: boolean;
   onDateRangeApply: (dateFrom: string, dateTo: string) => void;
   onTimeWindowChange: (nextTimeWindow: Exclude<DashboardTimeWindow, "CUSTOM">) => void;
+  revenueOverview?: DashboardRevenueOverviewSourceData;
   timeWindow: DashboardTimeWindow;
 }
 
@@ -415,10 +421,13 @@ export function DashboardOrderStatisticsCard({
   customDateTo,
   data,
   isLoading,
+  isRevenueLoading = false,
+  isRevenueRestricted = false,
   isRestricted = false,
   isSavingPreference = false,
   onDateRangeApply,
   onTimeWindowChange,
+  revenueOverview,
   timeWindow,
 }: DashboardOrderStatisticsCardProps) {
   const theme = useTheme();
@@ -457,6 +466,12 @@ export function DashboardOrderStatisticsCard({
     draftDateFrom === toHourDraftValue(customDateFrom, "start") &&
     draftDateTo === toHourDraftValue(customDateTo, "end");
   const canApplyCustomRange = Boolean(draftDateFrom && draftDateTo) && !isInvalidCustomRange && !isCustomRangeUnchanged;
+  const effectiveRange =
+    data?.date_from && data?.date_to
+      ? { dateFrom: data.date_from, dateTo: data.date_to }
+      : timeWindow === "CUSTOM"
+        ? { dateFrom: customDateFrom, dateTo: customDateTo }
+        : buildPresetHourRange(timeWindow);
 
   useEffect(() => {
     setHasPendingCustomSync(false);
@@ -556,11 +571,14 @@ export function DashboardOrderStatisticsCard({
             >
               <Box
                 sx={{
+                  alignItems: "stretch",
                   bgcolor: alpha(theme.palette.background.default, 0.46),
                   border: `1px solid ${alpha(theme.palette.divider, 0.92)}`,
                   borderRadius: "12px",
                   display: "inline-flex",
                   gap: 0.5,
+                  height: { md: 48 },
+                  minHeight: 48,
                   p: 0.5,
                   width: { xs: "100%", sm: "auto" },
                 }}
@@ -584,15 +602,17 @@ export function DashboardOrderStatisticsCard({
                           backgroundColor: alpha(theme.palette.primary.main, isActive ? 0.18 : 0.08),
                         },
                         backgroundColor: isActive ? alpha(theme.palette.primary.main, 0.14) : "transparent",
-                        borderRadius: "8px",
+                        borderRadius: "7px",
                         boxShadow: isActive ? `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.6)}` : "none",
                         color: isActive ? theme.palette.primary.main : theme.palette.text.primary,
                         flex: 1,
                         fontSize: "10px",
                         fontWeight: isActive ? 800 : 700,
-                        minHeight: 40,
-                        minWidth: { md: 110 },
-                        px: { xs: 1.5, md: 2 },
+                        height: "100%",
+                        lineHeight: 1.1,
+                        minHeight: 38,
+                        minWidth: { md: 92 },
+                        px: { xs: 1.25, md: 1.5 },
                       }}
                       type="button"
                       variant="text"
@@ -604,73 +624,86 @@ export function DashboardOrderStatisticsCard({
               </Box>
 
               <Stack
-                alignItems={{ xs: "stretch", md: "center" }}
+                alignItems="center"
                 direction={{ xs: "column", md: "row" }}
                 spacing={1}
                 sx={{
                   backgroundColor: alpha(theme.palette.background.paper, 0.98),
                   border: `1px solid ${alpha(timeWindow === "CUSTOM" ? theme.palette.primary.main : theme.palette.divider, timeWindow === "CUSTOM" ? 0.72 : 0.92)}`,
                   borderRadius: "12px",
-                  minHeight: 52,
-                  px: 1.25,
-                  py: 0.75,
+                  height: { md: 48 },
+                  minHeight: { md: 48 },
+                  px: { xs: 1.25, md: 0.75 },
+                  py: { xs: 0.75, md: 0.5 },
+                  width: { xs: "100%", md: "auto" },
                 }}
               >
-                <TextField
-                  disabled={isRestricted}
-                  error={isInvalidCustomRange}
-                  label="From"
-                  onChange={(event) => {
-                    setDraftDateFrom(event.target.value);
-                    setHasPendingCustomSync(true);
-                  }}
-                  size="small"
-                  slotProps={{
-                    htmlInput: { step: 3600 },
-                    inputLabel: { shrink: true },
-                  }}
-                  sx={{
-                    minWidth: { xs: "100%", md: 176 },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: alpha(theme.palette.background.default, 0.34),
-                    },
-                  }}
-                  type="datetime-local"
-                  value={draftDateFrom}
-                />
-                <Typography
-                  color="text.secondary"
-                  sx={{
-                    fontSize: "10px",
-                    fontWeight: 700,
-                    lineHeight: 1,
-                    px: { xs: 0.25, md: 0 },
-                  }}
+                <Stack
+                  alignItems={{ xs: "stretch", md: "center" }}
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={0.75}
+                  sx={{ width: { xs: "100%", md: "auto" } }}
                 >
-                  To
-                </Typography>
-                <TextField
-                  disabled={isRestricted}
-                  error={isInvalidCustomRange}
-                  label="To"
-                  onChange={(event) => {
-                    setDraftDateTo(event.target.value);
-                    setHasPendingCustomSync(true);
-                  }}
-                  size="small"
-                  slotProps={{
-                    htmlInput: { step: 3600 },
-                    inputLabel: { shrink: true },
-                  }}
-                  sx={{
-                    minWidth: { xs: "100%", md: 176 },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: alpha(theme.palette.background.default, 0.34),
-                    },
-                  }}
-                  type="datetime-local"
-                  value={draftDateTo}
-                />
+                  <TextField
+                    disabled={isRestricted}
+                    error={isInvalidCustomRange}
+                    onChange={(event) => {
+                      setDraftDateFrom(event.target.value);
+                      setHasPendingCustomSync(true);
+                    }}
+                    size="small"
+                    slotProps={{
+                      htmlInput: { "aria-label": "Range start", step: 3600 },
+                    }}
+                    sx={{
+                      minWidth: { xs: "100%", md: 176 },
+                      "& .MuiOutlinedInput-root": {
+                        backgroundColor: alpha(theme.palette.background.default, 0.34),
+                        height: 38,
+                      },
+                    }}
+                    type="datetime-local"
+                    value={draftDateFrom}
+                  />
+                  <Box
+                    sx={{
+                      alignItems: "center",
+                      color: timeWindow === "CUSTOM" ? theme.palette.primary.main : theme.palette.text.secondary,
+                      display: "inline-flex",
+                      flexShrink: 0,
+                      justifyContent: "center",
+                      px: { xs: 0, md: 0.25 },
+                    }}
+                  >
+                    <EastRoundedIcon
+                      sx={{
+                        fontSize: 18,
+                        transform: { xs: "rotate(90deg)", md: "none" },
+                      }}
+                    />
+                  </Box>
+                  <TextField
+                    disabled={isRestricted}
+                    error={isInvalidCustomRange}
+                    onChange={(event) => {
+                      setDraftDateTo(event.target.value);
+                      setHasPendingCustomSync(true);
+                    }}
+                    size="small"
+                    slotProps={{
+                      htmlInput: { "aria-label": "Range end", step: 3600 },
+                    }}
+                    sx={{
+                      minWidth: { xs: "100%", md: 176 },
+                      "& .MuiOutlinedInput-root": {
+                        backgroundColor: alpha(theme.palette.background.default, 0.34),
+                        height: 38,
+                      },
+                    }}
+                    type="datetime-local"
+                    value={draftDateTo}
+                  />
+                </Stack>
               </Stack>
 
               <Button
@@ -688,7 +721,8 @@ export function DashboardOrderStatisticsCard({
                   color: theme.palette.text.primary,
                   fontSize: "10px",
                   fontWeight: 700,
-                  minHeight: 44,
+                  height: { md: 48 },
+                  minHeight: 48,
                   px: 2,
                 }}
                 type="button"
@@ -828,6 +862,17 @@ export function DashboardOrderStatisticsCard({
         </CardContent>
       </Card>
       {!isRestricted ? <StorageCapacityCard /> : null}
+      <DashboardRevenueOverviewCard
+        chargeItems={revenueOverview?.chargeItems ?? []}
+        dateFrom={effectiveRange.dateFrom}
+        dateTo={effectiveRange.dateTo}
+        fundFlows={revenueOverview?.fundFlows ?? []}
+        isLoading={isRevenueLoading}
+        isRestricted={isRevenueRestricted}
+        manualCharges={revenueOverview?.manualCharges ?? []}
+        rentDetails={revenueOverview?.rentDetails ?? []}
+        vouchers={revenueOverview?.vouchers ?? []}
+      />
     </Box>
   );
 }
