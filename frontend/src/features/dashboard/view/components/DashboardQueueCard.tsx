@@ -4,7 +4,7 @@ import { Box, Card, CardContent, Link, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink } from "react-router-dom";
 
-import { brandColors, brandMotion, brandShadows, brandStatusColors } from "@/app/brand";
+import { brandColors, brandMotion, brandStatusColors } from "@/app/brand";
 import { useI18n } from "@/app/ui-preferences";
 
 export type DashboardQueueMetricTone = "info" | "success" | "warning" | "danger" | "neutral";
@@ -80,24 +80,29 @@ export function DashboardQueueCard({
   return (
     <Card
       sx={{
-        background: isDark
-          ? `linear-gradient(180deg, ${alpha(brandColors.surfaceDarkSecondary, 0.98)} 0%, ${alpha(brandColors.surfaceDark, 0.98)} 100%)`
-          : `linear-gradient(180deg, ${brandColors.surfaceLight} 0%, ${alpha(brandColors.surfaceLight, 0.96)} 100%)`,
-        border: `1px solid ${alpha(theme.palette.divider, isDark ? 0.45 : 0.6)}`,
-        borderRadius: 3,
-        boxShadow: isDark ? brandShadows.panelDark : brandShadows.panelLight,
+        background: `linear-gradient(180deg, ${alpha(theme.palette.background.paper, 0.99)} 0%, ${alpha(theme.palette.background.default, 0.9)} 100%)`,
+        border: `1px solid ${alpha(theme.palette.divider, 0.9)}`,
+        borderRadius: "14px",
+        boxShadow: "none",
         height: "100%",
         overflow: "hidden",
       }}
     >
-      <CardContent sx={{ height: "100%", p: 3, "&:last-child": { pb: 3 } }}>
-        <Stack spacing={2.25} sx={{ height: "100%" }}>
+      <CardContent sx={{ height: "100%", p: { xs: 2, md: 2.25 }, "&:last-child": { pb: { xs: 2, md: 2.25 } } }}>
+        <Stack spacing={1.75} sx={{ height: "100%" }}>
           {subtitle ? (
-            <Typography color="text.secondary" variant="body2">
+            <Typography
+              color="text.secondary"
+              sx={{
+                fontSize: "10px",
+                fontWeight: 500,
+                lineHeight: 1.45,
+              }}
+            >
               {translateText(subtitle)}
             </Typography>
           ) : null}
-          <Stack spacing={2.25} sx={{ flexGrow: 1 }}>
+          <Stack spacing={1.75} sx={{ flexGrow: 1 }}>
             {resolvedSections.map((section, sectionIndex) => {
               const sectionColumns = Math.max(section.columns ?? 1, 1);
               const sectionToneColor = getToneColor(section.iconTone);
@@ -105,53 +110,93 @@ export function DashboardQueueCard({
               return (
                 <Stack
                   key={section.key ?? `${section.title}-${sectionIndex}`}
-                  spacing={2}
+                  spacing={1.5}
                   sx={{
-                    borderTop: sectionIndex === 0 ? "none" : `1px dashed ${alpha(theme.palette.divider, isDark ? 0.55 : 0.75)}`,
-                    pt: sectionIndex === 0 ? 0 : 2.25,
+                    borderTop: sectionIndex === 0 ? "none" : `1px dashed ${alpha(theme.palette.divider, 0.72)}`,
+                    pt: sectionIndex === 0 ? 0 : 1.75,
                   }}
                 >
-                  <Stack alignItems="center" direction="row" spacing={1.1}>
+                  <Stack alignItems="center" direction="row" spacing={1}>
                     {section.icon ? (
-                      <Box sx={{ color: sectionToneColor, display: "flex", flexShrink: 0 }}>
+                      <Box
+                        sx={{
+                          alignItems: "center",
+                          backgroundColor: alpha(sectionToneColor, 0.12),
+                          border: `1px solid ${alpha(sectionToneColor, 0.2)}`,
+                          borderRadius: "10px",
+                          color: sectionToneColor,
+                          display: "inline-flex",
+                          flexShrink: 0,
+                          height: 28,
+                          justifyContent: "center",
+                          width: 28,
+                        }}
+                      >
                         {section.icon}
                       </Box>
                     ) : null}
-                    <Typography sx={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.02em", minWidth: 0 }}>
+                    <Typography
+                      sx={{
+                        fontSize: "14px",
+                        fontWeight: 800,
+                        letterSpacing: "-0.03em",
+                        lineHeight: 1.15,
+                        minWidth: 0,
+                      }}
+                    >
                       {translateText(section.title)}
                     </Typography>
                   </Stack>
                   <Box
                     sx={{
-                      columnGap: sectionColumns > 1 ? 0 : 1.75,
+                      columnGap: 1.25,
                       display: "grid",
                       gridTemplateColumns: `repeat(${sectionColumns}, minmax(0, 1fr))`,
-                      rowGap: 2,
+                      rowGap: 1.25,
                     }}
                   >
                     {section.metrics.map((metric, metricIndex) => {
                       const translatedLabel = translateText(metric.label);
                       const valueColor = getMetricValueColor(metric);
-                      const showColumnDivider = sectionColumns > 1 && metricIndex % sectionColumns !== 0;
+                      const metricToneColor =
+                        metric.tone && metric.tone !== "neutral"
+                          ? getToneColor(metric.tone)
+                          : alpha(theme.palette.text.secondary, 0.72);
 
                       return (
                         <Stack
                           key={metric.key}
                           spacing={0.8}
                           sx={{
-                            borderLeft: showColumnDivider ? `1px dashed ${alpha(theme.palette.divider, isDark ? 0.5 : 0.8)}` : "none",
-                            minHeight: 68,
+                            backgroundColor: alpha(theme.palette.background.paper, 0.94),
+                            border: `1px solid ${alpha(theme.palette.divider, 0.72)}`,
+                            borderRadius: "10px",
+                            minHeight: 60,
                             minWidth: 0,
-                            pl: showColumnDivider ? 2 : 0,
+                            overflow: "hidden",
+                            pl: 1.5,
+                            pr: 1.25,
+                            py: 1.125,
+                            position: "relative",
+                            "&::before": {
+                              backgroundColor: metricToneColor,
+                              borderRadius: "10px 0 0 10px",
+                              bottom: 0,
+                              content: "\"\"",
+                              left: 0,
+                              position: "absolute",
+                              top: 0,
+                              width: 4,
+                            },
                           }}
                         >
                           <Typography
                             color="text.secondary"
                             sx={{
-                              fontSize: 13,
-                              fontWeight: 500,
-                              lineHeight: 1.35,
-                              minHeight: 36,
+                              fontSize: "11px",
+                              fontWeight: 600,
+                              lineHeight: 1.3,
+                              minHeight: 28,
                               textWrap: "balance",
                             }}
                           >
@@ -169,9 +214,9 @@ export function DashboardQueueCard({
                                 },
                                 alignSelf: "flex-start",
                                 color: valueColor,
-                                fontSize: 23,
+                                fontSize: "21px",
                                 fontWeight: 800,
-                                letterSpacing: "-0.03em",
+                                letterSpacing: "-0.04em",
                                 lineHeight: 1,
                                 textDecoration: "none",
                                 transition: [
@@ -179,8 +224,8 @@ export function DashboardQueueCard({
                                   `transform ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
                                 ].join(", "),
                                 "&:hover": {
-                                  color: metric.tone === "danger" ? valueColor : brandColors.accentStrong,
-                                  transform: "translateX(1px)",
+                                  color: metric.tone === "danger" ? valueColor : metricToneColor,
+                                  transform: "translateY(-1px)",
                                 },
                               }}
                               to={metric.to}
@@ -192,9 +237,9 @@ export function DashboardQueueCard({
                             <Typography
                               sx={{
                                 color: valueColor,
-                                fontSize: 23,
+                                fontSize: "21px",
                                 fontWeight: 800,
-                                letterSpacing: "-0.03em",
+                                letterSpacing: "-0.04em",
                                 lineHeight: 1,
                               }}
                             >

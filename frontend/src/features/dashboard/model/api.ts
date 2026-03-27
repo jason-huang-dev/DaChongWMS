@@ -1,4 +1,5 @@
 export const dashboardApi = {
+  orderStatistics: "/api/dashboard/order-statistics/",
   balances: "/api/inventory/balances/",
   advanceShipmentNotices: "/api/inbound/advance-shipment-notices/",
   purchaseOrders: "/api/inbound/purchase-orders/",

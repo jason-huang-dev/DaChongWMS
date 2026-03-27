@@ -118,12 +118,43 @@ We use **Manrope** for its geometric clarity, strong readability, and modern ind
 - **Body Medium:** `0.875rem` — primary body and table-adjacent reading content.
 - **Label Medium:** `0.75rem` — table headers, field labels, metadata.
 
+### 4.1 Dense Implementation Scale
+For actual product implementation, default to the compact end of the scale unless the screen is intentionally presenting a hero metric.
+
+- **Top-level page title:** `1rem` to `1.125rem` (`16px` to `18px`), weight `700` to `800`
+- **Section or dashboard module title:** `0.875rem` to `1rem` (`14px` to `16px`), weight `700` to `800`
+- **Card title / chart title / panel title:** `0.8125rem` to `0.875rem` (`13px` to `14px`), weight `700`
+- **Primary control text:** `0.75rem` to `0.8125rem` (`12px` to `13px`), weight `600` to `700`
+- **Primary body / operational labels:** `0.6875rem` to `0.75rem` (`11px` to `12px`)
+- **Axis labels / table metadata / support text:** `0.625rem` to `0.6875rem` (`10px` to `11px`)
+- **Micro labels / helper text:** `0.5625rem` to `0.625rem` (`9px` to `10px`)
+- **Large dashboard number:** `1.875rem` to `2.125rem` (`30px` to `34px`) only when it is the single dominant value inside that card
+
+### 4.2 Information-Dense Requirements
+The default Dachong WMS posture is information-dense, not presentation-first.
+
+- Keep most operational surfaces inside a compact type band of `10px` to `14px`.
+- Avoid introducing more than one oversized text block inside the same card or panel.
+- Charts, summary cards, filters, and tables should be able to coexist in the same viewport without forcing decorative whitespace.
+- Use compact control heights by default. Most buttons, segmented controls, and filter inputs should live in roughly the `40px` to `52px` height range.
+- Axis labels, legends, helper text, and metadata should stay compact enough to support side-by-side dashboard modules.
+- Any typography above `18px` must justify itself as a primary page title or a single dominant metric.
+- Do not scale up text to create hierarchy when spacing, weight, and contrast already solve the problem.
+- Dense screens must still preserve touch and focus clarity. Compact does not mean cramped, clipped, or ambiguous.
+
 ### Typography Rules
 - Maintain generous line-height for readability in dense operational views.
 - Use slightly tighter tracking for larger headings.
 - Use uppercase labels sparingly for technical clarity, especially in filters, forms, and data tables.
 - Typography hierarchy must remain identical in both themes.
 - The application should assume an information-dense baseline. Page titles should cap at roughly `18px`, and the rest of the type scale should stay compact enough for dashboards, workbenches, tables, and forms to coexist without visual crowding.
+
+### 4.3 Radius Rules
+- Standard containers should use restrained rounding, not soft pill-like corners.
+- Default container radius should land in roughly the `10px` to `12px` range.
+- Large panels and dashboard cards may stretch to `14px` when needed, but should not exceed that without a specific reason.
+- Inputs and buttons should usually sit around `9px` to `10px`.
+- Do not use sharp corners for primary working surfaces, but avoid oversized rounding on cards, tables, filters, and workbench modules.
 
 ---
 

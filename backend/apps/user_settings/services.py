@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any
 
 from apps.organizations.models import OrganizationMembership
@@ -7,8 +8,9 @@ from apps.user_settings.models import UserSetting
 
 WORKBENCH_SETTINGS_CATEGORY = "workbench"
 DEFAULT_WORKBENCH_TIME_WINDOW = "WEEK"
-DEFAULT_VISIBLE_WIDGET_KEYS = ("metrics", "ops-summary", "queues")
-DEFAULT_RIGHT_RAIL_WIDGET_KEYS = ("alerts", "help")
+SUPPORTED_WORKBENCH_TIME_WINDOWS = ("WEEK", "MONTH", "YEAR", "CUSTOM")
+DEFAULT_VISIBLE_WIDGET_KEYS = ("ops-summary", "order-trends")
+DEFAULT_RIGHT_RAIL_WIDGET_KEYS: tuple[str, ...] = ()
 
 
 def _normalize_string_list(value: Any) -> list[str]:
@@ -25,10 +27,48 @@ def _normalize_string_list(value: Any) -> list[str]:
     return normalized
 
 
+def _normalize_iso_temporal(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+
+    candidate = value.strip()
+    if not candidate:
+        return None
+
+    if "T" not in candidate and " " not in candidate:
+        try:
+            return date.fromisoformat(candidate).isoformat()
+        except ValueError:
+            return None
+
+    normalized_candidate = candidate.replace(" ", "T").replace("Z", "+00:00")
+    try:
+        parsed_datetime = datetime.fromisoformat(normalized_candidate)
+    except ValueError:
+        return None
+
+    normalized_datetime = parsed_datetime.replace(minute=0, second=0, microsecond=0, tzinfo=None)
+    return normalized_datetime.isoformat(timespec="minutes")
+
+
+def _normalize_workbench_time_window(value: Any) -> str:
+    if not isinstance(value, str):
+        return DEFAULT_WORKBENCH_TIME_WINDOW
+
+    candidate = value.strip().upper()
+    if candidate not in SUPPORTED_WORKBENCH_TIME_WINDOWS:
+        return DEFAULT_WORKBENCH_TIME_WINDOW
+    return candidate
+
+
 def _compact_workbench_payload(payload: dict[str, Any]) -> dict[str, Any]:
     compact: dict[str, Any] = {}
     if payload["time_window"] != DEFAULT_WORKBENCH_TIME_WINDOW:
         compact["time_window"] = payload["time_window"]
+    if payload["custom_date_from"]:
+        compact["custom_date_from"] = payload["custom_date_from"]
+    if payload["custom_date_to"]:
+        compact["custom_date_to"] = payload["custom_date_to"]
     if payload["hidden_widget_keys"]:
         compact["hidden_widget_keys"] = payload["hidden_widget_keys"]
     if payload["hidden_right_rail_widget_keys"]:
@@ -52,12 +92,14 @@ def _resolve_workbench_payload(raw_payload: dict[str, Any] | None) -> dict[str, 
     ]
     hidden_queue_section_keys = _normalize_string_list(payload.get("hidden_queue_section_keys"))
     hidden_queue_metric_keys = _normalize_string_list(payload.get("hidden_queue_metric_keys"))
-    time_window = payload.get("time_window")
-    if not isinstance(time_window, str) or not time_window.strip():
-        time_window = DEFAULT_WORKBENCH_TIME_WINDOW
+    time_window = _normalize_workbench_time_window(payload.get("time_window"))
+    custom_date_from = _normalize_iso_temporal(payload.get("custom_date_from"))
+    custom_date_to = _normalize_iso_temporal(payload.get("custom_date_to"))
 
     return {
         "time_window": time_window,
+        "custom_date_from": custom_date_from,
+        "custom_date_to": custom_date_to,
         "hidden_widget_keys": hidden_widget_keys,
         "hidden_right_rail_widget_keys": hidden_right_rail_widget_keys,
         "hidden_queue_section_keys": hidden_queue_section_keys,
@@ -87,6 +129,8 @@ def _build_workbench_response(
         "membership_id": membership.id,
         "page_key": page_key,
         "time_window": resolved_payload["time_window"],
+        "custom_date_from": resolved_payload["custom_date_from"],
+        "custom_date_to": resolved_payload["custom_date_to"],
         "visible_widget_keys": resolved_payload["visible_widget_keys"],
         "right_rail_widget_keys": resolved_payload["right_rail_widget_keys"],
         "layout_payload": {
@@ -125,6 +169,8 @@ def update_workbench_setting(
     current_payload = _resolve_workbench_payload(setting.payload if setting is not None else {})
     next_payload = {
         "time_window": current_payload["time_window"],
+        "custom_date_from": current_payload["custom_date_from"],
+        "custom_date_to": current_payload["custom_date_to"],
         "hidden_widget_keys": current_payload["hidden_widget_keys"],
         "hidden_right_rail_widget_keys": current_payload["hidden_right_rail_widget_keys"],
         "hidden_queue_section_keys": current_payload["hidden_queue_section_keys"],
@@ -132,12 +178,13 @@ def update_workbench_setting(
     }
 
     if "time_window" in overrides:
-        time_window = overrides.get("time_window")
-        next_payload["time_window"] = (
-            time_window.strip()
-            if isinstance(time_window, str) and time_window.strip()
-            else DEFAULT_WORKBENCH_TIME_WINDOW
-        )
+        next_payload["time_window"] = _normalize_workbench_time_window(overrides.get("time_window"))
+
+    if "custom_date_from" in overrides:
+        next_payload["custom_date_from"] = _normalize_iso_temporal(overrides.get("custom_date_from"))
+
+    if "custom_date_to" in overrides:
+        next_payload["custom_date_to"] = _normalize_iso_temporal(overrides.get("custom_date_to"))
 
     if "visible_widget_keys" in overrides:
         next_payload["hidden_widget_keys"] = _hidden_keys_from_visible(

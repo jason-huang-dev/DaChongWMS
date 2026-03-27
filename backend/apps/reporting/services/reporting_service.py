@@ -3,16 +3,18 @@ from __future__ import annotations
 import csv
 import io
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import DecimalField, ExpressionWrapper, F, Sum
+from django.db.models import Count, DecimalField, ExpressionWrapper, F, Sum
+from django.db.models.functions import Coalesce, TruncDate, TruncHour
 from django.utils import timezone
 
+from apps.common.operation_types import OperationOrderType
 from apps.counting.models import CountApproval, CountApprovalStatus
-from apps.inbound.models import PurchaseOrder, PurchaseOrderStatus, PutawayTask, PutawayTaskStatus, Receipt
+from apps.inbound.models import PurchaseOrder, PurchaseOrderStatus, PutawayTask, PutawayTaskStatus, Receipt, ReceiptLine
 from apps.inventory.models import InventoryBalance
 from apps.organizations.models import Organization
 from apps.outbound.models import PickTask, PickTaskStatus, SalesOrder, SalesOrderStatus, Shipment
@@ -43,6 +45,275 @@ class OperationalReportInput:
     date_from: date | None = None
     date_to: date | None = None
     parameters: dict[str, object] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedTemporalBoundary:
+    filter_at: datetime
+    bucket_at: datetime
+    display_value: str
+    has_time: bool
+
+
+@dataclass(frozen=True, slots=True)
+class DashboardTimeRange:
+    time_window: str
+    date_from: str
+    date_to: str
+    filter_from: datetime
+    filter_to: datetime
+    bucket_start: datetime
+    bucket_end: datetime
+    bucket_mode: str
+
+
+def _parse_iso_temporal_boundary(value: str | None, *, is_end: bool) -> ParsedTemporalBoundary | None:
+    if value is None:
+        return None
+
+    candidate = value.strip()
+    if not candidate:
+        return None
+
+    current_timezone = timezone.get_current_timezone()
+    if "T" not in candidate and " " not in candidate:
+        try:
+            parsed_date = date.fromisoformat(candidate)
+        except ValueError:
+            return None
+
+        bucket_at = timezone.make_aware(datetime.combine(parsed_date, time.min), current_timezone)
+        filter_at = timezone.make_aware(
+            datetime.combine(parsed_date, time.max if is_end else time.min),
+            current_timezone,
+        )
+        return ParsedTemporalBoundary(
+            filter_at=filter_at,
+            bucket_at=bucket_at,
+            display_value=parsed_date.isoformat(),
+            has_time=False,
+        )
+
+    try:
+        parsed_datetime = datetime.fromisoformat(candidate.replace(" ", "T").replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+    localized_datetime = (
+        timezone.make_aware(parsed_datetime, current_timezone)
+        if timezone.is_naive(parsed_datetime)
+        else timezone.localtime(parsed_datetime, current_timezone)
+    )
+    bucket_at = localized_datetime.replace(minute=0, second=0, microsecond=0)
+    filter_at = bucket_at + timedelta(hours=1) - timedelta(microseconds=1) if is_end else bucket_at
+    return ParsedTemporalBoundary(
+        filter_at=filter_at,
+        bucket_at=bucket_at,
+        display_value=bucket_at.replace(tzinfo=None).isoformat(timespec="minutes"),
+        has_time=True,
+    )
+
+
+def resolve_dashboard_time_window(
+    time_window: str | None,
+    *,
+    date_from_value: str | None = None,
+    date_to_value: str | None = None,
+) -> DashboardTimeRange:
+    normalized = (time_window or "WEEK").strip().upper()
+    today = timezone.localdate()
+    now = timezone.localtime()
+    current_timezone = timezone.get_current_timezone()
+
+    if normalized == "CUSTOM":
+        parsed_from = _parse_iso_temporal_boundary(date_from_value, is_end=False)
+        parsed_to = _parse_iso_temporal_boundary(date_to_value, is_end=True)
+        if parsed_from is not None and parsed_to is not None:
+            start_boundary = parsed_from
+            end_boundary = parsed_to
+            if start_boundary.filter_at > end_boundary.filter_at:
+                start_boundary, end_boundary = end_boundary, start_boundary
+
+            has_hour_specific_range = start_boundary.has_time or end_boundary.has_time
+            use_hour_buckets = has_hour_specific_range and (end_boundary.bucket_at - start_boundary.bucket_at) <= timedelta(days=3)
+            if use_hour_buckets:
+                bucket_start = start_boundary.bucket_at
+                bucket_end = end_boundary.bucket_at
+                bucket_mode = "hour"
+            else:
+                bucket_start = timezone.make_aware(
+                    datetime.combine(start_boundary.bucket_at.date(), time.min),
+                    current_timezone,
+                )
+                bucket_end = timezone.make_aware(
+                    datetime.combine(end_boundary.bucket_at.date(), time.min),
+                    current_timezone,
+                )
+                bucket_mode = "day"
+
+            return DashboardTimeRange(
+                time_window=normalized,
+                date_from=start_boundary.display_value,
+                date_to=end_boundary.display_value,
+                filter_from=start_boundary.filter_at,
+                filter_to=end_boundary.filter_at,
+                bucket_start=bucket_start,
+                bucket_end=bucket_end,
+                bucket_mode=bucket_mode,
+            )
+
+    if normalized == "MONTH":
+        range_start = today.replace(day=1)
+    elif normalized == "YEAR":
+        range_start = today.replace(month=1, day=1)
+    else:
+        normalized = "WEEK"
+        range_start = today - timedelta(days=today.weekday())
+
+    range_start_at = timezone.make_aware(datetime.combine(range_start, time.min), current_timezone)
+    range_end_hour = now.replace(minute=0, second=0, microsecond=0)
+
+    return DashboardTimeRange(
+        time_window=normalized,
+        date_from=range_start_at.replace(tzinfo=None).isoformat(timespec="minutes"),
+        date_to=range_end_hour.replace(tzinfo=None).isoformat(timespec="minutes"),
+        filter_from=range_start_at,
+        filter_to=range_end_hour + timedelta(hours=1) - timedelta(microseconds=1),
+        bucket_start=range_start_at,
+        bucket_end=timezone.make_aware(datetime.combine(today, time.min), current_timezone),
+        bucket_mode="day",
+    )
+
+
+def build_dashboard_order_statistics(
+    *,
+    organization: Organization,
+    warehouse: Warehouse | None = None,
+    time_window: str | None = None,
+    date_from: str | None = None,
+    date_to: str | None = None,
+) -> dict[str, object]:
+    resolved_range = resolve_dashboard_time_window(
+        time_window,
+        date_from_value=date_from,
+        date_to_value=date_to,
+    )
+    current_timezone = timezone.get_current_timezone()
+
+    dropshipping_queryset = SalesOrder.objects.filter(
+        organization=organization,
+        order_type=OperationOrderType.DROPSHIP,
+        create_time__gte=resolved_range.filter_from,
+        create_time__lte=resolved_range.filter_to,
+    )
+    if warehouse is not None:
+        dropshipping_queryset = dropshipping_queryset.filter(warehouse=warehouse)
+
+    if resolved_range.bucket_mode == "hour":
+        dropshipping_by_bucket = {
+            timezone.localtime(row["bucket"], current_timezone).replace(minute=0, second=0, microsecond=0).replace(tzinfo=None).isoformat(timespec="minutes"): int(row["total_orders"])
+            for row in dropshipping_queryset.annotate(bucket=TruncHour("create_time", tzinfo=current_timezone))
+            .values("bucket")
+            .annotate(total_orders=Count("id"))
+            .order_by("bucket")
+            if row["bucket"] is not None
+        }
+    else:
+        dropshipping_by_bucket = {
+            row["bucket"]: int(row["total_orders"])
+            for row in dropshipping_queryset.annotate(bucket=TruncDate("create_time", tzinfo=current_timezone))
+            .values("bucket")
+            .annotate(total_orders=Count("id"))
+            .order_by("bucket")
+            if row["bucket"] is not None
+        }
+
+    stock_in_queryset = ReceiptLine.objects.filter(
+        organization=organization,
+        receipt__purchase_order__order_type=OperationOrderType.STANDARD,
+        receipt__received_at__gte=resolved_range.filter_from,
+        receipt__received_at__lte=resolved_range.filter_to,
+    )
+    if warehouse is not None:
+        stock_in_queryset = stock_in_queryset.filter(receipt__warehouse=warehouse)
+
+    if resolved_range.bucket_mode == "hour":
+        stock_in_by_bucket = {
+            timezone.localtime(row["bucket"], current_timezone).replace(minute=0, second=0, microsecond=0).replace(tzinfo=None).isoformat(timespec="minutes"): row["total_quantity"] or ZERO
+            for row in stock_in_queryset.annotate(bucket=TruncHour("receipt__received_at", tzinfo=current_timezone))
+            .values("bucket")
+            .annotate(
+                total_quantity=Coalesce(
+                    Sum("received_qty"),
+                    ZERO,
+                    output_field=DecimalField(max_digits=18, decimal_places=4),
+                )
+            )
+            .order_by("bucket")
+            if row["bucket"] is not None
+        }
+    else:
+        stock_in_by_bucket = {
+            row["bucket"]: row["total_quantity"] or ZERO
+            for row in stock_in_queryset.annotate(bucket=TruncDate("receipt__received_at", tzinfo=current_timezone))
+            .values("bucket")
+            .annotate(
+                total_quantity=Coalesce(
+                    Sum("received_qty"),
+                    ZERO,
+                    output_field=DecimalField(max_digits=18, decimal_places=4),
+                )
+            )
+            .order_by("bucket")
+            if row["bucket"] is not None
+        }
+
+    buckets: list[dict[str, object]] = []
+    total_dropshipping_orders = 0
+    total_stock_in_quantity = ZERO
+    if resolved_range.bucket_mode == "hour":
+        current_bucket = resolved_range.bucket_start
+        while current_bucket <= resolved_range.bucket_end:
+            current_bucket_key = current_bucket.replace(tzinfo=None).isoformat(timespec="minutes")
+            dropshipping_orders = dropshipping_by_bucket.get(current_bucket_key, 0)
+            stock_in_quantity = stock_in_by_bucket.get(current_bucket_key, ZERO)
+            total_dropshipping_orders += dropshipping_orders
+            total_stock_in_quantity += stock_in_quantity
+            buckets.append(
+                {
+                    "date": current_bucket_key,
+                    "dropshipping_orders": dropshipping_orders,
+                    "stock_in_quantity": float(stock_in_quantity),
+                }
+            )
+            current_bucket += timedelta(hours=1)
+    else:
+        current_date = resolved_range.bucket_start.date()
+        end_date = resolved_range.bucket_end.date()
+        while current_date <= end_date:
+            dropshipping_orders = dropshipping_by_bucket.get(current_date, 0)
+            stock_in_quantity = stock_in_by_bucket.get(current_date, ZERO)
+            total_dropshipping_orders += dropshipping_orders
+            total_stock_in_quantity += stock_in_quantity
+            buckets.append(
+                {
+                    "date": current_date.isoformat(),
+                    "dropshipping_orders": dropshipping_orders,
+                    "stock_in_quantity": float(stock_in_quantity),
+                }
+            )
+            current_date += timedelta(days=1)
+
+    return {
+        "time_window": resolved_range.time_window,
+        "date_from": resolved_range.date_from,
+        "date_to": resolved_range.date_to,
+        "summary": {
+            "dropshipping_orders": total_dropshipping_orders,
+            "stock_in_quantity": float(total_stock_in_quantity),
+        },
+        "buckets": buckets,
+    }
 
 
 def list_kpi_snapshots(

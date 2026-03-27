@@ -103,8 +103,10 @@ export function installFetchMock(...handlers: FetchHandler[]) {
         membership_id: 1,
         page_key: "dashboard",
         time_window: "WEEK",
-        visible_widget_keys: ["metrics", "ops-summary", "queues"],
-        right_rail_widget_keys: ["alerts", "help"],
+        custom_date_from: null,
+        custom_date_to: null,
+        visible_widget_keys: ["ops-summary", "order-trends"],
+        right_rail_widget_keys: [],
         layout_payload: {
           hidden_widget_keys: [],
           hidden_right_rail_widget_keys: [],
@@ -113,6 +115,22 @@ export function installFetchMock(...handlers: FetchHandler[]) {
         },
         create_time: "2026-03-15T00:00:00Z",
         update_time: "2026-03-15T00:00:00Z",
+      });
+    }
+    if (url.pathname === "/api/dashboard/order-statistics/") {
+      return jsonResponse({
+        time_window: "WEEK",
+        date_from: "2026-03-23",
+        date_to: "2026-03-25",
+        summary: {
+          dropshipping_orders: 0,
+          stock_in_quantity: 0,
+        },
+        buckets: [
+          { date: "2026-03-23", dropshipping_orders: 0, stock_in_quantity: 0 },
+          { date: "2026-03-24", dropshipping_orders: 0, stock_in_quantity: 0 },
+          { date: "2026-03-25", dropshipping_orders: 0, stock_in_quantity: 0 },
+        ],
       });
     }
     throw new Error(`Unhandled fetch request: ${url.toString()}`);

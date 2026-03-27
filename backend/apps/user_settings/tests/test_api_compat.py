@@ -32,8 +32,10 @@ class CompatibilityWorkbenchPreferencePersistenceTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["page_key"], "dashboard")
         self.assertEqual(response.data["time_window"], "WEEK")
-        self.assertEqual(response.data["visible_widget_keys"], ["metrics", "ops-summary", "queues"])
-        self.assertEqual(response.data["right_rail_widget_keys"], ["alerts", "help"])
+        self.assertIsNone(response.data["custom_date_from"])
+        self.assertIsNone(response.data["custom_date_to"])
+        self.assertEqual(response.data["visible_widget_keys"], ["ops-summary", "order-trends"])
+        self.assertEqual(response.data["right_rail_widget_keys"], [])
         self.assertEqual(
             response.data["layout_payload"],
             {
@@ -50,9 +52,11 @@ class CompatibilityWorkbenchPreferencePersistenceTests(TestCase):
             reverse("compat-workbench-preference-current"),
             {
                 "page_key": "dashboard",
-                "time_window": "MONTH",
-                "visible_widget_keys": ["ops-summary", "queues"],
-                "right_rail_widget_keys": ["alerts"],
+                "time_window": "CUSTOM",
+                "custom_date_from": "2026-03-01",
+                "custom_date_to": "2026-03-15",
+                "visible_widget_keys": ["order-trends"],
+                "right_rail_widget_keys": [],
                 "layout_payload": {
                     "hidden_queue_section_keys": ["return"],
                     "hidden_queue_metric_keys": ["stock-in-pending"],
@@ -62,13 +66,16 @@ class CompatibilityWorkbenchPreferencePersistenceTests(TestCase):
         )
 
         self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(patch_response.data["visible_widget_keys"], ["ops-summary", "queues"])
-        self.assertEqual(patch_response.data["right_rail_widget_keys"], ["alerts"])
+        self.assertEqual(patch_response.data["time_window"], "CUSTOM")
+        self.assertEqual(patch_response.data["custom_date_from"], "2026-03-01")
+        self.assertEqual(patch_response.data["custom_date_to"], "2026-03-15")
+        self.assertEqual(patch_response.data["visible_widget_keys"], ["order-trends"])
+        self.assertEqual(patch_response.data["right_rail_widget_keys"], [])
         self.assertEqual(
             patch_response.data["layout_payload"],
             {
-                "hidden_widget_keys": ["metrics"],
-                "hidden_right_rail_widget_keys": ["help"],
+                "hidden_widget_keys": ["ops-summary"],
+                "hidden_right_rail_widget_keys": [],
                 "hidden_queue_section_keys": ["return"],
                 "hidden_queue_metric_keys": ["stock-in-pending"],
             },
@@ -83,9 +90,10 @@ class CompatibilityWorkbenchPreferencePersistenceTests(TestCase):
         self.assertEqual(
             setting.payload,
             {
-                "time_window": "MONTH",
-                "hidden_widget_keys": ["metrics"],
-                "hidden_right_rail_widget_keys": ["help"],
+                "time_window": "CUSTOM",
+                "custom_date_from": "2026-03-01",
+                "custom_date_to": "2026-03-15",
+                "hidden_widget_keys": ["ops-summary"],
                 "hidden_queue_section_keys": ["return"],
                 "hidden_queue_metric_keys": ["stock-in-pending"],
             },
@@ -97,6 +105,33 @@ class CompatibilityWorkbenchPreferencePersistenceTests(TestCase):
         )
 
         self.assertEqual(get_response.status_code, status.HTTP_200_OK)
-        self.assertEqual(get_response.data["time_window"], "MONTH")
-        self.assertEqual(get_response.data["visible_widget_keys"], ["ops-summary", "queues"])
-        self.assertEqual(get_response.data["right_rail_widget_keys"], ["alerts"])
+        self.assertEqual(get_response.data["time_window"], "CUSTOM")
+        self.assertEqual(get_response.data["custom_date_from"], "2026-03-01")
+        self.assertEqual(get_response.data["custom_date_to"], "2026-03-15")
+        self.assertEqual(get_response.data["visible_widget_keys"], ["order-trends"])
+        self.assertEqual(get_response.data["right_rail_widget_keys"], [])
+
+    def test_patch_preserves_hour_precision_for_custom_datetime_ranges(self) -> None:
+        response = self.client.patch(
+            reverse("compat-workbench-preference-current"),
+            {
+                "page_key": "dashboard",
+                "time_window": "CUSTOM",
+                "custom_date_from": "2026-03-01T09:00",
+                "custom_date_to": "2026-03-01T18:00",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["custom_date_from"], "2026-03-01T09:00")
+        self.assertEqual(response.data["custom_date_to"], "2026-03-01T18:00")
+
+        setting = UserSetting.objects.get(
+            user=self.user,
+            membership=self.membership,
+            category="workbench",
+            setting_key="dashboard",
+        )
+        self.assertEqual(setting.payload["custom_date_from"], "2026-03-01T09:00")
+        self.assertEqual(setting.payload["custom_date_to"], "2026-03-01T18:00")

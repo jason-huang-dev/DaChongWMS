@@ -30,6 +30,8 @@ interface WorkspaceTabSyncPayload {
 interface WorkbenchPreferencePatchPayload {
   page_key?: string;
   time_window?: string;
+  custom_date_from?: string | null;
+  custom_date_to?: string | null;
   visible_widget_keys?: string[];
   right_rail_widget_keys?: string[];
   layout_payload?: Record<string, unknown>;
@@ -172,17 +174,43 @@ export function useWorkspaceTabs() {
 export function useWorkbenchPreference(pageKey: string) {
   const queryClient = useQueryClient();
   const { activeMembershipId } = useTenantScope();
+  const queryKey = getWorkbenchPreferenceQueryKey(activeMembershipId, pageKey);
 
   const query = useQuery({
-    queryKey: getWorkbenchPreferenceQueryKey(activeMembershipId, pageKey),
+    queryKey,
     queryFn: () => fetchWorkbenchPreference(pageKey),
     enabled: Boolean(activeMembershipId),
   });
 
   const updateMutation = useMutation({
     mutationFn: (payload: WorkbenchPreferencePatchPayload) => patchWorkbenchPreference({ page_key: pageKey, ...payload }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["app", "workbench-preference", activeMembershipId, pageKey] });
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey });
+
+      const previousPreference = queryClient.getQueryData<WorkbenchPreferenceRecord>(queryKey);
+      if (previousPreference) {
+        queryClient.setQueryData<WorkbenchPreferenceRecord>(queryKey, {
+          ...previousPreference,
+          ...payload,
+          layout_payload: payload.layout_payload
+            ? {
+                ...previousPreference.layout_payload,
+                ...payload.layout_payload,
+              }
+            : previousPreference.layout_payload,
+        });
+      }
+
+      return { previousPreference };
+    },
+    onError: (_error, _payload, context) => {
+      if (context?.previousPreference) {
+        queryClient.setQueryData(queryKey, context.previousPreference);
+      }
+    },
+    onSuccess: async (nextPreference) => {
+      queryClient.setQueryData(queryKey, nextPreference);
+      await queryClient.invalidateQueries({ queryKey });
     },
   });
 

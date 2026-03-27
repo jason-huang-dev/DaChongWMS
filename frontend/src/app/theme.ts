@@ -71,53 +71,53 @@ export function createAppTheme(themeMode: AppThemeMode, locale: AppLocale) {
         },
       },
       shape: {
-        borderRadius: 16,
+        borderRadius: 10,
       },
       typography: {
         fontFamily: '"Manrope", "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
         h3: {
-          fontSize: "1.125rem",
+          fontSize: "1rem",
           fontWeight: 800,
           letterSpacing: "-0.02em",
           lineHeight: 1.15,
         },
         h4: {
-          fontSize: "1.125rem",
+          fontSize: "1rem",
           fontWeight: 800,
           letterSpacing: "-0.02em",
           lineHeight: 1.15,
         },
         h5: {
-          fontSize: "1rem",
+          fontSize: "0.875rem",
           fontWeight: 800,
           letterSpacing: "-0.02em",
           lineHeight: 1.2,
         },
         h6: {
-          fontSize: "0.875rem",
+          fontSize: "0.75rem",
           fontWeight: 700,
           lineHeight: 1.3,
         },
         body1: {
-          fontSize: "0.75rem",
+          fontSize: "0.625rem",
           lineHeight: 1.6,
         },
         body2: {
-          fontSize: "0.75rem",
+          fontSize: "0.625rem",
           lineHeight: 1.45,
         },
         button: {
-          fontSize: "0.75rem",
+          fontSize: "0.625rem",
           letterSpacing: "0.01em",
           textTransform: "none",
           fontWeight: 700,
         },
         caption: {
-          fontSize: "0.625rem",
+          fontSize: "0.5rem",
           lineHeight: 1.4,
         },
         overline: {
-          fontSize: "0.625rem",
+          fontSize: "0.5rem",
           fontWeight: 700,
           letterSpacing: "0.14em",
           lineHeight: 1.5,
@@ -180,8 +180,8 @@ export function createAppTheme(themeMode: AppThemeMode, locale: AppLocale) {
         MuiButton: {
           styleOverrides: {
             root: {
-              borderRadius: 12,
-              minHeight: 38,
+              borderRadius: 10,
+              minHeight: 36,
               paddingInline: 14,
               transition: [
                 `transform ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
@@ -234,6 +234,7 @@ export function createAppTheme(themeMode: AppThemeMode, locale: AppLocale) {
             root: {
               backgroundColor: alpha(tokens.surface, isDark ? 0.94 : 0.97),
               border: `1px solid ${alpha(tokens.outline, isDark ? 0.2 : 0.15)}`,
+              borderRadius: 10,
               boxShadow: isDark ? brandShadows.panelDark : brandShadows.panelLight,
               transition: [
                 `background-color ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
@@ -266,6 +267,7 @@ export function createAppTheme(themeMode: AppThemeMode, locale: AppLocale) {
             paper: {
               backgroundColor: tokens.surface,
               border: `1px solid ${alpha(tokens.outline, isDark ? 0.22 : 0.18)}`,
+              borderRadius: 10,
               boxShadow: isDark ? brandShadows.panelDark : brandShadows.panelLight,
             },
           },
@@ -282,6 +284,7 @@ export function createAppTheme(themeMode: AppThemeMode, locale: AppLocale) {
             paper: {
               backgroundColor: alpha(tokens.surface, isDark ? 0.96 : 0.98),
               border: `1px solid ${alpha(tokens.outline, isDark ? 0.22 : 0.18)}`,
+              borderRadius: 10,
               boxShadow: isDark ? brandShadows.panelDark : brandShadows.panelLight,
             },
           },
@@ -308,7 +311,7 @@ export function createAppTheme(themeMode: AppThemeMode, locale: AppLocale) {
           styleOverrides: {
             root: {
               backgroundColor: isDark ? alpha(tokens.surfaceSecondary, 0.88) : tokens.surfaceSecondary,
-              borderRadius: 12,
+              borderRadius: 10,
               transition: [
                 `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
                 `border-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,

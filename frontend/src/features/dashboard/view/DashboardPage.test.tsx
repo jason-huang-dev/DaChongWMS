@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, test, vi } from "vitest";
@@ -12,10 +12,6 @@ vi.mock("@/features/dashboard/controller/useDashboardController", () => ({
   useDashboardController: () => mockUseDashboardController(),
 }));
 
-vi.mock("@/features/dashboard/view/DashboardTable", () => ({
-  DashboardTable: () => <div>Dashboard table</div>,
-}));
-
 beforeEach(() => {
   mockUseDashboardController.mockReset();
 });
@@ -27,17 +23,27 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
 
   mockUseDashboardController.mockReturnValue({
     activeWarehouseId: 1,
-    approvalsSummaryQuery: { data: { pending_count: 5 } },
     canViewFinance: true,
     canViewOps: true,
-    countingDashboardQuery: {
+    customDateFrom: null,
+    customDateTo: null,
+    orderStatisticsQuery: {
       data: {
-        pending_sla_breach_count: 2,
-        recount_sla_breach_count: 1,
+        buckets: [
+          { date: "2026-03-23", dropshipping_orders: 3, stock_in_quantity: 12 },
+          { date: "2026-03-24", dropshipping_orders: 4, stock_in_quantity: 18 },
+          { date: "2026-03-25", dropshipping_orders: 5, stock_in_quantity: 10 },
+        ],
+        date_from: "2026-03-23",
+        date_to: "2026-03-25",
+        summary: {
+          dropshipping_orders: 12,
+          stock_in_quantity: 40,
+        },
+        time_window: "WEEK",
       },
+      isLoading: false,
     },
-    invoicesQuery: { data: { count: 3, results: [] } },
-    purchaseOrdersQuery: { data: { count: 4, results: [] } },
     queueMetrics: {
       stockIn: {
         pendingStockIn: 12,
@@ -71,11 +77,9 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
         quotaPendingReview: 2,
       },
     },
-    rightRailWidgetKeys: [],
-    salesOrdersQuery: { data: { count: 8, results: [] } },
     setActiveWarehouseId,
+    timeWindow: "WEEK",
     updateWorkbenchPreference,
-    visibleOnHand: 1250,
     visibleWidgetKeys: [],
     warehouses: [
       {
@@ -115,7 +119,11 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
   expect(screen.getByText("Stock In")).toBeInTheDocument();
   expect(screen.getByText("Dropshipping Stock-Out")).toBeInTheDocument();
   expect(screen.getByText("Dispatch / Handover")).toBeInTheDocument();
-  expect(screen.getByText("Operations workbench")).toBeInTheDocument();
+  expect(screen.getByText("Order Qty statistics")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
+  expect(screen.getByText("Storage Capacity")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "SKU Qty" })).toBeInTheDocument();
+  expect(screen.queryByText("Operations workbench")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Customize dashboard" })).toBeInTheDocument();
 
   const stockInLink = screen.getByRole("link", { name: /Pending Stock In/i });
@@ -155,10 +163,108 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
       layout_payload: expect.objectContaining({
         hidden_queue_section_keys: [],
       }),
-      right_rail_widget_keys: expect.arrayContaining(["alerts", "help"]),
-      visible_widget_keys: expect.arrayContaining(["metrics", "queues"]),
+      right_rail_widget_keys: [],
+      visible_widget_keys: ["order-trends"],
     }),
   );
   expect(mutationPayload.layout_payload.hidden_queue_metric_keys).not.toContain("stock-in-pending");
   expect(mutationPayload.visible_widget_keys).not.toContain("ops-summary");
+  expect(mutationPayload.visible_widget_keys).toContain("order-trends");
+});
+
+test("applies a custom date range from the order statistics card", async () => {
+  const updateWorkbenchPreference = { isPending: false, mutate: vi.fn() };
+
+  mockUseDashboardController.mockReturnValue({
+    activeWarehouseId: 1,
+    canViewFinance: true,
+    canViewOps: true,
+    customDateFrom: null,
+    customDateTo: null,
+    orderStatisticsQuery: {
+      data: {
+        buckets: [
+          { date: "2026-03-23", dropshipping_orders: 3, stock_in_quantity: 12 },
+          { date: "2026-03-24", dropshipping_orders: 4, stock_in_quantity: 18 },
+          { date: "2026-03-25", dropshipping_orders: 5, stock_in_quantity: 10 },
+        ],
+        date_from: "2026-03-23",
+        date_to: "2026-03-25",
+        summary: {
+          dropshipping_orders: 12,
+          stock_in_quantity: 40,
+        },
+        time_window: "WEEK",
+      },
+      isLoading: false,
+    },
+    queueMetrics: {
+      stockIn: {
+        pendingStockIn: 12,
+        inTransit: 8,
+        stockingIn: 4,
+      },
+      outbound: {
+        toGenerateInProcess: 7,
+        toShip: 6,
+        getTrackingNo: 5,
+        toMove: 4,
+        toPick: 3,
+        toPrintAndStockOut: 2,
+        abnormal: 1,
+        orderInterception: 9,
+      },
+      dispatch: {
+        shipped: 11,
+        notShipped: 10,
+        orderCancellation: 1,
+      },
+      returns: {
+        pendingStockIn: 6,
+      },
+      workOrder: {
+        pendingReview: 5,
+      },
+      finance: {
+        deductionPendingReview: 4,
+        rechargePendingReview: 3,
+        quotaPendingReview: 2,
+      },
+    },
+    setActiveWarehouseId: vi.fn(),
+    timeWindow: "WEEK",
+    updateWorkbenchPreference,
+    visibleWidgetKeys: [],
+    warehouses: [
+      {
+        id: 1,
+        warehouse_name: "Main Warehouse",
+        warehouse_city: "Shenzhen",
+        warehouse_address: "1 Warehouse Road",
+        warehouse_contact: "Ops Desk",
+        warehouse_manager: "Alice",
+        creator: "Seeder",
+        create_time: "2026-03-20 09:00:00",
+        update_time: "2026-03-20 09:00:00",
+      },
+    ],
+    workbenchPreferenceQuery: { data: undefined },
+  });
+
+  renderWithProviders(
+    <MemoryRouter>
+      <DashboardPage />
+    </MemoryRouter>,
+  );
+
+  fireEvent.change(await screen.findByLabelText("From"), { target: { value: "2026-03-01T08:00" } });
+  fireEvent.change(screen.getByLabelText("To"), { target: { value: "2026-03-15T18:00" } });
+
+  await waitFor(() =>
+    expect(updateWorkbenchPreference.mutate).toHaveBeenCalledWith({
+      custom_date_from: "2026-03-01T08:00",
+      custom_date_to: "2026-03-15T18:00",
+      time_window: "CUSTOM",
+    }),
+  );
 });

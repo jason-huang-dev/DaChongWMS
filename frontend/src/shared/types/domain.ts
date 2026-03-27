@@ -151,6 +151,8 @@ export interface WorkbenchPreferenceRecord {
   membership_id: number;
   page_key: string;
   time_window: string;
+  custom_date_from: string | null;
+  custom_date_to: string | null;
   visible_widget_keys: string[];
   right_rail_widget_keys: string[];
   layout_payload: Record<string, unknown>;

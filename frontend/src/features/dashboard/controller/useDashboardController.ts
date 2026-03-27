@@ -2,15 +2,14 @@ import { useWorkbenchPreference } from "@/app/workspace-preferences";
 import { useTenantScope } from "@/app/scope-context";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { dashboardApi } from "@/features/dashboard/model/api";
-import { getDashboardAccess, sumVisibleOnHand } from "@/features/dashboard/model/mappers";
+import { getDashboardAccess } from "@/features/dashboard/model/mappers";
 import { buildBalanceTransactionsPath, buildVouchersPath } from "@/features/fees/model/api";
 import type { BalanceTransactionRecord, VoucherRecord } from "@/features/fees/model/types";
 import type {
   AdvanceShipmentNoticeRecord,
   CountApprovalSummary,
-  CountingDashboardSummary,
-  InventoryBalanceRecord,
-  InvoiceRecord,
+  DashboardOrderStatistics,
+  DashboardTimeWindow,
   PickTaskRecord,
   PutawayTaskRecord,
   PurchaseOrderRecord,
@@ -41,6 +40,9 @@ export function useDashboardController() {
   } = useTenantScope();
   const { canViewOps, canViewFinance } = getDashboardAccess(session);
   const { preferenceQuery, updateWorkbenchPreference } = useWorkbenchPreference("dashboard");
+  const timeWindow = (preferenceQuery.data?.time_window ?? "WEEK") as DashboardTimeWindow;
+  const customDateFrom = preferenceQuery.data?.custom_date_from ?? null;
+  const customDateTo = preferenceQuery.data?.custom_date_to ?? null;
   const companyId =
     typeof company?.id === "number"
       ? company.id
@@ -48,31 +50,22 @@ export function useDashboardController() {
         ? Number(company.id)
         : undefined;
   const warehouseScopedQuery = { warehouse: activeWarehouseId ?? undefined };
-
-  const balancesQuery = usePaginatedResource<InventoryBalanceRecord>(["dashboard", "balances"], dashboardApi.balances, 1, 10, {
-    warehouse: activeWarehouseId ?? undefined,
-  }, {
-    enabled: Boolean(session && canViewOps),
-  });
-  const purchaseOrdersQuery = usePaginatedResource<PurchaseOrderRecord>(["dashboard", "purchase-orders"], dashboardApi.purchaseOrders, 1, 5, {
-    warehouse: activeWarehouseId ?? undefined,
-  }, {
-    enabled: Boolean(session && canViewOps),
-  });
-  const salesOrdersQuery = usePaginatedResource<SalesOrderRecord>(["dashboard", "sales-orders"], dashboardApi.salesOrders, 1, 5, {
-    warehouse: activeWarehouseId ?? undefined,
-  }, {
-    enabled: Boolean(session && canViewOps),
-  });
   const approvalsSummaryQuery = useResource<CountApprovalSummary>(["dashboard", "approval-summary"], dashboardApi.approvalSummary, warehouseScopedQuery, {
     enabled: Boolean(session && canViewOps),
   });
-  const countingDashboardQuery = useResource<CountingDashboardSummary>(["dashboard", "counting-dashboard"], dashboardApi.countingDashboard, warehouseScopedQuery, {
-    enabled: Boolean(session && canViewOps),
-  });
-  const invoicesQuery = usePaginatedResource<InvoiceRecord>(["dashboard", "invoices"], dashboardApi.invoices, 1, 5, warehouseScopedQuery, {
-    enabled: Boolean(session && canViewFinance),
-  });
+  const orderStatisticsQuery = useResource<DashboardOrderStatistics>(
+    ["dashboard", "order-statistics", activeWarehouseId, timeWindow, customDateFrom, customDateTo],
+    dashboardApi.orderStatistics,
+    {
+      time_window: timeWindow,
+      date_from: timeWindow === "CUSTOM" ? customDateFrom ?? undefined : undefined,
+      date_to: timeWindow === "CUSTOM" ? customDateTo ?? undefined : undefined,
+      warehouse: activeWarehouseId ?? undefined,
+    },
+    {
+      enabled: Boolean(session && canViewOps),
+    },
+  );
 
   const pendingStockInOpenQuery = useDashboardCount<PurchaseOrderRecord>(
     ["dashboard", "counts", "purchase-orders", "open"],
@@ -247,22 +240,18 @@ export function useDashboardController() {
     canViewFinance,
     warehouses,
     warehousesQuery,
-    balancesQuery,
-    purchaseOrdersQuery,
-    salesOrdersQuery,
     approvalsSummaryQuery,
-    countingDashboardQuery,
-    invoicesQuery,
+    orderStatisticsQuery,
     workbenchPreferenceQuery: preferenceQuery,
     updateWorkbenchPreference,
-    timeWindow: preferenceQuery.data?.time_window ?? "WEEK",
+    timeWindow,
+    customDateFrom,
+    customDateTo,
     visibleWidgetKeys: preferenceQuery.data?.visible_widget_keys ?? [],
-    rightRailWidgetKeys: preferenceQuery.data?.right_rail_widget_keys ?? [],
     activeWarehouse,
     activeWarehouseId,
     setActiveWarehouseId,
     firstWarehouse: activeWarehouse ?? warehousesQuery.data?.results[0],
-    visibleOnHand: sumVisibleOnHand(balancesQuery.data?.results ?? []),
     queueMetrics: {
       stockIn: {
         pendingStockIn: pendingStockInCount,

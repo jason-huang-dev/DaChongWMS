@@ -2,6 +2,7 @@ from django.urls import path, re_path
 
 from .compat_views import (
     CompatibilityAuditEventListAPIView,
+    CompatibilityDashboardOrderStatisticsAPIView,
     CompatibilityInviteAcceptanceAPIView,
     CompatibilityCompanyMembershipDetailAPIView,
     CompatibilityCompanyMembershipListCreateAPIView,
@@ -81,5 +82,10 @@ urlpatterns = [
         "access/workbench-preferences/current/",
         CompatibilityWorkbenchPreferenceAPIView.as_view(),
         name="compat-workbench-preference-current",
+    ),
+    path(
+        "dashboard/order-statistics/",
+        CompatibilityDashboardOrderStatisticsAPIView.as_view(),
+        name="compat-dashboard-order-statistics",
     ),
 ]

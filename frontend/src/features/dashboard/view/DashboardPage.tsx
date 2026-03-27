@@ -30,19 +30,16 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { brandColors, brandShadows } from "@/app/brand";
+import { brandShadows } from "@/app/brand";
 import { useDashboardController } from "@/features/dashboard/controller/useDashboardController";
-import { DashboardTable } from "@/features/dashboard/view/DashboardTable";
+import { DashboardOrderStatisticsCard } from "@/features/dashboard/view/components/DashboardOrderStatisticsCard";
 import { DashboardQueueCard } from "@/features/dashboard/view/components/DashboardQueueCard";
 import type { DashboardQueueMetric, DashboardQueueSection } from "@/features/dashboard/view/components/DashboardQueueCard";
-import { MetricCard } from "@/shared/components/metric-card";
-import { WorkbenchPanel } from "@/shared/components/workbench-panel";
 import { formatNumber } from "@/shared/utils/format";
 
-const DEFAULT_VISIBLE_WIDGET_KEYS = ["metrics", "ops-summary", "queues"] as const;
-const DEFAULT_RIGHT_RAIL_WIDGET_KEYS = ["alerts", "help"] as const;
+const DEFAULT_VISIBLE_WIDGET_KEYS = ["ops-summary", "order-trends"] as const;
 
-type DashboardPanelKey = (typeof DEFAULT_VISIBLE_WIDGET_KEYS)[number] | (typeof DEFAULT_RIGHT_RAIL_WIDGET_KEYS)[number];
+type DashboardPanelKey = (typeof DEFAULT_VISIBLE_WIDGET_KEYS)[number];
 type DashboardQueueSectionKey = "stock-in" | "outbound" | "dispatch" | "return" | "work-order" | "finance";
 
 interface DashboardLayoutPayload {
@@ -53,7 +50,6 @@ interface DashboardLayoutPayload {
 interface DashboardCustomizationDraft {
   hiddenQueueMetricKeys: string[];
   hiddenQueueSectionKeys: DashboardQueueSectionKey[];
-  rightRailWidgetKeys: string[];
   visibleWidgetKeys: string[];
 }
 
@@ -100,23 +96,19 @@ export function DashboardPage() {
   const [customizationDraft, setCustomizationDraft] = useState<DashboardCustomizationDraft>({
     hiddenQueueMetricKeys: [],
     hiddenQueueSectionKeys: [],
-    rightRailWidgetKeys: [...DEFAULT_RIGHT_RAIL_WIDGET_KEYS],
     visibleWidgetKeys: [...DEFAULT_VISIBLE_WIDGET_KEYS],
   });
   const {
     activeWarehouseId,
-    approvalsSummaryQuery,
     canViewFinance,
     canViewOps,
-    countingDashboardQuery,
-    invoicesQuery,
-    purchaseOrdersQuery,
+    customDateFrom,
+    customDateTo,
+    orderStatisticsQuery,
     queueMetrics,
-    rightRailWidgetKeys,
-    salesOrdersQuery,
     setActiveWarehouseId,
+    timeWindow,
     updateWorkbenchPreference,
-    visibleOnHand,
     visibleWidgetKeys,
     warehouses,
     workbenchPreferenceQuery,
@@ -126,16 +118,12 @@ export function DashboardPage() {
   const effectiveVisibleWidgetKeys = hasSavedWorkbenchPreference
     ? visibleWidgetKeys
     : [...DEFAULT_VISIBLE_WIDGET_KEYS];
-  const effectiveRightRailWidgetKeys = hasSavedWorkbenchPreference
-    ? rightRailWidgetKeys
-    : [...DEFAULT_RIGHT_RAIL_WIDGET_KEYS];
   const rawLayoutPayload =
     workbenchPreferenceQuery.data?.layout_payload && typeof workbenchPreferenceQuery.data.layout_payload === "object"
       ? workbenchPreferenceQuery.data.layout_payload
       : {};
   const layoutPayload = buildDashboardLayoutPayload(rawLayoutPayload);
   const visibleWidgets = new Set(effectiveVisibleWidgetKeys);
-  const rightRailWidgets = new Set(effectiveRightRailWidgetKeys);
   const hiddenQueueMetricSet = new Set(layoutPayload.hidden_queue_metric_keys);
   const hiddenQueueSectionSet = new Set(layoutPayload.hidden_queue_section_keys);
 
@@ -193,11 +181,11 @@ export function DashboardPage() {
       to: canViewOps ? buildDashboardLink("/outbound", { pickTaskStatuses: "OPEN,ASSIGNED" }, "secondary-picking") : undefined,
     },
     {
-      key: "outbound-tracking",
-      label: "Get Tracking No",
-      tone: "info",
-      value: canViewOps ? formatNumber(queueMetrics.outbound.getTrackingNo) : "Restricted",
-      to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "GET_TRACKING_NO" }, "package-management") : undefined,
+      key: "outbound-print",
+      label: "To Print & Stock-Out",
+      tone: "warning",
+      value: canViewOps ? formatNumber(queueMetrics.outbound.toPrintAndStockOut) : "Restricted",
+      to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "TO_SHIP", waybillPrinted: "false" }, "package-management") : undefined,
     },
     {
       key: "outbound-interception",
@@ -214,11 +202,11 @@ export function DashboardPage() {
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "TO_SHIP", waybillPrinted: "true" }, "package-management") : undefined,
     },
     {
-      key: "outbound-print",
-      label: "To Print & Stock-Out",
-      tone: "warning",
-      value: canViewOps ? formatNumber(queueMetrics.outbound.toPrintAndStockOut) : "Restricted",
-      to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "TO_SHIP", waybillPrinted: "false" }, "package-management") : undefined,
+      key: "outbound-tracking",
+      label: "Get Tracking No",
+      tone: "info",
+      value: canViewOps ? formatNumber(queueMetrics.outbound.getTrackingNo) : "Restricted",
+      to: canViewOps ? buildDashboardLink("/outbound", { salesOrderStage: "GET_TRACKING_NO" }, "package-management") : undefined,
     },
   ];
 
@@ -268,17 +256,17 @@ export function DashboardPage() {
 
   const financeMetrics: DashboardQueueMetric[] = [
     {
-      key: "finance-deduction-review",
-      label: "Deduction pending review",
-      tone: "warning",
-      value: canViewFinance ? formatNumber(queueMetrics.finance.deductionPendingReview) : "Restricted",
-      to: canViewFinance ? buildDashboardLink("/finance", {}, "recharge-review") : undefined,
-    },
-    {
       key: "finance-recharge-review",
       label: "Recharge pending review",
       tone: "info",
       value: canViewFinance ? formatNumber(queueMetrics.finance.rechargePendingReview) : "Restricted",
+      to: canViewFinance ? buildDashboardLink("/finance", {}, "recharge-review") : undefined,
+    },
+    {
+      key: "finance-deduction-review",
+      label: "Deduction pending review",
+      tone: "warning",
+      value: canViewFinance ? formatNumber(queueMetrics.finance.deductionPendingReview) : "Restricted",
       to: canViewFinance ? buildDashboardLink("/finance", {}, "recharge-review") : undefined,
     },
     {
@@ -341,12 +329,9 @@ export function DashboardPage() {
     },
   ];
 
-  const panelOptions: { key: DashboardPanelKey; label: string; target: "main" | "right-rail" }[] = [
-    { key: "ops-summary", label: "Operational queues", target: "main" },
-    { key: "metrics", label: "Summary metrics", target: "main" },
-    { key: "queues", label: "Operations workbench", target: "main" },
-    { key: "alerts", label: "Exception watchlist", target: "right-rail" },
-    { key: "help", label: "Operator help", target: "right-rail" },
+  const panelOptions: { key: DashboardPanelKey; label: string }[] = [
+    { key: "ops-summary", label: "Operational queues" },
+    { key: "order-trends", label: "Order statistics" },
   ];
   const queueMetricsBySection = new Map(
     queueSections.map((section) => [section.key as DashboardQueueSectionKey, section.metrics.map((metric) => metric.key)]),
@@ -372,7 +357,6 @@ export function DashboardPage() {
     return {
       hiddenQueueMetricKeys: [...layoutPayload.hidden_queue_metric_keys],
       hiddenQueueSectionKeys: [...layoutPayload.hidden_queue_section_keys],
-      rightRailWidgetKeys: [...effectiveRightRailWidgetKeys],
       visibleWidgetKeys: [...effectiveVisibleWidgetKeys],
     };
   }
@@ -395,15 +379,8 @@ export function DashboardPage() {
     });
   }
 
-  function togglePanelInDraft(panelKey: DashboardPanelKey, target: "main" | "right-rail") {
+  function togglePanelInDraft(panelKey: DashboardPanelKey) {
     setCustomizationDraft((current) => {
-      if (target === "right-rail") {
-        return {
-          ...current,
-          rightRailWidgetKeys: toggleArrayItem(current.rightRailWidgetKeys, panelKey),
-        };
-      }
-
       const nextVisibleWidgetKeys = toggleArrayItem(current.visibleWidgetKeys, panelKey);
       return {
         ...current,
@@ -522,78 +499,29 @@ export function DashboardPage() {
         </Box>
       ) : null}
 
-      {visibleWidgets.has("metrics") ? (
-        <Grid container spacing={2.5}>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <MetricCard
-              helper={canViewOps ? `${formatNumber(visibleOnHand)} visible units in the current warehouse.` : "Requires an operations role."}
-              label="Visible on-hand"
-              to={canViewOps ? buildDashboardLink("/inventory") : undefined}
-              tone={canViewOps ? "success" : "neutral"}
-              value={canViewOps ? formatNumber(visibleOnHand) : "Restricted"}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <MetricCard
-              helper="Open supervisor approvals for count variances."
-              label="Pending approvals"
-              to={canViewOps ? buildDashboardLink("/counting", { approvalStatus: "PENDING" }, "variance-approvals") : undefined}
-              tone={canViewOps ? "warning" : "neutral"}
-              value={canViewOps ? approvalsSummaryQuery.data?.pending_count ?? "--" : "Restricted"}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <MetricCard
-              helper={canViewFinance ? `${invoicesQuery.data?.count ?? 0} invoices in finance scope.` : "Requires finance visibility."}
-              label="Finance invoices"
-              to={canViewFinance ? buildDashboardLink("/finance") : undefined}
-              tone={canViewFinance ? "info" : "neutral"}
-              value={canViewFinance ? invoicesQuery.data?.count ?? "--" : "Restricted"}
-            />
-          </Grid>
-        </Grid>
+      {visibleWidgets.has("order-trends") ? (
+        <DashboardOrderStatisticsCard
+          customDateFrom={customDateFrom}
+          customDateTo={customDateTo}
+          data={orderStatisticsQuery.data}
+          isLoading={orderStatisticsQuery.isLoading}
+          isRestricted={!canViewOps}
+          isSavingPreference={updateWorkbenchPreference.isPending}
+          onDateRangeApply={(dateFrom, dateTo) => {
+            updateWorkbenchPreference.mutate({
+              custom_date_from: dateFrom,
+              custom_date_to: dateTo,
+              time_window: "CUSTOM",
+            });
+          }}
+          onTimeWindowChange={(nextTimeWindow) => {
+            if (nextTimeWindow !== timeWindow) {
+              updateWorkbenchPreference.mutate({ time_window: nextTimeWindow });
+            }
+          }}
+          timeWindow={timeWindow}
+        />
       ) : null}
-
-      <Grid container spacing={2.5}>
-        <Grid size={{ xs: 12, xl: 8 }}>
-          <Stack spacing={2.5}>
-            {visibleWidgets.has("queues") ? (
-              <WorkbenchPanel title="Operations workbench">
-                <DashboardTable
-                  canViewFinance={canViewFinance}
-                  canViewOps={canViewOps}
-                  invoicesQuery={invoicesQuery}
-                  purchaseOrdersQuery={purchaseOrdersQuery}
-                  salesOrdersQuery={salesOrdersQuery}
-                />
-              </WorkbenchPanel>
-            ) : null}
-          </Stack>
-        </Grid>
-        <Grid size={{ xs: 12, xl: 4 }}>
-          <Stack spacing={2.5}>
-            {rightRailWidgets.has("alerts") ? (
-              <WorkbenchPanel title="Exception watchlist">
-                <Stack spacing={1}>
-                  <Chip label={`Approval SLA breaches: ${countingDashboardQuery.data?.pending_sla_breach_count ?? 0}`} variant="outlined" />
-                  <Chip label={`Recount SLA breaches: ${countingDashboardQuery.data?.recount_sla_breach_count ?? 0}`} variant="outlined" />
-                  <Chip label={`Loaded invoices: ${invoicesQuery.data?.count ?? 0}`} variant="outlined" />
-                </Stack>
-              </WorkbenchPanel>
-            ) : null}
-
-            {rightRailWidgets.has("help") ? (
-              <WorkbenchPanel title="Operator help">
-                <Stack spacing={1.5}>
-                  <Typography variant="body2">- Receive issues: verify ASN / PO first, then confirm lot and LPN state.</Typography>
-                  <Typography variant="body2">- Ship issues: clear short picks before closing dock-load verification.</Typography>
-                  <Typography variant="body2">- Access issues: managers can issue invites and resets from Security.</Typography>
-                </Stack>
-              </WorkbenchPanel>
-            ) : null}
-          </Stack>
-        </Grid>
-      </Grid>
 
       <Dialog fullWidth maxWidth="md" onClose={() => setIsCustomizeOpen(false)} open={isCustomizeOpen}>
         <DialogTitle>Customize dashboard</DialogTitle>
@@ -605,9 +533,7 @@ export function DashboardPage() {
               </Typography>
               <FormGroup>
                 {panelOptions.map((option) => {
-                  const checked = option.target === "main"
-                    ? customizationDraft.visibleWidgetKeys.includes(option.key)
-                    : customizationDraft.rightRailWidgetKeys.includes(option.key);
+                  const checked = customizationDraft.visibleWidgetKeys.includes(option.key);
 
                   return (
                     <FormControlLabel
@@ -615,7 +541,7 @@ export function DashboardPage() {
                         <Checkbox
                           checked={checked}
                           onChange={() => {
-                            togglePanelInDraft(option.key, option.target);
+                            togglePanelInDraft(option.key);
                           }}
                         />
                       }
@@ -740,7 +666,7 @@ export function DashboardPage() {
                   hidden_queue_metric_keys: hiddenMetricKeys,
                   hidden_queue_section_keys: hiddenQueueSectionKeys,
                 },
-                right_rail_widget_keys: customizationDraft.rightRailWidgetKeys,
+                right_rail_widget_keys: [],
                 visible_widget_keys: customizationDraft.visibleWidgetKeys,
               });
               setIsCustomizeOpen(false);

@@ -37,6 +37,7 @@ from apps.organizations.models import (
     OrganizationPasswordReset,
     OrganizationStaffProfile,
 )
+from apps.reporting.services.reporting_service import build_dashboard_order_statistics
 from apps.organizations.services.access_admin_service import (
     InviteCreateInput,
     InviteAcceptanceInput,
@@ -55,6 +56,7 @@ from apps.organizations.services.access_admin_service import (
     update_company_membership,
 )
 from apps.user_settings.services import get_workbench_setting, update_workbench_setting
+from apps.warehouse.models import Warehouse
 
 COMPATIBLE_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
 
@@ -803,3 +805,41 @@ class CompatibilityWorkbenchPreferenceAPIView(APIView):
             "create_time": _format_datetime(resolved_payload.get("create_time")),
             "update_time": _format_datetime(resolved_payload.get("update_time")),
         }
+
+
+class CompatibilityDashboardOrderStatisticsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        current_membership = _get_current_membership(request)
+        if current_membership is None:
+            return Response({"detail": "Authenticated membership not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        warehouse = self._get_warehouse(request=request, membership=current_membership)
+        payload = build_dashboard_order_statistics(
+            organization=current_membership.organization,
+            warehouse=warehouse,
+            time_window=request.query_params.get("time_window"),
+            date_from=request.query_params.get("date_from"),
+            date_to=request.query_params.get("date_to"),
+        )
+        return Response(payload)
+
+    def _get_warehouse(
+        self,
+        *,
+        request: Request,
+        membership: OrganizationMembership,
+    ) -> Warehouse | None:
+        raw_warehouse_id = str(request.query_params.get("warehouse") or "").strip()
+        if not raw_warehouse_id:
+            return None
+        try:
+            warehouse_id = int(raw_warehouse_id)
+        except ValueError:
+            return None
+
+        return Warehouse.objects.filter(
+            pk=warehouse_id,
+            organization=membership.organization,
+        ).first()
