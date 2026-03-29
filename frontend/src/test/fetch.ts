@@ -15,7 +15,61 @@ export function jsonResponse(body: unknown, init: ResponseInit = {}) {
   });
 }
 
+function toStringArray(value: unknown) {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+function parseJsonBody(init?: RequestInit) {
+  if (typeof init?.body !== "string") {
+    return {};
+  }
+
+  try {
+    return JSON.parse(init.body) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+}
+
+function buildWorkbenchPreferenceRecord(pageKey: string): {
+  id: number;
+  membership_id: number;
+  page_key: string;
+  time_window: string;
+  custom_date_from: string | null;
+  custom_date_to: string | null;
+  visible_widget_keys: string[];
+  right_rail_widget_keys: string[];
+  layout_payload: Record<string, unknown>;
+  create_time: string;
+  update_time: string;
+} {
+  return {
+    id: pageKey === "dashboard" ? 1 : 2,
+    membership_id: 1,
+    page_key: pageKey,
+    time_window: "WEEK",
+    custom_date_from: null,
+    custom_date_to: null,
+    visible_widget_keys: pageKey === "dashboard" ? ["ops-summary", "order-trends"] : [],
+    right_rail_widget_keys: [],
+    layout_payload:
+      pageKey === "dashboard"
+        ? {
+            hidden_widget_keys: [],
+            hidden_right_rail_widget_keys: [],
+            hidden_queue_section_keys: [],
+            hidden_queue_metric_keys: [],
+          }
+        : {},
+    create_time: "2026-03-15T00:00:00Z",
+    update_time: "2026-03-15T00:00:00Z",
+  };
+}
+
 export function installFetchMock(...handlers: FetchHandler[]) {
+  const workbenchPreferences = new Map<string, ReturnType<typeof buildWorkbenchPreferenceRecord>>();
+
   const mock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const rawUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
     const url = new URL(rawUrl, "http://localhost");
@@ -98,24 +152,38 @@ export function installFetchMock(...handlers: FetchHandler[]) {
       });
     }
     if (url.pathname === "/api/access/workbench-preferences/current/") {
-      return jsonResponse({
-        id: 1,
-        membership_id: 1,
-        page_key: "dashboard",
-        time_window: "WEEK",
-        custom_date_from: null,
-        custom_date_to: null,
-        visible_widget_keys: ["ops-summary", "order-trends"],
-        right_rail_widget_keys: [],
-        layout_payload: {
-          hidden_widget_keys: [],
-          hidden_right_rail_widget_keys: [],
-          hidden_queue_section_keys: [],
-          hidden_queue_metric_keys: [],
-        },
-        create_time: "2026-03-15T00:00:00Z",
-        update_time: "2026-03-15T00:00:00Z",
-      });
+      const body = parseJsonBody(init);
+      const pageKey =
+        (typeof body.page_key === "string" && body.page_key) ||
+        url.searchParams.get("page_key") ||
+        "dashboard";
+      const currentPreference = workbenchPreferences.get(pageKey) ?? buildWorkbenchPreferenceRecord(pageKey);
+
+      if (init?.method === "PATCH") {
+        const nextPreference = {
+          ...currentPreference,
+          ...body,
+          page_key: pageKey,
+          right_rail_widget_keys:
+            "right_rail_widget_keys" in body ? toStringArray(body.right_rail_widget_keys) : currentPreference.right_rail_widget_keys,
+          visible_widget_keys:
+            "visible_widget_keys" in body ? toStringArray(body.visible_widget_keys) : currentPreference.visible_widget_keys,
+          layout_payload:
+            body.layout_payload && typeof body.layout_payload === "object"
+              ? {
+                  ...currentPreference.layout_payload,
+                  ...body.layout_payload,
+                }
+              : currentPreference.layout_payload,
+          update_time: "2026-03-15T00:05:00Z",
+        };
+
+        workbenchPreferences.set(pageKey, nextPreference);
+        return jsonResponse(nextPreference);
+      }
+
+      workbenchPreferences.set(pageKey, currentPreference);
+      return jsonResponse(currentPreference);
     }
     if (url.pathname === "/api/dashboard/order-statistics/") {
       return jsonResponse({

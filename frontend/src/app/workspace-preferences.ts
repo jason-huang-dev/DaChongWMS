@@ -171,15 +171,16 @@ export function useWorkspaceTabs() {
   };
 }
 
-export function useWorkbenchPreference(pageKey: string) {
+export function useWorkbenchPreference(pageKey: string, options?: { enabled?: boolean }) {
   const queryClient = useQueryClient();
   const { activeMembershipId } = useTenantScope();
+  const enabled = options?.enabled ?? true;
   const queryKey = getWorkbenchPreferenceQueryKey(activeMembershipId, pageKey);
 
   const query = useQuery({
     queryKey,
     queryFn: () => fetchWorkbenchPreference(pageKey),
-    enabled: Boolean(activeMembershipId),
+    enabled: Boolean(activeMembershipId) && enabled,
   });
 
   const updateMutation = useMutation({

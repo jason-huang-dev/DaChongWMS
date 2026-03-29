@@ -135,3 +135,63 @@ class CompatibilityWorkbenchPreferencePersistenceTests(TestCase):
         )
         self.assertEqual(setting.payload["custom_date_from"], "2026-03-01T09:00")
         self.assertEqual(setting.payload["custom_date_to"], "2026-03-01T18:00")
+
+    def test_patch_persists_inventory_layout_payload_for_sidebar_and_hot_paths(self) -> None:
+        patch_response = self.client.patch(
+            reverse("compat-workbench-preference-current"),
+            {
+                "page_key": "inventory",
+                "layout_payload": {
+                    "sidebar_mode": "hidden",
+                    "quick_access_paths": ["/inventory", "/inventory/aging"],
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(patch_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            patch_response.data["layout_payload"],
+            {
+                "hidden_widget_keys": [],
+                "hidden_right_rail_widget_keys": [],
+                "hidden_queue_section_keys": [],
+                "hidden_queue_metric_keys": [],
+                "sidebar_mode": "hidden",
+                "quick_access_paths": ["/inventory", "/inventory/aging"],
+            },
+        )
+
+        setting = UserSetting.objects.get(
+            user=self.user,
+            membership=self.membership,
+            category="workbench",
+            setting_key="inventory",
+        )
+        self.assertEqual(
+            setting.payload,
+            {
+                "layout_payload": {
+                    "sidebar_mode": "hidden",
+                    "quick_access_paths": ["/inventory", "/inventory/aging"],
+                },
+            },
+        )
+
+        get_response = self.client.get(
+            reverse("compat-workbench-preference-current"),
+            {"page_key": "inventory"},
+        )
+
+        self.assertEqual(get_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            get_response.data["layout_payload"],
+            {
+                "hidden_widget_keys": [],
+                "hidden_right_rail_widget_keys": [],
+                "hidden_queue_section_keys": [],
+                "hidden_queue_metric_keys": [],
+                "sidebar_mode": "hidden",
+                "quick_access_paths": ["/inventory", "/inventory/aging"],
+            },
+        )

@@ -344,7 +344,7 @@ export function AppShell() {
         }}
       >
         <Stack spacing={0.75} sx={{ mb: 1.75 }}>
-          <Box sx={{ minWidth: 0, overflow: "hidden" }}>
+          <Box sx={{ minWidth: 0 }}>
             <RouteBreadcrumbs />
           </Box>
         </Stack>

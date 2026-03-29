@@ -1,10 +1,66 @@
-import { screen, waitFor } from "@testing-library/react";
-import { expect, test } from "vitest";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, test, vi } from "vitest";
 
 import { saveStoredSession } from "@/shared/storage/auth-storage";
+import { loadSessionRouteBreadcrumbs, persistSessionRouteBreadcrumbs } from "@/shared/storage/route-breadcrumb-storage";
 import { installFetchMock, jsonResponse } from "@/test/fetch";
 import { buildPaginatedResponse, buildStaffRecord } from "@/test/factories";
 import { renderWithRouter } from "@/test/render";
+
+function expectDocumentOrder(before: Element, after: Element) {
+  expect(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+}
+
+function installBreadcrumbMeasurementMocks(clientWidth = 1200) {
+  const clientWidthDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+  const innerWidthDescriptor = Object.getOwnPropertyDescriptor(window, "innerWidth");
+  const boundingRectSpy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+    const element = this as HTMLElement;
+    const text = element.getAttribute("data-breadcrumb-label") ?? element.textContent?.trim() ?? "";
+    const ariaLabel = element.getAttribute("aria-label") ?? "";
+    const baseWidth =
+      ariaLabel === "Show hidden visited pages" || text.startsWith("+") || text.startsWith("...+") ? 60 : Math.min(240, Math.max(88, text.length * 7));
+    const width = baseWidth + (element.querySelector(".breadcrumb-remove") ? 24 : 0);
+
+    return {
+      bottom: 24,
+      height: 24,
+      left: 0,
+      right: width,
+      top: 0,
+      width,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect;
+  });
+
+  Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+    configurable: true,
+    get() {
+      return clientWidth;
+    },
+  });
+  Object.defineProperty(window, "innerWidth", {
+    configurable: true,
+    value: clientWidth,
+  });
+
+  return () => {
+    boundingRectSpy.mockRestore();
+    if (clientWidthDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", clientWidthDescriptor);
+    } else {
+      Reflect.deleteProperty(HTMLElement.prototype, "clientWidth");
+    }
+    if (innerWidthDescriptor) {
+      Object.defineProperty(window, "innerWidth", innerWidthDescriptor);
+      return;
+    }
+    Reflect.deleteProperty(window, "innerWidth");
+  };
+}
 
 test("redirects anonymous users to the login page for protected routes", async () => {
   const { router } = renderWithRouter(["/dashboard"]);
@@ -65,7 +121,9 @@ test("redirects unauthorized users away from finance routes", async () => {
   expect(await screen.findByRole("heading", { name: "Not authorized" })).toBeInTheDocument();
 });
 
-test("renders the focused inventory workspace for authorized operators", async () => {
+test("renders the inventory workspace with breadcrumbs for authorized operators", async () => {
+  const restoreBreadcrumbMeasurements = installBreadcrumbMeasurementMocks();
+
   saveStoredSession({
     username: "manager",
     openid: "tenant-openid",
@@ -112,15 +170,29 @@ test("renders the focused inventory workspace for authorized operators", async (
     return undefined;
   });
 
-  renderWithRouter(["/inventory"]);
+  try {
+    renderWithRouter(["/inventory"]);
 
-  expect(await screen.findByText("Inventory operations")).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "Inventory Information" })).toBeInTheDocument();
-  expect(screen.queryByRole("heading", { name: "Stock Count" })).not.toBeInTheDocument();
-  expect((await screen.findAllByText("SKU-001")).length).toBeGreaterThan(0);
-  expect(screen.getAllByText("A-01-01").length).toBeGreaterThan(0);
-  expect(screen.getAllByText("Main WH").length).toBeGreaterThan(0);
-  expect(screen.getByRole("link", { name: "Stock Age Report" })).toHaveAttribute("href", "/inventory/aging");
+    const breadcrumb = await screen.findByRole("navigation", { name: "breadcrumb" });
+    const heading = await screen.findByRole("heading", { name: "Inventory Information" });
+
+    expect(screen.queryByText("Inventory operations")).not.toBeInTheDocument();
+    expect(heading).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Stock Count" })).not.toBeInTheDocument();
+    expect((await screen.findAllByText("SKU-001")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("A-01-01").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Main WH").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("navigation", { name: "Inventory quick access" })).not.toBeInTheDocument();
+    const currentBreadcrumbLink = within(breadcrumb).getByRole("link", { name: "Inventory information" });
+    expect(currentBreadcrumbLink).toHaveAttribute("href", "/inventory");
+    expect(currentBreadcrumbLink).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumb).queryByRole("link", { name: "Inventory" })).not.toBeInTheDocument();
+    expect(screen.queryByText("All inventory pages")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Hide inventory sidebar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Stock Age Report" })).toHaveAttribute("href", "/inventory/aging");
+  } finally {
+    restoreBreadcrumbMeasurements();
+  }
 });
 
 test("renders the inventory aging page inside the inventory workspace", async () => {
@@ -172,9 +244,237 @@ test("renders the inventory aging page inside the inventory workspace", async ()
 
   renderWithRouter(["/inventory/aging"]);
 
-  expect(await screen.findByText("Inventory operations")).toBeInTheDocument();
+  expect(screen.queryByText("Inventory operations")).not.toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "Stock Age Report" })).toBeInTheDocument();
   expect(screen.queryByRole("heading", { name: "Inventory Information" })).not.toBeInTheDocument();
+});
+
+test("persists visited pages in the breadcrumb row for quick return across the session", async () => {
+  const user = userEvent.setup();
+  const restoreBreadcrumbMeasurements = installBreadcrumbMeasurementMocks();
+
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/inventory/balances/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            location: 15,
+            location_code: "A-01-01",
+            goods: 101,
+            goods_code: "SKU-001",
+            stock_status: "AVAILABLE",
+            lot_number: "LOT-1",
+            serial_number: "",
+            on_hand_qty: "12.0000",
+            allocated_qty: "2.0000",
+            hold_qty: "1.0000",
+            available_qty: "9.0000",
+            unit_cost: "4.5000",
+            currency: "USD",
+            creator: "Route Tester",
+            last_movement_at: "2026-03-14T10:00:00Z",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:15:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/reporting/report-exports/") {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
+    return undefined;
+  });
+
+  try {
+    persistSessionRouteBreadcrumbs([{ href: "/dashboard", labelKey: "Dashboard" }]);
+    renderWithRouter(["/inventory"]);
+
+    const breadcrumb = await screen.findByRole("navigation", { name: "breadcrumb" });
+    const measurementLane = within(breadcrumb).getByTestId("route-breadcrumbs-measurements");
+
+    expect(within(breadcrumb).getAllByRole("link").map((link) => link.textContent)).toEqual(["Dashboard", "Inventory information"]);
+    expect(within(breadcrumb).getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
+    expect(within(breadcrumb).getByRole("link", { name: "Inventory information" })).toHaveAttribute("href", "/inventory");
+    expect(within(breadcrumb).getByRole("link", { name: "Inventory information" })).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumb).queryByRole("button", { name: "Show hidden visited pages" })).not.toBeInTheDocument();
+    expect(measurementLane).toHaveTextContent("Dashboard");
+    expect(measurementLane).toHaveTextContent("Inventory information");
+    expect(loadSessionRouteBreadcrumbs()).toEqual([
+      { href: "/dashboard", labelKey: "Dashboard" },
+      { href: "/inventory", labelKey: "Inventory information" },
+    ]);
+
+    await user.hover(within(screen.getByRole("navigation", { name: "breadcrumb" })).getByRole("link", { name: "Dashboard" }));
+    await user.click(screen.getByRole("button", { name: "Remove from quick access: Dashboard" }));
+
+    expect(within(screen.getByRole("navigation", { name: "breadcrumb" })).queryByRole("link", { name: "Dashboard" })).not.toBeInTheDocument();
+    expect(loadSessionRouteBreadcrumbs()).toEqual([{ href: "/inventory", labelKey: "Inventory information" }]);
+  } finally {
+    restoreBreadcrumbMeasurements();
+  }
+});
+
+test("shows persisted breadcrumb history when another visited page becomes active", async () => {
+  const user = userEvent.setup();
+  const restoreBreadcrumbMeasurements = installBreadcrumbMeasurementMocks();
+
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    return undefined;
+  });
+
+  try {
+    persistSessionRouteBreadcrumbs([
+      { href: "/dashboard", labelKey: "Dashboard" },
+      { href: "/inventory", labelKey: "Inventory information" },
+    ]);
+
+    renderWithRouter(["/dashboard"]);
+
+    expect(await screen.findByRole("button", { name: "Customize dashboard" })).toBeInTheDocument();
+    const breadcrumb = await screen.findByRole("navigation", { name: "breadcrumb" });
+
+    expect(within(breadcrumb).getAllByRole("link").map((link) => link.textContent)).toEqual(["Dashboard", "Inventory information"]);
+    expect(within(breadcrumb).getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
+    expect(within(breadcrumb).getByRole("link", { name: "Dashboard" })).toHaveAttribute("aria-current", "page");
+    expect(within(breadcrumb).getByRole("link", { name: "Inventory information" })).toHaveAttribute("href", "/inventory");
+    expect(loadSessionRouteBreadcrumbs()).toEqual([
+      { href: "/dashboard", labelKey: "Dashboard" },
+      { href: "/inventory", labelKey: "Inventory information" },
+    ]);
+
+    await user.hover(within(screen.getByRole("navigation", { name: "breadcrumb" })).getByRole("link", { name: "Inventory information" }));
+    await user.click(screen.getByRole("button", { name: "Remove from quick access: Inventory information" }));
+
+    expect(within(screen.getByRole("navigation", { name: "breadcrumb" })).queryByRole("link", { name: "Inventory information" })).not.toBeInTheDocument();
+    expect(loadSessionRouteBreadcrumbs()).toEqual([{ href: "/dashboard", labelKey: "Dashboard" }]);
+  } finally {
+    restoreBreadcrumbMeasurements();
+  }
+});
+
+test("collapses overflowing breadcrumb history into a hidden-pages trigger", async () => {
+  const user = userEvent.setup();
+  const recentEntries = [
+    { href: "/inventory", labelKey: "Inventory information" },
+    { href: "/dashboard", labelKey: "Dashboard" },
+    ...Array.from({ length: 10 }, (_, index) => ({
+      href: `/history-${index + 1}`,
+      labelKey: `Overflow history item ${index + 1} with a very long recent page label`,
+    })),
+  ];
+  const overflowEntry = recentEntries[recentEntries.length - 1];
+  const restoreBreadcrumbMeasurements = installBreadcrumbMeasurementMocks(860);
+
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/inventory/balances/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse: 1,
+            warehouse_name: "Main WH",
+            location: 15,
+            location_code: "A-01-01",
+            goods: 101,
+            goods_code: "SKU-001",
+            stock_status: "AVAILABLE",
+            lot_number: "LOT-1",
+            serial_number: "",
+            on_hand_qty: "12.0000",
+            allocated_qty: "2.0000",
+            hold_qty: "1.0000",
+            available_qty: "9.0000",
+            unit_cost: "4.5000",
+            currency: "USD",
+            creator: "Route Tester",
+            last_movement_at: "2026-03-14T10:00:00Z",
+            create_time: "2026-03-14 09:00:00",
+            update_time: "2026-03-14 09:15:00",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/reporting/report-exports/") {
+      return jsonResponse(buildPaginatedResponse([]));
+    }
+    return undefined;
+  });
+
+  persistSessionRouteBreadcrumbs(recentEntries);
+
+  try {
+    renderWithRouter(["/inventory"]);
+
+    const breadcrumb = await screen.findByRole("navigation", { name: "breadcrumb" });
+    const rail = within(breadcrumb).getByTestId("route-breadcrumbs-rail");
+    const measurementLane = within(breadcrumb).getByTestId("route-breadcrumbs-measurements");
+    const visibleLabels = within(breadcrumb).getAllByRole("link").map((link) => link.textContent ?? "");
+    const visibleLinks = within(breadcrumb).getAllByRole("link");
+    const overflowTrigger = within(breadcrumb).getByRole("button", { name: "Show hidden visited pages" });
+
+    expect(visibleLabels).toEqual([
+      "Inventory information",
+      "Dashboard",
+      "Overflow history item 1 with a very long recent page label",
+    ]);
+    expect(overflowTrigger).toHaveTextContent("...+9");
+    expect(within(breadcrumb).queryByRole("link", { name: overflowEntry.labelKey })).not.toBeInTheDocument();
+    expect(measurementLane).toHaveTextContent("Inventory information");
+    expect(measurementLane).toHaveTextContent("Dashboard");
+    expect(measurementLane).toHaveTextContent("...+9");
+    visibleLinks.forEach((link) => {
+      expectDocumentOrder(link, overflowTrigger);
+    });
+    expectDocumentOrder(visibleLinks[visibleLinks.length - 1]!, overflowTrigger);
+    expect(overflowTrigger.parentElement).toBe(rail);
+    expect(rail.lastElementChild).toBe(overflowTrigger);
+
+    await user.click(overflowTrigger);
+    expect(await screen.findByRole("menu", { name: "Recent pages" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: overflowEntry.labelKey })).toHaveAttribute("href", overflowEntry.href);
+    await user.click(screen.getByRole("button", { name: `Remove from recent pages: ${overflowEntry.labelKey}` }));
+
+    expect(loadSessionRouteBreadcrumbs()).toEqual(recentEntries.filter((entry) => entry.href !== overflowEntry.href));
+    expect(screen.queryByRole("link", { name: overflowEntry.labelKey })).not.toBeInTheDocument();
+  } finally {
+    restoreBreadcrumbMeasurements();
+  }
 });
 
 test("renders the MFA enrollment page for authenticated operators", async () => {
