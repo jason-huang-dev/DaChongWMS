@@ -7,6 +7,8 @@ from .views import (
     InventoryAdjustmentReasonListCreateAPIView,
     InventoryBalanceDetailAPIView,
     InventoryBalanceListAPIView,
+    InventoryInformationImportTemplateAPIView,
+    InventoryInformationImportUploadAPIView,
     InventoryHoldDetailAPIView,
     InventoryHoldListCreateAPIView,
     InventoryMovementDetailAPIView,
@@ -23,6 +25,16 @@ urlpatterns = [
         "organizations/<int:organization_id>/inventory/balances/<int:inventory_balance_id>/",
         InventoryBalanceDetailAPIView.as_view(),
         name="organization-inventory-balance-detail",
+    ),
+    path(
+        "organizations/<int:organization_id>/inventory/information-import-template/",
+        InventoryInformationImportTemplateAPIView.as_view(),
+        name="organization-inventory-information-import-template",
+    ),
+    path(
+        "organizations/<int:organization_id>/inventory/information-imports/upload/",
+        InventoryInformationImportUploadAPIView.as_view(),
+        name="organization-inventory-information-import-upload",
     ),
     path(
         "organizations/<int:organization_id>/inventory/movements/",
@@ -65,4 +77,3 @@ urlpatterns = [
         name="organization-inventory-adjustment-approval-rule-detail",
     ),
 ]
-

@@ -1,9 +1,15 @@
 import { apiPost } from "@/lib/http";
 import { reportingApi } from "@/features/reporting/model/api";
-import { inventoryApi } from "@/features/inventory/model/api";
+import {
+  fetchInventoryInformationImportTemplate,
+  inventoryApi,
+  uploadInventoryInformationWorkbook,
+} from "@/features/inventory/model/api";
+import { mapInventoryInformationImportResult } from "@/features/inventory/model/inventory-information";
 import type {
   InventoryAdjustmentValues,
   InventoryBalanceRecord,
+  InventoryInformationRow,
   InventoryMovementRecord,
   OperationalReportExportRecord,
 } from "@/features/inventory/model/types";
@@ -48,4 +54,35 @@ export function runInventoryAgingReportCreate(warehouseId: number | null) {
     report_type: "INVENTORY_AGING",
     warehouse: warehouseId,
   });
+}
+
+export async function runInventoryInformationTemplateDownload(organizationId: number) {
+  const blob = await fetchInventoryInformationImportTemplate(organizationId);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "inventory-information-template.xlsx";
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function runInventoryInformationWorkbookUpload(
+  organizationId: number,
+  file: File,
+  existingRows: Array<Pick<InventoryInformationRow, "merchantSku" | "shelf" | "merchantCode" | "customerCode">>,
+) {
+  const response = await uploadInventoryInformationWorkbook(
+    organizationId,
+    file,
+    JSON.stringify(
+      existingRows.map((row) => ({
+        merchant_sku: row.merchantSku,
+        shelf: row.shelf,
+        merchant_code: row.merchantCode,
+        customer_code: row.customerCode,
+      })),
+    ),
+  );
+
+  return mapInventoryInformationImportResult(response);
 }

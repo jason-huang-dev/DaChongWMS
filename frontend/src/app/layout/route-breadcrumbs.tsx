@@ -29,20 +29,14 @@ interface RenderableBreadcrumbEntry extends SessionRouteBreadcrumbEntry {
   label: string;
 }
 
-function buildRouteKey(pathname: string) {
-  const segment = pathname.split("/").filter(Boolean)[0];
-  return segment || "dashboard";
-}
-
-function buildRouteLabelKey(pathname: string, matches: ReturnType<typeof useMatches>) {
+function buildRouteLabelKey(matches: ReturnType<typeof useMatches>) {
   const lastLabeledMatch = [...matches].reverse().find((match) => typeof match.handle === "object" && match.handle && "crumb" in match.handle);
   const crumb = lastLabeledMatch?.handle && typeof lastLabeledMatch.handle === "object" ? (lastLabeledMatch.handle as RouteHandle).crumb : null;
   if (typeof crumb === "string" && crumb.trim()) {
     return crumb;
   }
 
-  const routeKey = buildRouteKey(pathname);
-  return routeKey.charAt(0).toUpperCase() + routeKey.slice(1);
+  return null;
 }
 
 function areSessionRouteBreadcrumbsEqual(left: SessionRouteBreadcrumbEntry[], right: SessionRouteBreadcrumbEntry[]) {
@@ -57,12 +51,17 @@ function buildMeasurementKey(entries: RenderableBreadcrumbEntry[]) {
   return entries.map((entry) => buildRenderableEntryMeasurementId(entry)).join("\u001f");
 }
 
-function useSessionRouteBreadcrumbHistory(currentEntry: SessionRouteBreadcrumbEntry) {
-  const [historyEntries, setHistoryEntries] = useState<SessionRouteBreadcrumbEntry[]>(() =>
-    recordSessionRouteBreadcrumb(loadSessionRouteBreadcrumbs(), currentEntry),
-  );
+function useSessionRouteBreadcrumbHistory(currentEntry: SessionRouteBreadcrumbEntry | null) {
+  const [historyEntries, setHistoryEntries] = useState<SessionRouteBreadcrumbEntry[]>(() => {
+    const storedEntries = loadSessionRouteBreadcrumbs();
+    return currentEntry ? recordSessionRouteBreadcrumb(storedEntries, currentEntry) : storedEntries;
+  });
 
   useEffect(() => {
+    if (!currentEntry) {
+      return;
+    }
+
     const nextEntries = recordSessionRouteBreadcrumb(loadSessionRouteBreadcrumbs(), currentEntry);
     persistSessionRouteBreadcrumbs(nextEntries);
     setHistoryEntries((previousEntries) => (areSessionRouteBreadcrumbsEqual(previousEntries, nextEntries) ? previousEntries : nextEntries));
@@ -88,12 +87,15 @@ export function RouteBreadcrumbs() {
   const { translateText } = useI18n();
   const location = useLocation();
   const matches = useMatches();
-  const currentLabelKey = buildRouteLabelKey(location.pathname, matches);
-  const currentEntry = useMemo<SessionRouteBreadcrumbEntry>(
-    () => ({
-      href: `${location.pathname}${location.search}${location.hash}`,
-      labelKey: currentLabelKey,
-    }),
+  const currentLabelKey = buildRouteLabelKey(matches);
+  const currentEntry = useMemo<SessionRouteBreadcrumbEntry | null>(
+    () =>
+      currentLabelKey
+        ? {
+            href: `${location.pathname}${location.search}${location.hash}`,
+            labelKey: currentLabelKey,
+          }
+        : null,
     [currentLabelKey, location.hash, location.pathname, location.search],
   );
   const { historyEntries, removeEntry } = useSessionRouteBreadcrumbHistory(currentEntry);
@@ -101,10 +103,10 @@ export function RouteBreadcrumbs() {
     () =>
       historyEntries.map((entry) => ({
         ...entry,
-        isCurrent: entry.href === currentEntry.href,
+        isCurrent: currentEntry != null && entry.href === currentEntry.href,
         label: translateText(entry.labelKey),
       })),
-    [currentEntry.href, historyEntries, translateText],
+    [currentEntry?.href, historyEntries, translateText],
   );
   const measurementKey = useMemo(() => buildMeasurementKey(renderedEntries), [renderedEntries]);
   const overflowCounts = useMemo(

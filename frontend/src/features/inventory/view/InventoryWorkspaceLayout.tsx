@@ -129,8 +129,6 @@ function InventorySidebar({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { translateText } = useI18n();
-  const activeItem = resolveInventoryWorkspaceItem(activePath);
-  const ActiveIcon = activeItem?.icon;
 
   return (
     <Box
@@ -156,26 +154,6 @@ function InventorySidebar({
         }}
       >
         <Stack alignItems="center" spacing={1}>
-          {activeItem && ActiveIcon ? (
-            <Tooltip enterDelay={200} placement="right" title={translateText(activeItem.label)}>
-              <Box
-                sx={{
-                  alignItems: "center",
-                  backgroundColor: alpha(brandColors.accent, isDark ? 0.2 : 0.12),
-                  border: `1px solid ${alpha(brandColors.accentStrong, isDark ? 0.36 : 0.22)}`,
-                  borderRadius: 3,
-                  boxShadow: `inset 0 0 0 1px ${alpha(brandColors.accent, 0.2)}`,
-                  color: theme.palette.text.primary,
-                  display: "inline-flex",
-                  height: 44,
-                  justifyContent: "center",
-                  width: 44,
-                }}
-              >
-                <ActiveIcon fontSize="small" />
-              </Box>
-            </Tooltip>
-          ) : null}
           <Stack
             aria-label="Inventory workspace pages"
             id={inventoryWorkspacePagesNavigationId}
@@ -199,43 +177,43 @@ function InventorySidebar({
                     size="small"
                     to={item.to}
                     sx={{
-                    backgroundColor: active
-                      ? alpha(brandColors.accent, isDark ? 0.18 : 0.12)
-                      : alpha(theme.palette.background.paper, isDark ? 0.44 : 0.72),
-                    border: `1px solid ${
-                      active
-                        ? alpha(brandColors.accentStrong, isDark ? 0.34 : 0.24)
-                        : alpha(theme.palette.divider, 0.86)
-                    }`,
-                    borderRadius: 2.75,
-                    boxShadow: active
-                      ? `inset 0 0 0 1px ${alpha(brandColors.accent, 0.2)}, ${isDark ? brandShadows.floatingDark : brandShadows.floatingLight}`
-                      : "none",
-                    color: active ? theme.palette.text.primary : alpha(theme.palette.text.primary, isDark ? 0.72 : 0.68),
-                    flex: { xs: "0 0 auto", md: "0 0 44px" },
-                    height: 44,
-                    transition: [
-                      `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
-                      `border-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
-                      `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
-                      `transform ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
-                    ].join(", "),
-                    width: 44,
-                    "&:hover": {
                       backgroundColor: active
-                        ? alpha(brandColors.accent, isDark ? 0.22 : 0.15)
-                        : alpha(theme.palette.background.paper, isDark ? 0.66 : 0.98),
-                      borderColor: alpha(active ? brandColors.accentStrong : theme.palette.text.primary, isDark ? 0.38 : 0.24),
-                      transform: "translateY(-1px)",
-                    },
-                    "&:active": {
-                      transform: "translateY(0)",
-                    },
-                  }}
-                >
-                  <Icon fontSize="small" />
-                </IconButton>
-              </Tooltip>
+                        ? alpha(brandColors.accent, isDark ? 0.18 : 0.12)
+                        : alpha(theme.palette.background.paper, isDark ? 0.44 : 0.72),
+                      border: `1px solid ${
+                        active
+                          ? alpha(brandColors.accentStrong, isDark ? 0.34 : 0.24)
+                          : alpha(theme.palette.divider, 0.86)
+                      }`,
+                      borderRadius: 2.75,
+                      boxShadow: active
+                        ? `inset 0 0 0 1px ${alpha(brandColors.accent, 0.2)}, ${isDark ? brandShadows.floatingDark : brandShadows.floatingLight}`
+                        : "none",
+                      color: active ? theme.palette.text.primary : alpha(theme.palette.text.primary, isDark ? 0.72 : 0.68),
+                      flex: { xs: "0 0 auto", md: "0 0 44px" },
+                      height: 44,
+                      transition: [
+                        `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                        `border-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                        `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
+                        `transform ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                      ].join(", "),
+                      width: 44,
+                      "&:hover": {
+                        backgroundColor: active
+                          ? alpha(brandColors.accent, isDark ? 0.22 : 0.15)
+                          : alpha(theme.palette.background.paper, isDark ? 0.66 : 0.98),
+                        borderColor: alpha(active ? brandColors.accentStrong : theme.palette.text.primary, isDark ? 0.38 : 0.24),
+                        transform: "translateY(-1px)",
+                      },
+                      "&:active": {
+                        transform: "translateY(0)",
+                      },
+                    }}
+                  >
+                    <Icon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
               );
             })}
           </Stack>

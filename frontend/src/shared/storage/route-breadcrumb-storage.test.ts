@@ -21,6 +21,24 @@ test("keeps the original access order when revisiting an existing breadcrumb", (
   expect(result).toEqual([buildEntry(1), buildEntry(2), buildEntry(3)]);
 });
 
+test("reuses the existing breadcrumb when only the search or hash changes", () => {
+  const entries = [{ href: "/dashboard?tab=overview", labelKey: "Dashboard" }];
+  const nextEntry = { href: "/dashboard#summary", labelKey: "Dashboard" };
+
+  const result = recordSessionRouteBreadcrumb(entries, nextEntry);
+
+  expect(result).toEqual([nextEntry]);
+});
+
+test("treats redirect aliases as the same breadcrumb path", () => {
+  const entries = [{ href: "/", labelKey: "Dashboard" }];
+  const nextEntry = { href: "/dashboard", labelKey: "Dashboard" };
+
+  const result = recordSessionRouteBreadcrumb(entries, nextEntry);
+
+  expect(result).toEqual([nextEntry]);
+});
+
 test("retains more than twelve recent pages before trimming at the session limit", () => {
   const firstTwelve = Array.from({ length: 12 }, (_, index) => buildEntry(index + 1));
 

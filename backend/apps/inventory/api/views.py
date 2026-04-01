@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from decimal import Decimal
+from django.http import HttpResponse
 
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.parsers import MultiPartParser
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -47,6 +49,12 @@ from apps.inventory.services.inventory_service import (
     update_inventory_adjustment_approval_rule,
     update_inventory_adjustment_reason,
     update_inventory_hold,
+)
+from apps.inventory.services.inventory_information_import_service import (
+    XLSX_CONTENT_TYPE,
+    build_inventory_information_template_workbook,
+    parse_existing_inventory_information_rows,
+    process_inventory_information_import,
 )
 from apps.locations.models import Location
 from apps.organizations.models import Organization
@@ -110,6 +118,39 @@ class InventoryBalanceDetailAPIView(OrganizationInventoryBaseAPIView):
             organization=self.organization,
         )
         return Response(InventoryBalanceSerializer(balance).data)
+
+
+class InventoryInformationImportTemplateAPIView(OrganizationInventoryBaseAPIView):
+    permission_classes = [CanViewInventory]
+
+    def get(self, request: Request, *args: object, **kwargs: object) -> HttpResponse:
+        workbook = build_inventory_information_template_workbook()
+        response = HttpResponse(
+            workbook,
+            content_type=XLSX_CONTENT_TYPE,
+        )
+        response["Content-Disposition"] = 'attachment; filename="inventory-information-template.xlsx"'
+        return response
+
+
+class InventoryInformationImportUploadAPIView(OrganizationInventoryBaseAPIView):
+    parser_classes = [MultiPartParser]
+
+    def get_permissions(self) -> list[object]:
+        return [CanManageInventoryRecords()]
+
+    def post(self, request: Request, *args: object, **kwargs: object) -> Response:
+        workbook_file = request.FILES.get("file")
+        if workbook_file is None:
+            return Response({"detail": "Upload file is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing_rows = parse_existing_inventory_information_rows(request.data.get("existing_rows"))
+        result = process_inventory_information_import(
+            organization=self.organization,
+            workbook_file=workbook_file,
+            existing_rows=existing_rows,
+        )
+        return Response(result.as_dict(), status=status.HTTP_200_OK)
 
 
 class InventoryMovementListCreateAPIView(OrganizationInventoryBaseAPIView):
@@ -402,4 +443,3 @@ class InventoryAdjustmentApprovalRuleDetailAPIView(OrganizationInventoryBaseAPIV
             notes=serializer.validated_data.get("notes"),
         )
         return Response(InventoryAdjustmentApprovalRuleSerializer(updated).data)
-

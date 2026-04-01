@@ -84,6 +84,8 @@ export function installFetchMock(...handlers: FetchHandler[]) {
     }
     if (
       /^\/api\/v1\/organizations\/\d+\/customer-accounts\/$/.test(url.pathname) ||
+      /^\/api\/v1\/organizations\/\d+\/products\/$/.test(url.pathname) ||
+      /^\/api\/v1\/organizations\/\d+\/products\/\d+\/distribution-products\/$/.test(url.pathname) ||
       /^\/api\/v1\/organizations\/\d+\/warehouses\/$/.test(url.pathname) ||
       /^\/api\/v1\/organizations\/\d+\/fees\/[^/]+\/$/.test(url.pathname)
     ) {

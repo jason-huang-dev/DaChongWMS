@@ -210,6 +210,130 @@ def _upsert_location(
     return location
 
 
+def _upsert_customer_account(
+    *,
+    summary: DemoSeedSummary,
+    organization: Organization,
+    code: str,
+    name: str,
+    contact_name: str,
+    contact_email: str,
+    contact_phone: str,
+    billing_email: str,
+    shipping_method: str,
+    notes: str,
+) -> CustomerAccount:
+    customer_account, created = CustomerAccount.objects.update_or_create(
+        organization=organization,
+        code=code,
+        defaults={
+            "name": name,
+            "contact_name": contact_name,
+            "contact_email": contact_email,
+            "contact_phone": contact_phone,
+            "billing_email": billing_email,
+            "shipping_method": shipping_method,
+            "allow_dropshipping_orders": True,
+            "allow_inbound_goods": True,
+            "notes": notes,
+            "is_active": True,
+        },
+    )
+    _bump(summary, "customer_accounts", created)
+    return customer_account
+
+
+def _upsert_product(
+    *,
+    summary: DemoSeedSummary,
+    organization: Organization,
+    sku: str,
+    name: str,
+    barcode: str,
+    unit_of_measure: str,
+    category: str,
+    brand: str,
+    description: str,
+) -> Product:
+    product, created = Product.objects.update_or_create(
+        organization=organization,
+        sku=sku,
+        defaults={
+            "name": name,
+            "barcode": barcode,
+            "unit_of_measure": unit_of_measure,
+            "category": category,
+            "brand": brand,
+            "description": description,
+            "is_active": True,
+        },
+    )
+    _bump(summary, "products", created)
+    return product
+
+
+def _upsert_distribution_product(
+    *,
+    summary: DemoSeedSummary,
+    product: Product,
+    customer_account: CustomerAccount,
+    external_sku: str,
+    external_name: str,
+    channel_name: str,
+) -> DistributionProduct:
+    distribution_product, created = DistributionProduct.objects.update_or_create(
+        product=product,
+        customer_account=customer_account,
+        external_sku=external_sku,
+        defaults={
+            "external_name": external_name,
+            "channel_name": channel_name,
+            "allow_dropshipping_orders": True,
+            "allow_inbound_goods": True,
+            "is_active": True,
+        },
+    )
+    _bump(summary, "products", created)
+    return distribution_product
+
+
+def _upsert_inventory_balance(
+    *,
+    summary: DemoSeedSummary,
+    organization: Organization,
+    warehouse: Warehouse,
+    location: Location,
+    product: Product,
+    stock_status: str,
+    lot_number: str,
+    on_hand_qty: Decimal,
+    allocated_qty: Decimal,
+    hold_qty: Decimal,
+    unit_cost: Decimal,
+    currency: str,
+    last_movement_at,
+) -> InventoryBalance:
+    inventory_balance, created = InventoryBalance.objects.update_or_create(
+        organization=organization,
+        warehouse=warehouse,
+        location=location,
+        product=product,
+        stock_status=stock_status,
+        lot_number=lot_number,
+        serial_number="",
+        defaults={
+            "on_hand_qty": on_hand_qty,
+            "allocated_qty": allocated_qty,
+            "hold_qty": hold_qty,
+            "unit_cost": unit_cost,
+            "currency": currency,
+            "last_movement_at": last_movement_at,
+        },
+    )
+    _bump(summary, "inventory", created)
+    return inventory_balance
+
+
 @transaction.atomic
 def seed_demo_workspace(
     *,
@@ -238,52 +362,109 @@ def seed_demo_workspace(
         "reporting": 0,
     }
 
-    customer_account, created = CustomerAccount.objects.update_or_create(
+    customer_account = _upsert_customer_account(
+        summary=summary,
         organization=organization,
         code="DEMO-CLIENT",
-        defaults={
-            "name": "Demo Client Account",
-            "contact_name": "Ava Chen",
-            "contact_email": "ops@demo-client.test",
-            "contact_phone": "555-0100",
-            "billing_email": "billing@demo-client.test",
-            "shipping_method": "YunExpress Standard",
-            "allow_dropshipping_orders": True,
-            "allow_inbound_goods": True,
-            "notes": "Seeded client account for the development workspace.",
-            "is_active": True,
-        },
+        name="Demo Client Account",
+        contact_name="Ava Chen",
+        contact_email="ops@demo-client.test",
+        contact_phone="555-0100",
+        billing_email="billing@demo-client.test",
+        shipping_method="YunExpress Standard",
+        notes="Seeded client account for the development workspace.",
     )
-    _bump(summary, "customer_accounts", created)
+    retail_partner_account = _upsert_customer_account(
+        summary=summary,
+        organization=organization,
+        code="NOVA-RETAIL",
+        name="Nova Retail Group",
+        contact_name="Mina Park",
+        contact_email="ops@nova-retail.test",
+        contact_phone="555-0104",
+        billing_email="ap@nova-retail.test",
+        shipping_method="Air parcel",
+        notes="Seeded marketplace client account for multi-client inventory demos.",
+    )
+    wholesale_account = _upsert_customer_account(
+        summary=summary,
+        organization=organization,
+        code="TRAIL-MART",
+        name="TrailMart Wholesale",
+        contact_name="Luis Ortega",
+        contact_email="inbound@trailmart.test",
+        contact_phone="555-0105",
+        billing_email="finance@trailmart.test",
+        shipping_method="LTL freight",
+        notes="Seeded wholesale client account for open inbound and outbound inventory demos.",
+    )
 
-    product, created = Product.objects.update_or_create(
+    product = _upsert_product(
+        summary=summary,
         organization=organization,
         sku="SKU-DEMO-001",
-        defaults={
-            "name": "Demo Multi-Channel Widget",
-            "barcode": "BC-DEMO-001",
-            "unit_of_measure": "EA",
-            "category": "Electronics",
-            "brand": "DaChong",
-            "description": "Seeded product used across inbound, outbound, returns, and finance demos.",
-            "is_active": True,
-        },
+        name="Demo Multi-Channel Widget",
+        barcode="BC-DEMO-001",
+        unit_of_measure="EA",
+        category="Electronics",
+        brand="DaChong",
+        description="Seeded product used across inbound, outbound, returns, and finance demos.",
     )
-    _bump(summary, "products", created)
+    insulated_bottle = _upsert_product(
+        summary=summary,
+        organization=organization,
+        sku="SKU-DEMO-002",
+        name="AeroSip Insulated Bottle",
+        barcode="BC-DEMO-002",
+        unit_of_measure="EA",
+        category="Home",
+        brand="Northstar",
+        description="Seeded product with active client demand, quarantine stock, and inbound replenishment.",
+    )
+    trail_light = _upsert_product(
+        summary=summary,
+        organization=organization,
+        sku="SKU-DEMO-003",
+        name="TrailLight Headlamp",
+        barcode="BC-DEMO-003",
+        unit_of_measure="EA",
+        category="Outdoor",
+        brand="Summit",
+        description="Seeded product used to demonstrate pending inbound, allocated outbound, and multi-shelf inventory.",
+    )
 
-    distribution_product, created = DistributionProduct.objects.update_or_create(
+    _upsert_distribution_product(
+        summary=summary,
         product=product,
         customer_account=customer_account,
         external_sku="CLIENT-SKU-001",
-        defaults={
-            "external_name": "Demo Client Widget",
-            "channel_name": "Shopify",
-            "allow_dropshipping_orders": True,
-            "allow_inbound_goods": True,
-            "is_active": True,
-        },
+        external_name="Demo Client Widget",
+        channel_name="Shopify",
     )
-    _bump(summary, "products", created)
+    _upsert_distribution_product(
+        summary=summary,
+        product=insulated_bottle,
+        customer_account=retail_partner_account,
+        external_sku="NOVA-BOTTLE-20OZ",
+        external_name="Nova AeroSip Bottle",
+        channel_name="TikTok Shop",
+    )
+    _upsert_distribution_product(
+        summary=summary,
+        product=insulated_bottle,
+        customer_account=customer_account,
+        external_sku="CLIENT-BOTTLE-20OZ",
+        external_name="Demo Client Bottle",
+        channel_name="Shopify",
+    )
+    _upsert_distribution_product(
+        summary=summary,
+        product=trail_light,
+        customer_account=wholesale_account,
+        external_sku="TRAIL-HEADLAMP-PRO",
+        external_name="TrailLight Pro Headlamp",
+        channel_name="Wholesale EDI",
+    )
 
     serial_config, created = ProductSerialConfig.objects.update_or_create(
         product=product,
@@ -519,43 +700,113 @@ def seed_demo_workspace(
         quarantine_location.status = LocationStatus.BLOCKED
         quarantine_location.save(update_fields=["is_locked", "status"])
 
-    storage_balance, created = InventoryBalance.objects.update_or_create(
+    storage_balance = _upsert_inventory_balance(
+        summary=summary,
         organization=organization,
         warehouse=warehouse,
         location=storage_location,
         product=product,
         stock_status=InventoryStatus.AVAILABLE,
         lot_number="LOT-DEMO-001",
-        serial_number="",
-        defaults={
-            "on_hand_qty": TWENTY_FOUR_QUANTITY,
-            "allocated_qty": THREE_QUANTITY,
-            "hold_qty": ONE_QUANTITY,
-            "unit_cost": Decimal("6.5000"),
-            "currency": "USD",
-            "last_movement_at": now - timedelta(days=1),
-        },
+        on_hand_qty=TWENTY_FOUR_QUANTITY,
+        allocated_qty=THREE_QUANTITY,
+        hold_qty=ONE_QUANTITY,
+        unit_cost=Decimal("6.5000"),
+        currency="USD",
+        last_movement_at=now - timedelta(days=1),
     )
-    _bump(summary, "inventory", created)
 
-    picking_balance, created = InventoryBalance.objects.update_or_create(
+    picking_balance = _upsert_inventory_balance(
+        summary=summary,
         organization=organization,
         warehouse=warehouse,
         location=picking_location,
         product=product,
         stock_status=InventoryStatus.AVAILABLE,
         lot_number="LOT-DEMO-001",
-        serial_number="",
-        defaults={
-            "on_hand_qty": SIX_QUANTITY,
-            "allocated_qty": ONE_QUANTITY,
-            "hold_qty": ZERO_QUANTITY,
-            "unit_cost": Decimal("6.5000"),
-            "currency": "USD",
-            "last_movement_at": now - timedelta(hours=12),
-        },
+        on_hand_qty=SIX_QUANTITY,
+        allocated_qty=ONE_QUANTITY,
+        hold_qty=ZERO_QUANTITY,
+        unit_cost=Decimal("6.5000"),
+        currency="USD",
+        last_movement_at=now - timedelta(hours=12),
     )
-    _bump(summary, "inventory", created)
+
+    bottle_storage_balance = _upsert_inventory_balance(
+        summary=summary,
+        organization=organization,
+        warehouse=warehouse,
+        location=storage_location,
+        product=insulated_bottle,
+        stock_status=InventoryStatus.AVAILABLE,
+        lot_number="LOT-DEMO-002",
+        on_hand_qty=Decimal("18.0000"),
+        allocated_qty=Decimal("4.0000"),
+        hold_qty=Decimal("2.0000"),
+        unit_cost=Decimal("8.2500"),
+        currency="USD",
+        last_movement_at=now - timedelta(hours=18),
+    )
+    bottle_picking_balance = _upsert_inventory_balance(
+        summary=summary,
+        organization=organization,
+        warehouse=warehouse,
+        location=picking_location,
+        product=insulated_bottle,
+        stock_status=InventoryStatus.AVAILABLE,
+        lot_number="LOT-DEMO-002",
+        on_hand_qty=Decimal("5.0000"),
+        allocated_qty=Decimal("1.0000"),
+        hold_qty=ZERO_QUANTITY,
+        unit_cost=Decimal("8.2500"),
+        currency="USD",
+        last_movement_at=now - timedelta(hours=6),
+    )
+    bottle_quarantine_balance = _upsert_inventory_balance(
+        summary=summary,
+        organization=organization,
+        warehouse=warehouse,
+        location=quarantine_location,
+        product=insulated_bottle,
+        stock_status=InventoryStatus.DAMAGED,
+        lot_number="LOT-DEMO-002-QC",
+        on_hand_qty=Decimal("3.0000"),
+        allocated_qty=ZERO_QUANTITY,
+        hold_qty=ZERO_QUANTITY,
+        unit_cost=Decimal("8.2500"),
+        currency="USD",
+        last_movement_at=now - timedelta(hours=4),
+    )
+    trail_storage_balance = _upsert_inventory_balance(
+        summary=summary,
+        organization=organization,
+        warehouse=warehouse,
+        location=storage_location,
+        product=trail_light,
+        stock_status=InventoryStatus.AVAILABLE,
+        lot_number="LOT-DEMO-003",
+        on_hand_qty=Decimal("14.0000"),
+        allocated_qty=ZERO_QUANTITY,
+        hold_qty=ZERO_QUANTITY,
+        unit_cost=Decimal("11.7500"),
+        currency="USD",
+        last_movement_at=now - timedelta(hours=20),
+    )
+    trail_picking_balance = _upsert_inventory_balance(
+        summary=summary,
+        organization=organization,
+        warehouse=warehouse,
+        location=picking_location,
+        product=trail_light,
+        stock_status=InventoryStatus.AVAILABLE,
+        lot_number="LOT-DEMO-003",
+        on_hand_qty=Decimal("8.0000"),
+        allocated_qty=Decimal("2.0000"),
+        hold_qty=ZERO_QUANTITY,
+        unit_cost=Decimal("11.7500"),
+        currency="USD",
+        last_movement_at=now - timedelta(hours=9),
+    )
 
     opening_movement, created = InventoryMovement.objects.update_or_create(
         organization=organization,
@@ -1187,6 +1438,78 @@ def seed_demo_workspace(
     )
     _bump(summary, "inbound", created)
 
+    bottle_purchase_order, created = PurchaseOrder.objects.update_or_create(
+        organization=organization,
+        po_number="PO-DEMO-003",
+        defaults={
+            "warehouse": warehouse,
+            "customer_account": retail_partner_account,
+            "order_type": OperationOrderType.STANDARD,
+            "customer_code": retail_partner_account.code,
+            "customer_name": retail_partner_account.name,
+            "supplier_code": "SUP-NOVA",
+            "supplier_name": "Nova Housewares",
+            "supplier_contact_name": "Inbound Planner",
+            "supplier_contact_phone": "555-0106",
+            "expected_arrival_date": today + timedelta(days=2),
+            "reference_code": "INB-DEMO-BOTTLE",
+            "status": PurchaseOrderStatus.OPEN,
+            "notes": "Seeded replenishment order for insulated bottle inventory demos.",
+        },
+    )
+    _bump(summary, "inbound", created)
+
+    bottle_purchase_order_line, created = PurchaseOrderLine.objects.update_or_create(
+        purchase_order=bottle_purchase_order,
+        line_number=1,
+        defaults={
+            "organization": organization,
+            "product": insulated_bottle,
+            "ordered_qty": Decimal("18.0000"),
+            "received_qty": Decimal("6.0000"),
+            "unit_cost": Decimal("7.8500"),
+            "stock_status": InventoryStatus.AVAILABLE,
+            "status": PurchaseOrderLineStatus.PARTIAL,
+        },
+    )
+    _bump(summary, "inbound", created)
+
+    trail_purchase_order, created = PurchaseOrder.objects.update_or_create(
+        organization=organization,
+        po_number="PO-DEMO-004",
+        defaults={
+            "warehouse": warehouse,
+            "customer_account": wholesale_account,
+            "order_type": OperationOrderType.B2B,
+            "customer_code": wholesale_account.code,
+            "customer_name": wholesale_account.name,
+            "supplier_code": "SUP-TRAIL",
+            "supplier_name": "Summit Outdoor Supply",
+            "supplier_contact_name": "Allocations Desk",
+            "supplier_contact_phone": "555-0107",
+            "expected_arrival_date": today + timedelta(days=4),
+            "reference_code": "INB-DEMO-HEADLAMP",
+            "status": PurchaseOrderStatus.OPEN,
+            "notes": "Seeded inbound headlamp order to populate pending receival filters.",
+        },
+    )
+    _bump(summary, "inbound", created)
+
+    trail_purchase_order_line, created = PurchaseOrderLine.objects.update_or_create(
+        purchase_order=trail_purchase_order,
+        line_number=1,
+        defaults={
+            "organization": organization,
+            "product": trail_light,
+            "ordered_qty": Decimal("15.0000"),
+            "received_qty": ZERO_QUANTITY,
+            "unit_cost": Decimal("10.9500"),
+            "stock_status": InventoryStatus.AVAILABLE,
+            "status": PurchaseOrderLineStatus.OPEN,
+        },
+    )
+    _bump(summary, "inbound", created)
+
     dropship_order, created = SalesOrder.objects.update_or_create(
         organization=organization,
         order_number="SO-DEMO-001",
@@ -1320,6 +1643,207 @@ def seed_demo_workspace(
             "status": SalesOrderLineStatus.OPEN,
         },
     )
+
+    bottle_order, created = SalesOrder.objects.update_or_create(
+        organization=organization,
+        order_number="SO-DEMO-003",
+        defaults={
+            "warehouse": warehouse,
+            "customer_account": retail_partner_account,
+            "staging_location": shipping_location,
+            "order_type": OperationOrderType.STANDARD,
+            "order_time": now - timedelta(hours=4),
+            "requested_ship_date": today + timedelta(days=1),
+            "expires_at": now + timedelta(days=3),
+            "reference_code": "NOVA-2001",
+            "status": SalesOrderStatus.OPEN,
+            "fulfillment_stage": SalesOrderFulfillmentStage.IN_PROCESS,
+            "exception_state": SalesOrderExceptionState.NORMAL,
+            "customer_code": retail_partner_account.code,
+            "customer_name": retail_partner_account.name,
+            "customer_contact_name": retail_partner_account.contact_name,
+            "customer_contact_email": retail_partner_account.contact_email,
+            "customer_contact_phone": retail_partner_account.contact_phone,
+            "package_count": 2,
+            "package_type": "Carton",
+            "package_weight": Decimal("4.8000"),
+            "package_length": Decimal("38.0000"),
+            "package_width": Decimal("26.0000"),
+            "package_height": Decimal("24.0000"),
+            "package_volume": Decimal("0.0237"),
+            "logistics_provider": "YUNEXPRESS",
+            "shipping_method": "Standard",
+            "tracking_number": "",
+            "waybill_number": "",
+            "waybill_printed": False,
+            "deliverer_name": "Demo Deliverer",
+            "deliverer_phone": "555-0117",
+            "receiver_name": "Nova Retail Fulfillment",
+            "receiver_phone": "555-0118",
+            "receiver_country": "US",
+            "receiver_state": "TX",
+            "receiver_city": "Austin",
+            "receiver_address": "250 Commerce Boulevard",
+            "receiver_postal_code": "78701",
+            "picking_started_at": None,
+            "picking_completed_at": None,
+            "packed_at": None,
+            "exception_notes": "",
+            "notes": "Seeded open bottle order for client filter demos.",
+        },
+    )
+    _bump(summary, "outbound", created)
+
+    bottle_order_line, created = SalesOrderLine.objects.update_or_create(
+        sales_order=bottle_order,
+        line_number=1,
+        defaults={
+            "organization": organization,
+            "product": insulated_bottle,
+            "ordered_qty": Decimal("6.0000"),
+            "allocated_qty": Decimal("6.0000"),
+            "picked_qty": ZERO_QUANTITY,
+            "shipped_qty": ZERO_QUANTITY,
+            "unit_price": Decimal("22.0000"),
+            "stock_status": InventoryStatus.AVAILABLE,
+            "status": SalesOrderLineStatus.ALLOCATED,
+        },
+    )
+    _bump(summary, "outbound", created)
+
+    bottle_restock_order, created = SalesOrder.objects.update_or_create(
+        organization=organization,
+        order_number="SO-DEMO-004",
+        defaults={
+            "warehouse": warehouse,
+            "customer_account": customer_account,
+            "staging_location": shipping_location,
+            "order_type": OperationOrderType.B2B,
+            "order_time": now - timedelta(hours=3),
+            "requested_ship_date": today + timedelta(days=2),
+            "expires_at": now + timedelta(days=6),
+            "reference_code": "CLIENT-RESTOCK-01",
+            "status": SalesOrderStatus.OPEN,
+            "fulfillment_stage": SalesOrderFulfillmentStage.GET_TRACKING_NO,
+            "exception_state": SalesOrderExceptionState.NORMAL,
+            "customer_code": customer_account.code,
+            "customer_name": customer_account.name,
+            "customer_contact_name": customer_account.contact_name,
+            "customer_contact_email": customer_account.contact_email,
+            "customer_contact_phone": customer_account.contact_phone,
+            "package_count": 1,
+            "package_type": "Master carton",
+            "package_weight": Decimal("5.2000"),
+            "package_length": Decimal("40.0000"),
+            "package_width": Decimal("30.0000"),
+            "package_height": Decimal("28.0000"),
+            "package_volume": Decimal("0.0336"),
+            "logistics_provider": "YUNEXPRESS",
+            "shipping_method": "B2B Linehaul",
+            "tracking_number": "",
+            "waybill_number": "",
+            "waybill_printed": False,
+            "deliverer_name": "Linehaul Partner",
+            "deliverer_phone": "555-0119",
+            "receiver_name": "Demo Client Replenishment",
+            "receiver_phone": "555-0120",
+            "receiver_country": "US",
+            "receiver_state": "CA",
+            "receiver_city": "Los Angeles",
+            "receiver_address": "88 Harbor Drive",
+            "receiver_postal_code": "90012",
+            "picking_started_at": None,
+            "picking_completed_at": None,
+            "packed_at": None,
+            "exception_notes": "",
+            "notes": "Seeded second active bottle order so one SKU shows multiple clients.",
+        },
+    )
+    _bump(summary, "outbound", created)
+
+    bottle_restock_order_line, created = SalesOrderLine.objects.update_or_create(
+        sales_order=bottle_restock_order,
+        line_number=1,
+        defaults={
+            "organization": organization,
+            "product": insulated_bottle,
+            "ordered_qty": Decimal("2.0000"),
+            "allocated_qty": Decimal("2.0000"),
+            "picked_qty": ZERO_QUANTITY,
+            "shipped_qty": ZERO_QUANTITY,
+            "unit_price": Decimal("21.2500"),
+            "stock_status": InventoryStatus.AVAILABLE,
+            "status": SalesOrderLineStatus.ALLOCATED,
+        },
+    )
+    _bump(summary, "outbound", created)
+
+    trail_order, created = SalesOrder.objects.update_or_create(
+        organization=organization,
+        order_number="SO-DEMO-005",
+        defaults={
+            "warehouse": warehouse,
+            "customer_account": wholesale_account,
+            "staging_location": shipping_location,
+            "order_type": OperationOrderType.B2B,
+            "order_time": now - timedelta(hours=2),
+            "requested_ship_date": today + timedelta(days=2),
+            "expires_at": now + timedelta(days=7),
+            "reference_code": "TRAIL-ALLOC-01",
+            "status": SalesOrderStatus.OPEN,
+            "fulfillment_stage": SalesOrderFulfillmentStage.GET_TRACKING_NO,
+            "exception_state": SalesOrderExceptionState.NORMAL,
+            "customer_code": wholesale_account.code,
+            "customer_name": wholesale_account.name,
+            "customer_contact_name": wholesale_account.contact_name,
+            "customer_contact_email": wholesale_account.contact_email,
+            "customer_contact_phone": wholesale_account.contact_phone,
+            "package_count": 1,
+            "package_type": "Carton",
+            "package_weight": Decimal("3.4000"),
+            "package_length": Decimal("32.0000"),
+            "package_width": Decimal("24.0000"),
+            "package_height": Decimal("18.0000"),
+            "package_volume": Decimal("0.0138"),
+            "logistics_provider": "YUNEXPRESS",
+            "shipping_method": "Freight consolidation",
+            "tracking_number": "",
+            "waybill_number": "",
+            "waybill_printed": False,
+            "deliverer_name": "Wholesale Carrier",
+            "deliverer_phone": "555-0121",
+            "receiver_name": "TrailMart Regional Hub",
+            "receiver_phone": "555-0122",
+            "receiver_country": "US",
+            "receiver_state": "CO",
+            "receiver_city": "Denver",
+            "receiver_address": "75 Outdoor Park",
+            "receiver_postal_code": "80202",
+            "picking_started_at": None,
+            "picking_completed_at": None,
+            "packed_at": None,
+            "exception_notes": "",
+            "notes": "Seeded open headlamp order for allocated inventory demos.",
+        },
+    )
+    _bump(summary, "outbound", created)
+
+    trail_order_line, created = SalesOrderLine.objects.update_or_create(
+        sales_order=trail_order,
+        line_number=1,
+        defaults={
+            "organization": organization,
+            "product": trail_light,
+            "ordered_qty": Decimal("4.0000"),
+            "allocated_qty": Decimal("4.0000"),
+            "picked_qty": ZERO_QUANTITY,
+            "shipped_qty": ZERO_QUANTITY,
+            "unit_price": Decimal("29.5000"),
+            "stock_status": InventoryStatus.AVAILABLE,
+            "status": SalesOrderLineStatus.ALLOCATED,
+        },
+    )
+    _bump(summary, "outbound", created)
 
     pick_task, created = PickTask.objects.update_or_create(
         organization=organization,
@@ -2373,12 +2897,44 @@ def seed_demo_workspace(
         defaults={
             "generated_at": now,
             "generated_by": operator_name,
-            "on_hand_qty": storage_balance.on_hand_qty + picking_balance.on_hand_qty,
-            "available_qty": storage_balance.available_qty + picking_balance.available_qty,
-            "allocated_qty": storage_balance.allocated_qty + picking_balance.allocated_qty,
-            "hold_qty": storage_balance.hold_qty + picking_balance.hold_qty,
-            "open_purchase_orders": 2,
-            "open_sales_orders": 2,
+            "on_hand_qty": (
+                storage_balance.on_hand_qty
+                + picking_balance.on_hand_qty
+                + bottle_storage_balance.on_hand_qty
+                + bottle_picking_balance.on_hand_qty
+                + bottle_quarantine_balance.on_hand_qty
+                + trail_storage_balance.on_hand_qty
+                + trail_picking_balance.on_hand_qty
+            ),
+            "available_qty": (
+                storage_balance.available_qty
+                + picking_balance.available_qty
+                + bottle_storage_balance.available_qty
+                + bottle_picking_balance.available_qty
+                + bottle_quarantine_balance.available_qty
+                + trail_storage_balance.available_qty
+                + trail_picking_balance.available_qty
+            ),
+            "allocated_qty": (
+                storage_balance.allocated_qty
+                + picking_balance.allocated_qty
+                + bottle_storage_balance.allocated_qty
+                + bottle_picking_balance.allocated_qty
+                + bottle_quarantine_balance.allocated_qty
+                + trail_storage_balance.allocated_qty
+                + trail_picking_balance.allocated_qty
+            ),
+            "hold_qty": (
+                storage_balance.hold_qty
+                + picking_balance.hold_qty
+                + bottle_storage_balance.hold_qty
+                + bottle_picking_balance.hold_qty
+                + bottle_quarantine_balance.hold_qty
+                + trail_storage_balance.hold_qty
+                + trail_picking_balance.hold_qty
+            ),
+            "open_purchase_orders": 4,
+            "open_sales_orders": 5,
             "open_putaway_tasks": 1,
             "open_pick_tasks": 1,
             "pending_count_approvals": 1,
@@ -2398,10 +2954,16 @@ def seed_demo_workspace(
             "date_from": today - timedelta(days=30),
             "date_to": today,
             "parameters": {"warehouse_id": warehouse.id, "stock_status": InventoryStatus.AVAILABLE},
-            "row_count": 1,
+            "row_count": 4,
             "generated_at": now,
             "generated_by": operator_name,
-            "content": "sku,location,on_hand_qty\nSKU-DEMO-001,STO-01,24.0000\n",
+            "content": (
+                "sku,location,on_hand_qty\n"
+                "SKU-DEMO-001,STO-01,24.0000\n"
+                "SKU-DEMO-002,STO-01,18.0000\n"
+                "SKU-DEMO-002,QUA-01,3.0000\n"
+                "SKU-DEMO-003,STO-01,14.0000\n"
+            ),
         },
     )
     _bump(summary, "reporting", created)
@@ -2413,14 +2975,14 @@ def seed_demo_workspace(
         defaults={
             "generated_at": now - timedelta(days=1),
             "generated_by": operator_name,
-            "on_hand_qty": Decimal("28.0000"),
-            "available_qty": Decimal("23.0000"),
-            "allocated_qty": Decimal("3.0000"),
-            "hold_qty": Decimal("2.0000"),
-            "open_purchase_orders": 1,
-            "open_sales_orders": 3,
+            "on_hand_qty": Decimal("72.0000"),
+            "available_qty": Decimal("58.0000"),
+            "allocated_qty": Decimal("10.0000"),
+            "hold_qty": Decimal("4.0000"),
+            "open_purchase_orders": 3,
+            "open_sales_orders": 4,
             "open_putaway_tasks": 1,
-            "open_pick_tasks": 2,
+            "open_pick_tasks": 1,
             "pending_count_approvals": 0,
             "pending_return_orders": 0,
         },

@@ -4,6 +4,7 @@ import { expect, test, vi } from "vitest";
 
 import { saveStoredSession } from "@/shared/storage/auth-storage";
 import { loadSessionRouteBreadcrumbs, persistSessionRouteBreadcrumbs } from "@/shared/storage/route-breadcrumb-storage";
+import type { LocationRecord } from "@/shared/types/domain";
 import { installFetchMock, jsonResponse } from "@/test/fetch";
 import { buildPaginatedResponse, buildStaffRecord } from "@/test/factories";
 import { renderWithRouter } from "@/test/render";
@@ -59,6 +60,37 @@ function installBreadcrumbMeasurementMocks(clientWidth = 1200) {
       return;
     }
     Reflect.deleteProperty(window, "innerWidth");
+  };
+}
+
+function buildLocationRecord(overrides: Partial<LocationRecord> = {}): LocationRecord {
+  return {
+    id: 15,
+    warehouse: 1,
+    warehouse_name: "Main WH",
+    zone: 7,
+    zone_code: "STOR",
+    location_type: 3,
+    location_type_code: "STORAGE",
+    location_code: "A-01-01",
+    location_name: "Storage Rack A-01-01",
+    aisle: "A",
+    bay: "01",
+    level: "01",
+    slot: "01",
+    barcode: "A-01-01",
+    capacity_qty: "100",
+    max_weight: "0",
+    max_volume: "0",
+    pick_sequence: 1,
+    is_pick_face: false,
+    is_locked: false,
+    status: "ACTIVE",
+    creator: "Route Tester",
+    openid: "tenant-openid",
+    create_time: "2026-03-14 09:00:00",
+    update_time: "2026-03-14 09:15:00",
+    ...overrides,
   };
 }
 
@@ -123,6 +155,7 @@ test("redirects unauthorized users away from finance routes", async () => {
 
 test("renders the inventory workspace with breadcrumbs for authorized operators", async () => {
   const restoreBreadcrumbMeasurements = installBreadcrumbMeasurementMocks();
+  const user = userEvent.setup();
 
   saveStoredSession({
     username: "manager",
@@ -164,6 +197,9 @@ test("renders the inventory workspace with breadcrumbs for authorized operators"
         ]),
       );
     }
+    if (url.pathname === "/api/locations/") {
+      return jsonResponse(buildPaginatedResponse([buildLocationRecord()]));
+    }
     if (url.pathname === "/api/reporting/report-exports/") {
       return jsonResponse(buildPaginatedResponse([]));
     }
@@ -174,14 +210,27 @@ test("renders the inventory workspace with breadcrumbs for authorized operators"
     renderWithRouter(["/inventory"]);
 
     const breadcrumb = await screen.findByRole("navigation", { name: "breadcrumb" });
-    const heading = await screen.findByRole("heading", { name: "Inventory Information" });
 
     expect(screen.queryByText("Inventory operations")).not.toBeInTheDocument();
-    expect(heading).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Inventory Information" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Stock Count" })).not.toBeInTheDocument();
     expect((await screen.findAllByText("SKU-001")).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("A-01-01").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Main WH").length).toBeGreaterThan(0);
+    expect(screen.getByRole("textbox", { name: "Search inventory" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Warehouses" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Tags" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Clients" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "SKU" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Min inventory count" })).toBeInTheDocument();
+    expect(screen.getByRole("spinbutton", { name: "Max inventory count" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Export queried rows" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Download template" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Import XLSX" })).toBeInTheDocument();
+    const checkboxes = screen.getAllByRole("checkbox");
+    expect(checkboxes.length).toBeGreaterThanOrEqual(2);
+    await user.click(checkboxes[1]);
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Export selected rows" })).toHaveLength(2);
     expect(screen.queryByRole("navigation", { name: "Inventory quick access" })).not.toBeInTheDocument();
     const currentBreadcrumbLink = within(breadcrumb).getByRole("link", { name: "Inventory information" });
     expect(currentBreadcrumbLink).toHaveAttribute("href", "/inventory");
@@ -190,6 +239,41 @@ test("renders the inventory workspace with breadcrumbs for authorized operators"
     expect(screen.queryByText("All inventory pages")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Hide inventory sidebar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Stock Age Report" })).toHaveAttribute("href", "/inventory/aging");
+  } finally {
+    restoreBreadcrumbMeasurements();
+  }
+});
+
+test("records the dashboard breadcrumb only once when the root route redirects there", async () => {
+  const restoreBreadcrumbMeasurements = installBreadcrumbMeasurementMocks();
+
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    return undefined;
+  });
+
+  try {
+    const { router } = renderWithRouter(["/"]);
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/dashboard");
+    });
+
+    expect(await screen.findByRole("button", { name: "Customize dashboard" })).toBeInTheDocument();
+    const breadcrumb = await screen.findByRole("navigation", { name: "breadcrumb" });
+
+    expect(within(breadcrumb).getAllByRole("link").map((link) => link.textContent)).toEqual(["Dashboard"]);
+    expect(loadSessionRouteBreadcrumbs()).toEqual([{ href: "/dashboard", labelKey: "Dashboard" }]);
   } finally {
     restoreBreadcrumbMeasurements();
   }
@@ -235,6 +319,9 @@ test("renders the inventory aging page inside the inventory workspace", async ()
           },
         ]),
       );
+    }
+    if (url.pathname === "/api/locations/") {
+      return jsonResponse(buildPaginatedResponse([buildLocationRecord()]));
     }
     if (url.pathname === "/api/reporting/report-exports/") {
       return jsonResponse(buildPaginatedResponse([]));
@@ -292,6 +379,9 @@ test("persists visited pages in the breadcrumb row for quick return across the s
           },
         ]),
       );
+    }
+    if (url.pathname === "/api/locations/") {
+      return jsonResponse(buildPaginatedResponse([buildLocationRecord()]));
     }
     if (url.pathname === "/api/reporting/report-exports/") {
       return jsonResponse(buildPaginatedResponse([]));

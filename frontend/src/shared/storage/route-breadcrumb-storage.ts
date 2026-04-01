@@ -5,6 +5,10 @@ export interface SessionRouteBreadcrumbEntry {
 
 const storageKey = "dachongwms.route-breadcrumbs";
 export const maxSessionRouteBreadcrumbEntries = 100;
+const redirectPathAliases = new Map<string, string>([
+  ["/", "/dashboard"],
+  ["/inventory/balances", "/inventory"],
+]);
 
 function canUseSessionStorage() {
   return typeof window !== "undefined" && typeof window.sessionStorage !== "undefined";
@@ -46,18 +50,32 @@ export function persistSessionRouteBreadcrumbs(entries: SessionRouteBreadcrumbEn
   window.sessionStorage.setItem(storageKey, JSON.stringify(normalizeSessionRouteBreadcrumbs(entries)));
 }
 
+function buildSessionRouteBreadcrumbPathKey(href: string) {
+  try {
+    const url = new URL(href, "https://dachongwms.local");
+    const normalizedPathname = url.pathname !== "/" ? url.pathname.replace(/\/+$/, "") : url.pathname;
+    return redirectPathAliases.get(normalizedPathname) ?? normalizedPathname;
+  } catch {
+    const [rawPathname = "/"] = href.split(/[?#]/u);
+    const normalizedPathname = rawPathname === "/" ? rawPathname : rawPathname.replace(/\/+$/, "") || "/";
+    return redirectPathAliases.get(normalizedPathname) ?? normalizedPathname;
+  }
+}
+
 function normalizeSessionRouteBreadcrumbs(entries: SessionRouteBreadcrumbEntry[]) {
-  const seenHrefs = new Set<string>();
+  const entryIndexesByPathKey = new Map<string, number>();
   const normalizedEntries: SessionRouteBreadcrumbEntry[] = [];
 
   for (const entry of entries) {
-    if (seenHrefs.has(entry.href)) {
+    const pathKey = buildSessionRouteBreadcrumbPathKey(entry.href);
+    const existingIndex = entryIndexesByPathKey.get(pathKey);
+    if (existingIndex === undefined) {
+      entryIndexesByPathKey.set(pathKey, normalizedEntries.length);
+      normalizedEntries.push(entry);
       continue;
     }
 
-    seenHrefs.add(entry.href);
-    normalizedEntries.push(entry);
-
+    normalizedEntries[existingIndex] = entry;
   }
 
   return normalizedEntries.slice(-maxSessionRouteBreadcrumbEntries);
@@ -67,7 +85,8 @@ export function recordSessionRouteBreadcrumb(
   entries: SessionRouteBreadcrumbEntry[],
   nextEntry: SessionRouteBreadcrumbEntry,
 ) {
-  const existingIndex = entries.findIndex((entry) => entry.href === nextEntry.href);
+  const nextPathKey = buildSessionRouteBreadcrumbPathKey(nextEntry.href);
+  const existingIndex = entries.findIndex((entry) => buildSessionRouteBreadcrumbPathKey(entry.href) === nextPathKey);
   if (existingIndex === -1) {
     return normalizeSessionRouteBreadcrumbs([...entries, nextEntry]);
   }
@@ -78,5 +97,6 @@ export function recordSessionRouteBreadcrumb(
 }
 
 export function removeSessionRouteBreadcrumb(entries: SessionRouteBreadcrumbEntry[], href: string) {
-  return entries.filter((entry) => entry.href !== href);
+  const removedPathKey = buildSessionRouteBreadcrumbPathKey(href);
+  return entries.filter((entry) => buildSessionRouteBreadcrumbPathKey(entry.href) !== removedPathKey);
 }

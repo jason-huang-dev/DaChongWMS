@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import { Alert, Button, Chip, Stack, Typography } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
+
 interface BulkActionDescriptor {
   key: string;
   label: string;
@@ -28,6 +30,8 @@ export function BulkActionBar({
   errorMessage,
   extraControls,
 }: BulkActionBarProps) {
+  const { t, translateText } = useI18n();
+
   if (selectedCount <= 0) {
     return null;
   }
@@ -42,17 +46,17 @@ export function BulkActionBar({
         spacing={1.5}
       >
         <Stack spacing={0.5}>
-          <Chip color="primary" label={`${selectedCount} selected`} size="small" />
+          <Chip color="primary" label={t("bulk.selectedCount", { count: selectedCount })} size="small" />
           {helperText ? (
             <Typography color="text.secondary" variant="body2">
-              {helperText}
+              {translateText(helperText)}
             </Typography>
           ) : null}
         </Stack>
         <Stack alignItems={{ md: "center" }} direction={{ xs: "column", md: "row" }} spacing={1}>
           {extraControls}
           <Button color="inherit" onClick={onClear} size="small">
-            Clear selection
+            {translateText("Clear selection")}
           </Button>
           {actions.map((action) => (
             <Button
@@ -63,7 +67,7 @@ export function BulkActionBar({
               size="small"
               variant={action.variant ?? "contained"}
             >
-              {action.label}
+              {translateText(action.label)}
             </Button>
           ))}
         </Stack>

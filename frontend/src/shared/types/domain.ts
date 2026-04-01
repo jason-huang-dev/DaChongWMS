@@ -325,6 +325,8 @@ export interface PurchaseOrderRecord {
   warehouse_name: string;
   supplier: number;
   supplier_name: string;
+  customer_code?: string;
+  customer_name?: string;
   order_type?: string;
   po_number: string;
   expected_arrival_date: string | null;
@@ -493,6 +495,7 @@ export interface SalesOrderRecord {
   warehouse: number;
   warehouse_name: string;
   customer: number;
+  customer_code?: string;
   customer_name: string;
   staging_location: number;
   staging_location_code: string;
