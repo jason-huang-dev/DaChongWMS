@@ -1,33 +1,47 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
+  Alert,
   Autocomplete,
   Box,
+  Card,
+  CardContent,
   Checkbox,
+  Chip,
+  CircularProgress,
   Dialog,
   DialogContent,
   IconButton,
   InputAdornment,
   Stack,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TableSortLabel,
   TextField,
   Tooltip,
   Typography,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
+import { brandColors, brandMotion } from "@/app/brand";
 import { useI18n } from "@/app/ui-preferences";
 import {
   decodeInventoryInformationMultiValue,
   encodeInventoryInformationMultiValue,
 } from "@/features/inventory/model/inventory-information";
 import type { InventoryInformationRow, InventoryInformationSortKey } from "@/features/inventory/model/types";
-import { ResourceTable, type ResourceTableRowSelection } from "@/shared/components/resource-table";
+import type { ResourceTableRowSelection } from "@/shared/components/resource-table";
 import type { DataViewFilters, UseDataViewResult } from "@/shared/hooks/use-data-view";
-import { formatNumber } from "@/shared/utils/format";
+import { formatDateTime, formatNumber, formatStatusLabel } from "@/shared/utils/format";
 
 export interface InventoryInformationFilters extends DataViewFilters {
   query: string;
@@ -37,7 +51,10 @@ export interface InventoryInformationFilters extends DataViewFilters {
   merchantSkus: string;
   inventoryCountMin: string;
   inventoryCountMax: string;
+  hideZeroStock: string;
 }
+
+const selectionColumnWidth = 44;
 
 export interface InventoryInformationFilterOption {
   value: string;
@@ -46,29 +63,6 @@ export interface InventoryInformationFilterOption {
 
 function renderValue(value: string) {
   return value || "--";
-}
-
-function InventoryClientInfoCell({ row }: { row: InventoryInformationRow }) {
-  const theme = useTheme();
-  const client = row.clients[0] ?? null;
-
-  if (!client) {
-    return "--";
-  }
-
-  return (
-    <Typography
-      sx={{
-        color: theme.palette.mode === "dark" ? theme.palette.common.white : theme.palette.common.black,
-        fontWeight: 700,
-        lineHeight: 1.3,
-        whiteSpace: "nowrap",
-      }}
-      variant="body2"
-    >
-      {client.label}
-    </Typography>
-  );
 }
 
 function buildProductThumbnailLabel(row: InventoryInformationRow) {
@@ -89,8 +83,22 @@ function buildProductThumbnailLabel(row: InventoryInformationRow) {
   return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
 }
 
-function renderProductDetail(label: string, value: string, separator: string) {
-  return (
+function renderProductDetail({
+  copied,
+  label,
+  onCopy,
+  separator,
+  tooltipLabel,
+  value,
+}: {
+  copied: boolean;
+  label: string;
+  onCopy?: (() => void) | undefined;
+  separator: string;
+  tooltipLabel: string;
+  value: string;
+}) {
+  const content = (
     <Box
       sx={{
         alignItems: "baseline",
@@ -118,12 +126,23 @@ function renderProductDetail(label: string, value: string, separator: string) {
       <Typography
         component="span"
         sx={(theme) => ({
-          color: theme.palette.mode === "dark" ? theme.palette.common.white : theme.palette.common.black,
+          color: copied
+            ? theme.palette.success.main
+            : theme.palette.mode === "dark"
+              ? theme.palette.common.white
+              : theme.palette.common.black,
           fontSize: theme.typography.body2.fontSize,
           fontWeight: 800,
           lineHeight: 1.2,
-          overflowWrap: "normal",
+          overflow: "hidden",
+          textDecoration: onCopy ? "underline dotted transparent" : "none",
+          textUnderlineOffset: "0.14em",
+          textOverflow: "ellipsis",
+          transition: theme.transitions.create(["color", "text-decoration-color"], {
+            duration: theme.transitions.duration.shorter,
+          }),
           whiteSpace: "nowrap",
+          width: "100%",
         })}
         variant="body2"
       >
@@ -131,15 +150,96 @@ function renderProductDetail(label: string, value: string, separator: string) {
       </Typography>
     </Box>
   );
+
+  if (!onCopy || !value) {
+    return content;
+  }
+
+  return (
+    <Tooltip enterDelay={120} placement="top" title={tooltipLabel}>
+      <Box
+        component="button"
+        onClick={onCopy}
+        sx={{
+          appearance: "none",
+          background: "transparent",
+          border: 0,
+          color: "inherit",
+          cursor: "copy",
+          display: "block",
+          m: 0,
+          minWidth: 0,
+          p: 0,
+          textAlign: "left",
+          width: "100%",
+          "&:hover .inventory-product-copy-value, &:focus-visible .inventory-product-copy-value": {
+            textDecorationColor: "currentColor",
+          },
+        }}
+        type="button"
+      >
+        <Box
+          className="inventory-product-copy-value"
+          sx={{
+            minWidth: 0,
+            width: "100%",
+          }}
+        >
+          {content}
+        </Box>
+      </Box>
+    </Tooltip>
+  );
+}
+
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.left = "-9999px";
+  textarea.style.position = "fixed";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
 }
 
 function InventoryProductInfoCell({ row }: { row: InventoryInformationRow }) {
   const theme = useTheme();
   const { locale, translateText } = useI18n();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const copyResetTimeoutRef = useRef<number | null>(null);
   const primaryMerchantCode = row.merchantCode;
   const thumbnailLabel = buildProductThumbnailLabel(row);
   const detailSeparator = locale === "zh-CN" ? "：" : ":";
+  const defaultCopyTooltipLabel = translateText("Click to copy");
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimeoutRef.current !== null) {
+        window.clearTimeout(copyResetTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopyProductField = async (fieldKey: string, fieldValue: string) => {
+    await copyTextToClipboard(fieldValue);
+    setCopiedField(fieldKey);
+    if (copyResetTimeoutRef.current !== null) {
+      window.clearTimeout(copyResetTimeoutRef.current);
+    }
+    copyResetTimeoutRef.current = window.setTimeout(() => {
+      setCopiedField(null);
+      copyResetTimeoutRef.current = null;
+    }, 1500);
+  };
 
   return (
     <Box
@@ -214,10 +314,54 @@ function InventoryProductInfoCell({ row }: { row: InventoryInformationRow }) {
           width: "100%",
         }}
       >
-        {renderProductDetail(translateText("Code"), primaryMerchantCode, detailSeparator)}
-        {renderProductDetail(translateText("SKU"), row.merchantSku, detailSeparator)}
-        {renderProductDetail(translateText("Barcode"), row.productBarcode, detailSeparator)}
-        {renderProductDetail(translateText("Name"), row.productName || row.merchantSku, detailSeparator)}
+        {renderProductDetail({
+          copied: copiedField === "merchantCode",
+          label: translateText("Code"),
+          onCopy: primaryMerchantCode
+            ? () => {
+                void handleCopyProductField("merchantCode", primaryMerchantCode);
+              }
+            : undefined,
+          separator: detailSeparator,
+          tooltipLabel: copiedField === "merchantCode" ? translateText("Copied") : defaultCopyTooltipLabel,
+          value: primaryMerchantCode,
+        })}
+        {renderProductDetail({
+          copied: copiedField === "merchantSku",
+          label: translateText("SKU"),
+          onCopy: row.merchantSku
+            ? () => {
+                void handleCopyProductField("merchantSku", row.merchantSku);
+              }
+            : undefined,
+          separator: detailSeparator,
+          tooltipLabel: copiedField === "merchantSku" ? translateText("Copied") : defaultCopyTooltipLabel,
+          value: row.merchantSku,
+        })}
+        {renderProductDetail({
+          copied: copiedField === "productBarcode",
+          label: translateText("Barcode"),
+          onCopy: row.productBarcode
+            ? () => {
+                void handleCopyProductField("productBarcode", row.productBarcode);
+              }
+            : undefined,
+          separator: detailSeparator,
+          tooltipLabel: copiedField === "productBarcode" ? translateText("Copied") : defaultCopyTooltipLabel,
+          value: row.productBarcode,
+        })}
+        {renderProductDetail({
+          copied: copiedField === "productName",
+          label: translateText("Name"),
+          onCopy: row.productName || row.merchantSku
+            ? () => {
+                void handleCopyProductField("productName", row.productName || row.merchantSku);
+              }
+            : undefined,
+          separator: detailSeparator,
+          tooltipLabel: copiedField === "productName" ? translateText("Copied") : defaultCopyTooltipLabel,
+          value: row.productName || row.merchantSku,
+        })}
       </Box>
       <Dialog onClose={() => setIsPreviewOpen(false)} open={isPreviewOpen}>
         <DialogContent
@@ -269,151 +413,165 @@ function InventoryProductInfoCell({ row }: { row: InventoryInformationRow }) {
   );
 }
 
-function buildInventoryInformationColumns(locale: "en" | "zh-CN") {
-  const widths =
-    locale === "en"
-      ? {
-          productInfo: "19%",
-          warehouse: "7%",
-          clientInfo: "14%",
-          inTransit: "6.5%",
-          pendingReceival: "9.5%",
-          toList: "6%",
-          orderAllocated: "9.5%",
-          availableStock: "8%",
-          defectiveProducts: "8%",
-          totalInventory: "7%",
-        }
-      : {
-          productInfo: "20%",
-          warehouse: "8%",
-          clientInfo: "14.5%",
-          inTransit: "6.25%",
-          pendingReceival: "8.5%",
-          toList: "5.75%",
-          orderAllocated: "8.5%",
-          availableStock: "7.5%",
-          defectiveProducts: "7.5%",
-          totalInventory: "6.5%",
-        };
+interface InventoryInformationColumnDefinition {
+  key: string;
+  header: string;
+  align?: "left" | "right" | "center";
+  minWidth?: number;
+  sortKey?: InventoryInformationSortKey;
+  width?: number | string;
+  render: (row: InventoryInformationRow) => ReactNode;
+}
 
+function buildInventoryInformationClientLabel(row: InventoryInformationRow) {
+  if (row.clients.length === 0) {
+    return "--";
+  }
+
+  return row.clients.map((client) => client.label).join(", ");
+}
+
+function buildInventoryInformationStatusLabel(row: InventoryInformationRow) {
+  const statuses = row.stockStatuses.filter(Boolean);
+  if (statuses.length > 0) {
+    return statuses.map((status) => formatStatusLabel(status)).join(", ");
+  }
+  return formatStatusLabel(row.stockStatus);
+}
+
+function buildInventoryInformationListedLabel(listingTime: string) {
+  if (!listingTime) {
+    return "--";
+  }
+  return listingTime.includes("T") ? formatDateTime(listingTime) : listingTime;
+}
+
+function InventoryInformationNumericCell({ value }: { value: number }) {
+  return (
+    <Typography sx={{ fontWeight: 700 }} variant="body2">
+      {formatNumber(value)}
+    </Typography>
+  );
+}
+
+function InventoryInformationShelfCell({ row }: { row: InventoryInformationRow }) {
+  const primaryShelf = row.shelf || row.shelves[0] || "--";
+  const secondaryShelves = row.shelves.filter((shelf) => shelf && shelf !== primaryShelf);
+
+  return (
+    <Stack spacing={0.3} sx={{ minWidth: 0 }}>
+      <Typography sx={{ fontWeight: 700, overflowWrap: "anywhere" }} variant="body2">
+        {primaryShelf}
+      </Typography>
+      {secondaryShelves.length > 0 ? (
+        <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="caption">
+          {secondaryShelves.join(", ")}
+        </Typography>
+      ) : null}
+    </Stack>
+  );
+}
+
+function InventoryInformationMetaField({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  const { translateText } = useI18n();
+
+  return (
+    <Typography sx={{ lineHeight: 1.35 }} variant="body2">
+      <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
+        {translateText(label)}:
+      </Box>{" "}
+      <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
+        {value || "--"}
+      </Box>
+    </Typography>
+  );
+}
+
+function buildInventoryInformationColumns(): InventoryInformationColumnDefinition[] {
   return [
     {
       header: "Product Info",
-      headerAlign: "center" as const,
       key: "productInfo",
-      minWidth: locale === "en" ? 228 : 236,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 260,
       sortKey: "merchantSku",
-      width: widths.productInfo,
-      render: (row: InventoryInformationRow) => <InventoryProductInfoCell row={row} />,
+      width: "24%",
+      render: (row) => <InventoryProductInfoCell row={row} />,
     },
     {
-      header: "Warehouse",
-      headerAlign: "center" as const,
-      key: "warehouse",
-      minWidth: locale === "en" ? 92 : 100,
-      nowrap: true,
-      wrapHeader: true,
-      sortKey: "warehouseName",
-      width: widths.warehouse,
-      render: (row: InventoryInformationRow) => renderValue(row.warehouseName),
+      header: "Shelf",
+      key: "shelf",
+      minWidth: 116,
+      width: "12%",
+      render: (row) => <InventoryInformationShelfCell row={row} />,
     },
     {
-      header: "Client Info",
-      headerAlign: "center" as const,
-      key: "clientInfo",
-      minWidth: locale === "en" ? 160 : 172,
-      nowrap: true,
-      wrapHeader: true,
-      sortKey: "client",
-      width: widths.clientInfo,
-      render: (row: InventoryInformationRow) => <InventoryClientInfoCell row={row} />,
-    },
-    {
+      align: "center",
       header: "In Transit",
       key: "inTransit",
-      align: "center" as const,
-      headerAlign: "center" as const,
-      fitContent: true,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 86,
       sortKey: "inTransit",
-      width: widths.inTransit,
-      render: (row: InventoryInformationRow) => formatNumber(row.inTransit),
+      width: "7%",
+      render: (row) => <InventoryInformationNumericCell value={row.inTransit} />,
     },
     {
+      align: "center",
       header: "Pending Receival",
       key: "pendingReceival",
-      align: "center" as const,
-      headerAlign: "center" as const,
-      fitContent: true,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 108,
       sortKey: "pendingReceival",
-      width: widths.pendingReceival,
-      render: (row: InventoryInformationRow) => formatNumber(row.pendingReceival),
+      width: "9%",
+      render: (row) => <InventoryInformationNumericCell value={row.pendingReceival} />,
     },
     {
+      align: "center",
       header: "To List",
       key: "toList",
-      align: "center" as const,
-      headerAlign: "center" as const,
-      fitContent: true,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 84,
       sortKey: "toList",
-      width: widths.toList,
-      render: (row: InventoryInformationRow) => formatNumber(row.toList),
+      width: "7%",
+      render: (row) => <InventoryInformationNumericCell value={row.toList} />,
     },
     {
+      align: "center",
       header: "Order Allocated",
       key: "orderAllocated",
-      align: "center" as const,
-      headerAlign: "center" as const,
-      fitContent: true,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 110,
       sortKey: "orderAllocated",
-      width: widths.orderAllocated,
-      render: (row: InventoryInformationRow) => formatNumber(row.orderAllocated),
+      width: "11%",
+      render: (row) => <InventoryInformationNumericCell value={row.orderAllocated} />,
     },
     {
+      align: "center",
       header: "Available Stock",
       key: "availableStock",
-      align: "center" as const,
-      headerAlign: "center" as const,
-      fitContent: true,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 108,
       sortKey: "availableStock",
-      width: widths.availableStock,
-      render: (row: InventoryInformationRow) => formatNumber(row.availableStock),
+      width: "10%",
+      render: (row) => <InventoryInformationNumericCell value={row.availableStock} />,
     },
     {
+      align: "center",
       header: "Defective Products",
       key: "defectiveProducts",
-      align: "center" as const,
-      headerAlign: "center" as const,
-      fitContent: true,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 118,
       sortKey: "defectiveProducts",
-      width: widths.defectiveProducts,
-      render: (row: InventoryInformationRow) => formatNumber(row.defectiveProducts),
+      width: "10%",
+      render: (row) => <InventoryInformationNumericCell value={row.defectiveProducts} />,
     },
     {
+      align: "center",
       header: "Total Inventory",
       key: "totalInventory",
-      align: "center" as const,
-      headerAlign: "center" as const,
-      fitContent: true,
-      nowrap: true,
-      wrapHeader: true,
+      minWidth: 110,
       sortKey: "totalInventory",
-      width: widths.totalInventory,
-      render: (row: InventoryInformationRow) => formatNumber(row.totalInventory),
+      width: "10%",
+      render: (row) => <InventoryInformationNumericCell value={row.totalInventory} />,
     },
   ];
 }
@@ -443,6 +601,56 @@ function InventoryMultiSelectFilter({
       options={options}
       getOptionLabel={(option) => option.label}
       isOptionEqualToValue={(option, selectedOption) => option.value === selectedOption.value}
+      renderTags={(tagValue, getTagProps) => {
+        const primaryTag = tagValue[0];
+
+        if (!primaryTag) {
+          return null;
+        }
+
+        return (
+          <Box
+            sx={{
+              alignItems: "center",
+              display: "flex",
+              gap: 0.5,
+              maxWidth: "100%",
+              minWidth: 0,
+              overflow: "hidden",
+            }}
+          >
+            <Chip
+              {...getTagProps({ index: 0 })}
+              label={primaryTag.label}
+              size="small"
+              sx={{
+                maxWidth: tagValue.length > 1 ? "calc(100% - 24px)" : "100%",
+                minWidth: 0,
+                "& .MuiChip-label": {
+                  overflow: "hidden",
+                  px: 0.75,
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                },
+              }}
+            />
+            {tagValue.length > 1 ? (
+              <Box
+                component="span"
+                sx={{
+                  color: "text.secondary",
+                  flex: "0 0 auto",
+                  fontSize: (theme) => theme.typography.caption.fontSize,
+                  fontWeight: 700,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                +{tagValue.length - 1}
+              </Box>
+            ) : null}
+          </Box>
+        );
+      }}
       renderInput={(params) => (
         <TextField
           {...params}
@@ -462,22 +670,34 @@ function InventoryMultiSelectFilter({
         </Box>
       )}
       sx={{
-        flex: "0 0 auto",
-        minWidth: 140,
-        width: 140,
+        flex: "1 1 0",
+        minWidth: 148,
+        width: "auto",
+        overflow: "hidden",
         "& .MuiAutocomplete-tag": {
           height: 20,
+          maxWidth: "100%",
         },
         "& .MuiChip-label": {
           fontSize: (theme) => theme.typography.caption.fontSize,
           px: 0.75,
         },
+        "& .MuiAutocomplete-input": {
+          minWidth: "0 !important",
+        },
+        "& .MuiAutocomplete-inputRoot": {
+          flexWrap: "nowrap",
+          minWidth: 0,
+          overflow: "hidden",
+        },
         "& .MuiInputBase-input": {
           fontSize: (theme) => theme.typography.body2.fontSize,
+          minWidth: 0,
           py: 0.875,
         },
         "& .MuiOutlinedInput-root": {
           minHeight: 34,
+          overflow: "hidden",
         },
       }}
       value={selectedOptions}
@@ -487,7 +707,6 @@ function InventoryMultiSelectFilter({
 
 interface InventoryInformationToolbarProps {
   dataView: UseDataViewResult<InventoryInformationFilters>;
-  actions?: ReactNode;
   warehouseOptions: InventoryInformationFilterOption[];
   tagOptions: InventoryInformationFilterOption[];
   clientOptions: InventoryInformationFilterOption[];
@@ -496,7 +715,6 @@ interface InventoryInformationToolbarProps {
 
 function InventoryInformationToolbar({
   dataView,
-  actions,
   warehouseOptions,
   tagOptions,
   clientOptions,
@@ -514,12 +732,21 @@ function InventoryInformationToolbar({
         spacing={1}
         sx={{
           flexWrap: "nowrap",
-          overflowX: "auto",
+          minWidth: 0,
+          overflow: "hidden",
           pb: 0.5,
-          scrollbarWidth: "thin",
         }}
       >
-        <Stack alignItems="center" direction="row" spacing={1} sx={{ flex: "0 0 auto", minWidth: 0 }}>
+        <Stack
+          alignItems="center"
+          direction="row"
+          spacing={1}
+          sx={{
+            flex: "1 1 auto",
+            minWidth: 0,
+            overflow: "hidden",
+          }}
+        >
           <TextField
             hiddenLabel
             onChange={(event) => dataView.updateFilter("query", event.target.value)}
@@ -554,7 +781,8 @@ function InventoryInformationToolbar({
               },
             }}
             sx={{
-              flex: "0 0 auto",
+              flex: "0 1 240px",
+              minWidth: 0,
               width: 240,
               "& .MuiInputBase-input": {
                 fontSize: theme.typography.body2.fontSize,
@@ -567,93 +795,75 @@ function InventoryInformationToolbar({
               },
             }}
           />
-        </Stack>
-        <InventoryMultiSelectFilter
-          label={translateText("Warehouses")}
-          onChange={(nextValue) => dataView.updateFilter("warehouses", nextValue)}
-          options={warehouseOptions}
-          placeholder={translateText("Warehouse")}
-          value={dataView.filters.warehouses}
-        />
-        <InventoryMultiSelectFilter
-          label={translateText("Tags")}
-          onChange={(nextValue) => dataView.updateFilter("tags", nextValue)}
-          options={tagOptions}
-          placeholder={translateText("Tags")}
-          value={dataView.filters.tags}
-        />
-        <InventoryMultiSelectFilter
-          label={translateText("Clients")}
-          onChange={(nextValue) => dataView.updateFilter("clients", nextValue)}
-          options={clientOptions}
-          placeholder={translateText("Clients")}
-          value={dataView.filters.clients}
-        />
-        <Stack direction="row" spacing={1} sx={{ flex: "0 0 auto" }}>
-          <TextField
-            hiddenLabel
-            onChange={(event) => dataView.updateFilter("inventoryCountMin", event.target.value)}
-            placeholder={translateText("Min")}
-            size="small"
-            slotProps={{ htmlInput: { "aria-label": translateText("Min inventory count"), inputMode: "numeric", min: 0 } }}
-            sx={{
-              width: 84,
-              "& .MuiInputBase-input": {
-                fontSize: theme.typography.body2.fontSize,
-                py: 0.875,
-              },
-              "& .MuiOutlinedInput-root": {
-                minHeight: 34,
-              },
-            }}
-            type="number"
-            value={dataView.filters.inventoryCountMin}
+          <InventoryMultiSelectFilter
+            label={translateText("Warehouses")}
+            onChange={(nextValue) => dataView.updateFilter("warehouses", nextValue)}
+            options={warehouseOptions}
+            placeholder={translateText("Warehouse")}
+            value={dataView.filters.warehouses}
           />
-          <TextField
-            hiddenLabel
-            onChange={(event) => dataView.updateFilter("inventoryCountMax", event.target.value)}
-            placeholder={translateText("Max")}
-            size="small"
-            slotProps={{ htmlInput: { "aria-label": translateText("Max inventory count"), inputMode: "numeric", min: 0 } }}
-            sx={{
-              width: 84,
-              "& .MuiInputBase-input": {
-                fontSize: theme.typography.body2.fontSize,
-                py: 0.875,
-              },
-              "& .MuiOutlinedInput-root": {
-                minHeight: 34,
-              },
-            }}
-            type="number"
-            value={dataView.filters.inventoryCountMax}
+          <InventoryMultiSelectFilter
+            label={translateText("Tags")}
+            onChange={(nextValue) => dataView.updateFilter("tags", nextValue)}
+            options={tagOptions}
+            placeholder={translateText("Tags")}
+            value={dataView.filters.tags}
           />
-        </Stack>
-        <InventoryMultiSelectFilter
-          label={translateText("SKU")}
-          onChange={(nextValue) => dataView.updateFilter("merchantSkus", nextValue)}
-          options={skuOptions}
-          placeholder={translateText("SKU")}
-          value={dataView.filters.merchantSkus}
-        />
-        <Tooltip enterDelay={200} title={translateText("Clear all filters")}>
-          <span>
-            <IconButton
-              aria-label={translateText("Clear all filters")}
-              disabled={dataView.activeFilterCount === 0}
-              onClick={dataView.resetFilters}
+          <InventoryMultiSelectFilter
+            label={translateText("Clients")}
+            onChange={(nextValue) => dataView.updateFilter("clients", nextValue)}
+            options={clientOptions}
+            placeholder={translateText("Clients")}
+            value={dataView.filters.clients}
+          />
+          <Stack direction="row" spacing={1} sx={{ flex: "0 0 auto", minWidth: 0 }}>
+            <TextField
+              hiddenLabel
+              onChange={(event) => dataView.updateFilter("inventoryCountMin", event.target.value)}
+              placeholder={translateText("Min")}
               size="small"
+              slotProps={{ htmlInput: { "aria-label": translateText("Min inventory count"), inputMode: "numeric", min: 0 } }}
               sx={{
-                border: `1px solid ${alpha(theme.palette.divider, 0.78)}`,
-                borderRadius: 2,
-                flex: "0 0 auto",
+                width: 84,
+                "& .MuiInputBase-input": {
+                  fontSize: theme.typography.body2.fontSize,
+                  py: 0.875,
+                },
+                "& .MuiOutlinedInput-root": {
+                  minHeight: 34,
+                },
               }}
-            >
-              <RestartAltRoundedIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        {actions ? <Box sx={{ alignItems: "center", display: "inline-flex", flex: "0 0 auto" }}>{actions}</Box> : null}
+              type="number"
+              value={dataView.filters.inventoryCountMin}
+            />
+            <TextField
+              hiddenLabel
+              onChange={(event) => dataView.updateFilter("inventoryCountMax", event.target.value)}
+              placeholder={translateText("Max")}
+              size="small"
+              slotProps={{ htmlInput: { "aria-label": translateText("Max inventory count"), inputMode: "numeric", min: 0 } }}
+              sx={{
+                width: 84,
+                "& .MuiInputBase-input": {
+                  fontSize: theme.typography.body2.fontSize,
+                  py: 0.875,
+                },
+                "& .MuiOutlinedInput-root": {
+                  minHeight: 34,
+                },
+              }}
+              type="number"
+              value={dataView.filters.inventoryCountMax}
+            />
+          </Stack>
+          <InventoryMultiSelectFilter
+            label={translateText("SKU")}
+            onChange={(nextValue) => dataView.updateFilter("merchantSkus", nextValue)}
+            options={skuOptions}
+            placeholder={translateText("SKU")}
+            value={dataView.filters.merchantSkus}
+          />
+        </Stack>
       </Stack>
     </Stack>
   );
@@ -666,7 +876,10 @@ interface InventoryInformationTableProps {
   error?: string | null;
   dataView: UseDataViewResult<InventoryInformationFilters>;
   actions?: ReactNode;
+  hideZeroStock: boolean;
+  onHideZeroStockChange: (checked: boolean) => void;
   rowSelection?: ResourceTableRowSelection<InventoryInformationRow>;
+  selectedCount: number;
   selectionBar?: ReactNode;
   warehouseOptions: InventoryInformationFilterOption[];
   tagOptions: InventoryInformationFilterOption[];
@@ -684,7 +897,10 @@ export function InventoryInformationTable({
   error,
   dataView,
   actions,
+  hideZeroStock,
+  onHideZeroStockChange,
   rowSelection,
+  selectedCount,
   selectionBar,
   warehouseOptions,
   tagOptions,
@@ -694,61 +910,370 @@ export function InventoryInformationTable({
   sortDirection,
   onSortChange,
 }: InventoryInformationTableProps) {
-  const { locale } = useI18n();
-  const columns = useMemo(() => buildInventoryInformationColumns(locale), [locale]);
+  const theme = useTheme();
+  const { t, translateText } = useI18n();
+  const isDark = theme.palette.mode === "dark";
+  const columns = useMemo(() => buildInventoryInformationColumns(), []);
+  const selectableRows = rowSelection
+    ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
+    : [];
+  const selectableIds = selectableRows.map((row) => row.id);
+  const selectedSelectableCount = selectableIds.filter((id) => rowSelection?.selectedRowIds.includes(id)).length;
+  const allSelected = selectableIds.length > 0 && selectedSelectableCount === selectableIds.length;
+  const partiallySelected = selectedSelectableCount > 0 && !allSelected;
 
   return (
-    <ResourceTable
-      allowHorizontalScroll
-      compact
-      columns={columns}
-      emptyMessage="No inventory information matches the current filters."
-      error={error}
-      getRowId={(row) => row.id}
-      isLoading={isLoading}
-      pagination={{
-        page: dataView.page,
-        pageSize: dataView.pageSize,
-        total,
-        onPageChange: dataView.setPage,
-      }}
-      rowSelection={rowSelection}
-      rows={rows}
-      sorting={{
-        direction: sortDirection,
-        onSortChange: (nextSortKey) => onSortChange(nextSortKey as InventoryInformationSortKey),
-        sortKey,
-      }}
-      tableBorderRadius={1.5}
-      toolbar={
-        <Stack spacing={1}>
-          {selectionBar ? (
-            <Box
-              sx={(theme) => ({
-                "& .MuiButton-root": {
-                  fontSize: theme.typography.body2.fontSize,
-                },
-                "& .MuiChip-label": {
-                  fontSize: theme.typography.caption.fontSize,
-                },
-                "& .MuiTypography-body2": {
-                  fontSize: theme.typography.body2.fontSize,
-                },
-              })}
+    <Card>
+      <CardContent>
+        <Stack spacing={2}>
+          <Stack spacing={1}>
+            <InventoryInformationToolbar
+              clientOptions={clientOptions}
+              dataView={dataView}
+              skuOptions={skuOptions}
+              tagOptions={tagOptions}
+              warehouseOptions={warehouseOptions}
+            />
+            <Stack
+              alignItems={{ xs: "stretch", md: "flex-start" }}
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              spacing={1}
+              sx={{ minWidth: 0 }}
             >
-              {selectionBar}
-            </Box>
-          ) : null}
-          <InventoryInformationToolbar
-            actions={actions}
-            clientOptions={clientOptions}
-            dataView={dataView}
-            skuOptions={skuOptions}
-            tagOptions={tagOptions}
-            warehouseOptions={warehouseOptions}
+              <Stack
+                alignItems={{ xs: "stretch", md: "center" }}
+                direction={{ xs: "column", md: "row" }}
+                spacing={1}
+                sx={{
+                  flex: "1 1 auto",
+                  minWidth: 0,
+                }}
+              >
+                <Chip
+                  color={selectedCount > 0 ? "primary" : "default"}
+                  label={t("bulk.selectedCount", { count: selectedCount })}
+                  size="small"
+                  sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
+                />
+                <Box
+                  component="label"
+                  sx={(theme) => ({
+                    alignItems: "center",
+                    alignSelf: { xs: "flex-start", md: "center" },
+                    backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.48 : 0.92),
+                    border: `1px solid ${alpha(theme.palette.divider, 0.82)}`,
+                    borderRadius: 999,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    flex: "0 0 auto",
+                    gap: 0.25,
+                    pl: 0.5,
+                    pr: 1.1,
+                    py: 0.15,
+                  })}
+                >
+                  <Checkbox
+                    checked={hideZeroStock}
+                    onChange={(event) => onHideZeroStockChange(event.target.checked)}
+                    size="small"
+                    sx={{ p: 0.5 }}
+                  />
+                  <Typography sx={{ fontWeight: 600, whiteSpace: "nowrap" }} variant="body2">
+                    {translateText("In stock only")}
+                  </Typography>
+                </Box>
+                <Box
+                  sx={(theme) => ({
+                    flex: "1 1 auto",
+                    minWidth: 0,
+                    "& .MuiButton-root": {
+                      fontSize: theme.typography.body2.fontSize,
+                    },
+                    "& .MuiChip-label": {
+                      fontSize: theme.typography.caption.fontSize,
+                    },
+                    "& .MuiTypography-body2": {
+                      fontSize: theme.typography.body2.fontSize,
+                    },
+                  })}
+                >
+                  {selectionBar}
+                </Box>
+              </Stack>
+              <Stack
+                alignItems="center"
+                direction="row"
+                justifyContent={{ xs: "flex-start", md: "flex-end" }}
+                spacing={1}
+                sx={{ flex: "0 0 auto", minWidth: 0 }}
+              >
+                <Tooltip enterDelay={200} title={translateText("Clear all filters")}>
+                  <span>
+                    <IconButton
+                      aria-label={translateText("Clear all filters")}
+                      disabled={dataView.activeFilterCount === 0}
+                      onClick={dataView.resetFilters}
+                      size="small"
+                      sx={{
+                        border: `1px solid ${alpha(theme.palette.divider, 0.78)}`,
+                        borderRadius: 2,
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <RestartAltRoundedIcon fontSize="small" />
+                    </IconButton>
+                  </span>
+                </Tooltip>
+                {actions ? <Box sx={{ alignItems: "center", display: "inline-flex", flex: "0 0 auto" }}>{actions}</Box> : null}
+              </Stack>
+            </Stack>
+          </Stack>
+
+          {error ? <Alert severity="error">{error}</Alert> : null}
+
+          <TableContainer
+            sx={{
+              border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+              borderRadius: 1.5,
+              overflowX: "auto",
+              overflowY: "hidden",
+            }}
+          >
+            <Table size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
+              <colgroup>
+                {rowSelection ? <col style={{ width: selectionColumnWidth }} /> : null}
+                {columns.map((column) => (
+                  <col key={column.key} style={column.width ? { width: column.width } : undefined} />
+                ))}
+              </colgroup>
+              <TableHead>
+                <TableRow
+                  sx={{
+                    backgroundColor: alpha(theme.palette.text.primary, isDark ? 0.05 : 0.03),
+                  }}
+                >
+                  {rowSelection ? (
+                    <TableCell
+                      padding="none"
+                      sx={{
+                        borderBottomColor: alpha(theme.palette.divider, 0.8),
+                        boxSizing: "border-box",
+                        maxWidth: selectionColumnWidth,
+                        minWidth: selectionColumnWidth,
+                        px: 0.5,
+                        textAlign: "center",
+                        verticalAlign: "middle",
+                        width: selectionColumnWidth,
+                      }}
+                    >
+                      <Checkbox
+                        checked={allSelected}
+                        disabled={selectableRows.length === 0}
+                        indeterminate={partiallySelected}
+                        onChange={() => rowSelection.onToggleAll(selectableRows)}
+                        size="small"
+                        sx={{ display: "block", mx: "auto", p: 0.5 }}
+                      />
+                    </TableCell>
+                  ) : null}
+                  {columns.map((column) => (
+                    <TableCell
+                      align={column.align}
+                      key={column.key}
+                      sx={{
+                        borderBottomColor: alpha(theme.palette.divider, 0.8),
+                        color: theme.palette.text.primary,
+                        fontSize: theme.typography.body2.fontSize,
+                        fontWeight: 800,
+                        lineHeight: 1.3,
+                        minWidth: column.minWidth,
+                        px: 1.25,
+                        py: 1.2,
+                        textAlign: column.align,
+                        whiteSpace: "normal",
+                        width: column.width,
+                      }}
+                    >
+                      {column.sortKey ? (
+                        <TableSortLabel
+                          active={sortKey === column.sortKey}
+                          direction={sortKey === column.sortKey ? sortDirection : "asc"}
+                          hideSortIcon={sortKey !== column.sortKey}
+                          onClick={() => onSortChange(column.sortKey!)}
+                          sx={{
+                            display: "inline-flex",
+                            fontSize: "inherit",
+                            justifyContent:
+                              column.align === "right"
+                                ? "flex-end"
+                                : column.align === "center"
+                                  ? "center"
+                                  : "flex-start",
+                            lineHeight: 1.3,
+                            textAlign: column.align,
+                            width: "100%",
+                          }}
+                        >
+                          {translateText(column.header)}
+                        </TableSortLabel>
+                      ) : (
+                        translateText(column.header)
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
+                      <Stack alignItems="center" direction="row" justifyContent="center" spacing={1.5} sx={{ py: 4 }}>
+                        <CircularProgress size={20} />
+                        <Typography variant="body2">{translateText("Loading data...")}</Typography>
+                      </Stack>
+                    </TableCell>
+                  </TableRow>
+                ) : rows.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
+                      <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
+                        {translateText("No inventory information matches the current filters.")}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rows.map((row) => {
+                    const rowId = row.id;
+                    const isSelected = rowSelection ? rowSelection.selectedRowIds.includes(rowId) : false;
+                    const canSelect = rowSelection ? (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true) : false;
+                    const metaBackground = isSelected
+                      ? alpha(brandColors.accent, isDark ? 0.12 : 0.08)
+                      : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04);
+                    const detailBackground = isSelected
+                      ? alpha(brandColors.accent, isDark ? 0.06 : 0.035)
+                      : alpha(theme.palette.background.paper, isDark ? 0.94 : 0.99);
+                    const hoverBackground = isSelected
+                      ? alpha(brandColors.accent, isDark ? 0.1 : 0.06)
+                      : alpha(theme.palette.text.primary, isDark ? 0.04 : 0.025);
+
+                    return (
+                      <Fragment key={rowId}>
+                        <TableRow
+                          sx={{
+                            "& td": {
+                              backgroundColor: metaBackground,
+                              borderBottomColor: "transparent",
+                            },
+                            opacity: rowSelection && !canSelect ? 0.68 : 1,
+                          }}
+                        >
+                          {rowSelection ? (
+                            <TableCell
+                              padding="none"
+                              sx={{
+                                boxShadow: isSelected ? `inset 3px 0 0 ${brandColors.accent}` : "none",
+                                maxWidth: selectionColumnWidth,
+                                minWidth: selectionColumnWidth,
+                                px: 0.5,
+                                textAlign: "center",
+                                verticalAlign: "middle",
+                                width: selectionColumnWidth,
+                              }}
+                            >
+                              <Checkbox
+                                checked={isSelected}
+                                disabled={!canSelect}
+                                onChange={() => rowSelection.onToggleRow(row)}
+                                size="small"
+                                sx={{ display: "block", mx: "auto", p: 0.5 }}
+                              />
+                            </TableCell>
+                          ) : null}
+                          <TableCell colSpan={columns.length} sx={{ px: 1.75, py: 1.1 }}>
+                            <Stack
+                              alignItems={{ md: "center", xs: "flex-start" }}
+                              direction={{ md: "row", xs: "column" }}
+                              justifyContent="space-between"
+                              spacing={1}
+                            >
+                              <Stack direction="row" flexWrap="wrap" spacing={3} useFlexGap>
+                                <InventoryInformationMetaField label="Warehouse" value={row.warehouseName || "--"} />
+                                <InventoryInformationMetaField label="Client" value={buildInventoryInformationClientLabel(row)} />
+                                <InventoryInformationMetaField label="Area" value={row.areaLabel || "--"} />
+                                <InventoryInformationMetaField label="Status" value={buildInventoryInformationStatusLabel(row)} />
+                              </Stack>
+                              <InventoryInformationMetaField label="Listed" value={buildInventoryInformationListedLabel(row.listingTime)} />
+                            </Stack>
+                          </TableCell>
+                        </TableRow>
+                        <TableRow
+                          hover
+                          sx={{
+                            "& td": {
+                              backgroundColor: detailBackground,
+                              borderBottomColor: alpha(theme.palette.divider, 0.62),
+                              fontSize: theme.typography.body2.fontSize,
+                              lineHeight: theme.typography.body2.lineHeight,
+                              py: 1.6,
+                              transition: [
+                                `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                                `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
+                              ].join(", "),
+                              verticalAlign: "top",
+                            },
+                            "&:hover td": {
+                              backgroundColor: hoverBackground,
+                            },
+                            opacity: rowSelection && !canSelect ? 0.68 : 1,
+                          }}
+                        >
+                          {rowSelection ? (
+                            <TableCell
+                              sx={{
+                                backgroundColor: detailBackground,
+                                borderBottomColor: alpha(theme.palette.divider, 0.62),
+                                maxWidth: selectionColumnWidth,
+                                minWidth: selectionColumnWidth,
+                                px: 0,
+                                width: selectionColumnWidth,
+                              }}
+                            />
+                          ) : null}
+                          {columns.map((column) => (
+                            <TableCell
+                              align={column.align}
+                              key={column.key}
+                              sx={{
+                                minWidth: column.minWidth,
+                                px: 1.25,
+                                textAlign: column.align,
+                                width: column.width,
+                              }}
+                            >
+                              {column.render(row)}
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      </Fragment>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={total}
+            onPageChange={(_event, nextPage) => dataView.setPage(nextPage + 1)}
+            onRowsPerPageChange={() => undefined}
+            page={Math.max(dataView.page - 1, 0)}
+            rowsPerPage={dataView.pageSize}
+            rowsPerPageOptions={[dataView.pageSize]}
           />
         </Stack>
-      }
-    />
+      </CardContent>
+    </Card>
   );
 }

@@ -3,6 +3,8 @@ import { apiGet, apiPostForm } from "@/lib/http";
 import type { InventoryInformationImportApiRow } from "@/features/inventory/model/types";
 
 export const inventoryApi = {
+  information: (organizationId: number | string) => `/api/v1/organizations/${organizationId}/inventory/information/`,
+  movementHistory: (organizationId: number | string) => `/api/v1/organizations/${organizationId}/inventory/movements/`,
   balances: "/api/inventory/balances/",
   movements: "/api/inventory/movements/",
   adjustmentReasons: "/api/inventory/adjustment-reasons/",
@@ -24,15 +26,18 @@ export function fetchInventoryInformationImportTemplate(organizationId: number |
 export function uploadInventoryInformationWorkbook(
   organizationId: number | string,
   file: File,
-  existingRowsJson: string,
+  warehouseId?: number | null,
 ) {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("existing_rows", existingRowsJson);
 
   return apiPostForm<{
     imported_rows: InventoryInformationImportApiRow[];
     warnings: string[];
     errors: string[];
-  }>(buildInventoryInformationImportUploadPath(organizationId), formData);
+  }>(
+    buildInventoryInformationImportUploadPath(organizationId),
+    formData,
+    warehouseId ? { warehouse_id: warehouseId } : undefined,
+  );
 }

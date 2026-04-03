@@ -10,6 +10,7 @@ import type {
   TransferOrderRecord,
   WarehouseRecord,
 } from "@/shared/types/domain";
+import type { PaginatedResponse } from "@/shared/types/api";
 import type { z } from "zod";
 
 import type { inventoryAdjustmentSchema } from "./validators";
@@ -87,6 +88,14 @@ export type InventoryInformationSortKey =
   | "defectiveProducts"
   | "totalInventory";
 
+export type InventoryMovementHistorySortKey =
+  | "occurredAt"
+  | "merchantSku"
+  | "warehouseName"
+  | "movementType"
+  | "quantity"
+  | "resultingQuantity";
+
 export interface InventoryInformationRow {
   id: string;
   merchantSku: string;
@@ -132,6 +141,61 @@ export interface InventoryInformationImportResult {
   errors: string[];
 }
 
+export interface InventoryMovementHistoryFilterOption {
+  value: string;
+  label: string;
+}
+
+export interface InventoryMovementHistoryDocumentNumber {
+  label: string;
+  value: string;
+}
+
+export interface InventoryMovementHistoryRow {
+  id: number;
+  warehouseId: number;
+  warehouseName: string;
+  productId: number;
+  merchantSku: string;
+  productName: string;
+  productBarcode: string;
+  clientCode: string;
+  clientName: string;
+  movementType: string;
+  movementTypeLabel: string;
+  entryTypeLabel: string;
+  stockStatus: string;
+  quantity: number;
+  fromLocationCode: string;
+  toLocationCode: string;
+  referenceCode: string;
+  sourceDocumentNumber: string;
+  linkedDocumentNumbers: InventoryMovementHistoryDocumentNumber[];
+  sourceDocumentNumbers: InventoryMovementHistoryDocumentNumber[];
+  purchaseOrderNumber: string;
+  receiptNumber: string;
+  asnNumber: string;
+  batchNumber: string;
+  serialNumber: string;
+  shelfCode: string;
+  quantityBeforeChange: number | null;
+  remainingBatchQuantity: number | null;
+  reason: string;
+  performedBy: string;
+  occurredAt: string;
+  resultingFromQty: number | null;
+  resultingToQty: number | null;
+  resultingQuantity: number | null;
+  resultingLocationCode: string;
+}
+
+export interface InventoryMovementHistoryListResponse extends PaginatedResponse<InventoryMovementHistoryRow> {
+  filterOptions: {
+    warehouses: InventoryMovementHistoryFilterOption[];
+    movementTypes: InventoryMovementHistoryFilterOption[];
+  };
+}
+
 export interface InventoryInformationImportApiRow {
   merchant_sku: string;
   product_name: string;
@@ -148,6 +212,17 @@ export interface InventoryInformationImportApiRow {
   warehouse_name: string;
   stock_status: string;
   source: InventoryInformationSource;
+}
+
+export interface InventoryInformationListFilterOptions {
+  warehouses: Array<{ value: string; label: string }>;
+  tags: Array<{ value: string; label: string }>;
+  clients: Array<{ value: string; label: string }>;
+  skus: Array<{ value: string; label: string }>;
+}
+
+export interface InventoryInformationListResponse extends PaginatedResponse<InventoryInformationRow> {
+  filterOptions: InventoryInformationListFilterOptions;
 }
 
 export type InventoryAdjustmentValues = z.infer<typeof inventoryAdjustmentSchema>;

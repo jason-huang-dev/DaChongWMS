@@ -9,7 +9,6 @@ import { mapInventoryInformationImportResult } from "@/features/inventory/model/
 import type {
   InventoryAdjustmentValues,
   InventoryBalanceRecord,
-  InventoryInformationRow,
   InventoryMovementRecord,
   OperationalReportExportRecord,
 } from "@/features/inventory/model/types";
@@ -69,20 +68,9 @@ export async function runInventoryInformationTemplateDownload(organizationId: nu
 export async function runInventoryInformationWorkbookUpload(
   organizationId: number,
   file: File,
-  existingRows: Array<Pick<InventoryInformationRow, "merchantSku" | "shelf" | "merchantCode" | "customerCode">>,
+  warehouseId?: number | null,
 ) {
-  const response = await uploadInventoryInformationWorkbook(
-    organizationId,
-    file,
-    JSON.stringify(
-      existingRows.map((row) => ({
-        merchant_sku: row.merchantSku,
-        shelf: row.shelf,
-        merchant_code: row.merchantCode,
-        customer_code: row.customerCode,
-      })),
-    ),
-  );
+  const response = await uploadInventoryInformationWorkbook(organizationId, file, warehouseId);
 
   return mapInventoryInformationImportResult(response);
 }

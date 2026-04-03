@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -43,18 +44,27 @@ from apps.inventory.services.inventory_service import (
     list_inventory_adjustment_reasons,
     list_organization_inventory_balances,
     list_organization_inventory_holds,
-    list_organization_inventory_movements,
     record_inventory_movement,
     release_inventory_hold,
     update_inventory_adjustment_approval_rule,
     update_inventory_adjustment_reason,
     update_inventory_hold,
 )
+from apps.inventory.services.inventory_movement_history_service import (
+    build_inventory_movement_history_filters,
+    list_inventory_movement_history_rows,
+)
 from apps.inventory.services.inventory_information_import_service import (
     XLSX_CONTENT_TYPE,
     build_inventory_information_template_workbook,
     parse_existing_inventory_information_rows,
     process_inventory_information_import,
+)
+from apps.inventory.services.inventory_information_service import (
+    build_inventory_information_filters,
+    list_inventory_information_import_identity_rows,
+    list_inventory_information_rows,
+    persist_inventory_information_import_rows,
 )
 from apps.locations.models import Location
 from apps.organizations.models import Organization
@@ -108,6 +118,54 @@ class InventoryBalanceListAPIView(OrganizationInventoryBaseAPIView):
         return Response(InventoryBalanceSerializer(balances, many=True).data)
 
 
+class InventoryInformationPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = "page_size"
+    max_page_size = 500
+
+
+class InventoryMovementHistoryPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 200
+
+
+class InventoryInformationListAPIView(OrganizationInventoryBaseAPIView):
+    permission_classes = [CanViewInventory]
+
+    def get(self, request: Request, *args: object, **kwargs: object) -> Response:
+        raw_warehouse_id = request.query_params.get("warehouse_id") or request.query_params.get("warehouse")
+        try:
+            warehouse_id = int(raw_warehouse_id) if raw_warehouse_id else None
+        except (TypeError, ValueError):
+            warehouse_id = None
+        sort_key = request.query_params.get("sortKey") or "merchantSku"
+        sort_direction = request.query_params.get("sortDirection") or "asc"
+        payload = list_inventory_information_rows(
+            organization=self.organization,
+            warehouse_id=warehouse_id,
+            filters=build_inventory_information_filters(
+                {
+                    "query": request.query_params.get("query", ""),
+                    "warehouses": request.query_params.get("warehouses", ""),
+                    "tags": request.query_params.get("tags", ""),
+                    "clients": request.query_params.get("clients", ""),
+                    "merchantSkus": request.query_params.get("merchantSkus", ""),
+                    "inventoryCountMin": request.query_params.get("inventoryCountMin", ""),
+                    "inventoryCountMax": request.query_params.get("inventoryCountMax", ""),
+                    "hideZeroStock": request.query_params.get("hideZeroStock", ""),
+                }
+            ),
+            sort_key=sort_key,
+            sort_direction=sort_direction if sort_direction in {"asc", "desc"} else "asc",
+        )
+        paginator = InventoryInformationPagination()
+        page = paginator.paginate_queryset(payload["rows"], request, view=self)
+        response = paginator.get_paginated_response(page)
+        response.data["filterOptions"] = payload["filterOptions"]
+        return response
+
+
 class InventoryBalanceDetailAPIView(OrganizationInventoryBaseAPIView):
     permission_classes = [CanViewInventory]
 
@@ -144,12 +202,30 @@ class InventoryInformationImportUploadAPIView(OrganizationInventoryBaseAPIView):
         if workbook_file is None:
             return Response({"detail": "Upload file is required."}, status=status.HTTP_400_BAD_REQUEST)
 
+        raw_warehouse_id = request.data.get("warehouse_id") or request.query_params.get("warehouse_id")
+        try:
+            warehouse = self.get_warehouse(int(raw_warehouse_id)) if raw_warehouse_id else None
+        except (TypeError, ValueError):
+            warehouse = None
         existing_rows = parse_existing_inventory_information_rows(request.data.get("existing_rows"))
+        existing_rows.extend(
+            list_inventory_information_import_identity_rows(
+                organization=self.organization,
+                warehouse_id=warehouse.id if warehouse else None,
+            )
+        )
         result = process_inventory_information_import(
             organization=self.organization,
             workbook_file=workbook_file,
             existing_rows=existing_rows,
         )
+        if not result.errors:
+            persist_inventory_information_import_rows(
+                organization=self.organization,
+                warehouse=warehouse,
+                rows=[row.as_dict() for row in result.imported_rows],
+                created_by=_actor_name_from_request(request),
+            )
         return Response(result.as_dict(), status=status.HTTP_200_OK)
 
 
@@ -160,16 +236,42 @@ class InventoryMovementListCreateAPIView(OrganizationInventoryBaseAPIView):
         return [CanManageInventoryRecords()]
 
     def get(self, request: Request, *args: object, **kwargs: object) -> Response:
-        warehouse_id = request.query_params.get("warehouse_id")
-        product_id = request.query_params.get("product_id")
-        movement_type = request.query_params.get("movement_type")
-        movements = list_organization_inventory_movements(
+        raw_warehouse_id = request.query_params.get("warehouse_id") or request.query_params.get("warehouse")
+        try:
+            warehouse_id = int(raw_warehouse_id) if raw_warehouse_id else None
+        except (TypeError, ValueError):
+            warehouse_id = None
+        sort_key = request.query_params.get("sortKey") or "occurredAt"
+        sort_direction = request.query_params.get("sortDirection") or "desc"
+        payload = list_inventory_movement_history_rows(
             organization=self.organization,
-            warehouse_id=int(warehouse_id) if warehouse_id else None,
-            product_id=int(product_id) if product_id else None,
-            movement_type=movement_type or None,
+            warehouse_id=warehouse_id,
+            filters=build_inventory_movement_history_filters(
+                {
+                    "query": request.query_params.get("query", ""),
+                    "warehouses": request.query_params.get("warehouses", ""),
+                    "movementTypes": request.query_params.get("movementTypes", ""),
+                    "dateFrom": request.query_params.get("dateFrom", ""),
+                    "dateTo": request.query_params.get("dateTo", ""),
+                    "quantityMin": request.query_params.get("quantityMin", ""),
+                    "quantityMax": request.query_params.get("quantityMax", ""),
+                    "merchantSku": request.query_params.get("merchantSku", ""),
+                    "locationCode": request.query_params.get("locationCode", ""),
+                    "performedBy": request.query_params.get("performedBy", ""),
+                    "referenceCode": request.query_params.get("referenceCode", ""),
+                    "searchFields": request.query_params.get("searchFields", ""),
+                    "searchField": request.query_params.get("searchField", ""),
+                    "matchMode": request.query_params.get("matchMode", ""),
+                }
+            ),
+            sort_key=sort_key,
+            sort_direction=sort_direction if sort_direction in {"asc", "desc"} else "desc",
         )
-        return Response(InventoryMovementSerializer(movements, many=True).data)
+        paginator = InventoryMovementHistoryPagination()
+        page = paginator.paginate_queryset(payload["rows"], request, view=self)
+        response = paginator.get_paginated_response(page)
+        response.data["filterOptions"] = payload["filterOptions"]
+        return response
 
     def post(self, request: Request, *args: object, **kwargs: object) -> Response:
         serializer = InventoryMovementSerializer(data=request.data)

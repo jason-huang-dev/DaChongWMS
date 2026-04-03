@@ -1,6 +1,7 @@
 import CompareArrowsOutlinedIcon from "@mui/icons-material/CompareArrowsOutlined";
 import HistoryOutlinedIcon from "@mui/icons-material/HistoryOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import TuneOutlinedIcon from "@mui/icons-material/TuneOutlined";
 
 import type { WorkspaceIconNavItem } from "@/shared/components/workspace-icon-nav";
@@ -11,6 +12,11 @@ export const inventoryWorkspaceItems: WorkspaceIconNavItem[] = [
     to: "/inventory",
     icon: Inventory2OutlinedIcon,
     exact: true,
+  },
+  {
+    label: "Inventory Movements",
+    to: "/inventory/movements",
+    icon: ReceiptLongOutlinedIcon,
   },
   {
     label: "Stock Age Report",

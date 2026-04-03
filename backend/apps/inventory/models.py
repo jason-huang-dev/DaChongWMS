@@ -6,6 +6,7 @@ from typing import Any
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
+from django.db.models import Q
 from django.db.models import F
 from django.utils import timezone
 
@@ -302,6 +303,93 @@ class InventoryHold(models.Model):
         return f"{self.inventory_balance.product.sku} hold {self.quantity}"
 
 
+class InventoryInformationImportRecord(models.Model):
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        related_name="inventory_information_import_records",
+    )
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.CASCADE,
+        related_name="inventory_information_import_records",
+        blank=True,
+        null=True,
+    )
+    merchant_sku = models.CharField(max_length=64)
+    product_name = models.CharField(max_length=255, blank=True, default="")
+    shelf = models.CharField(max_length=64)
+    available_stock = models.DecimalField(
+        max_digits=18,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0.0000"))],
+    )
+    listing_time = models.DateField()
+    actual_length = models.CharField(max_length=32, blank=True, default="")
+    actual_width = models.CharField(max_length=32, blank=True, default="")
+    actual_height = models.CharField(max_length=32, blank=True, default="")
+    actual_weight = models.CharField(max_length=32, blank=True, default="")
+    measurement_unit = models.CharField(max_length=32, blank=True, default="")
+    merchant_code = models.CharField(max_length=64, blank=True, default="")
+    customer_code = models.CharField(max_length=64, blank=True, default="")
+    stock_status = models.CharField(
+        max_length=32,
+        choices=InventoryStatus.choices,
+        default=InventoryStatus.AVAILABLE,
+    )
+    created_by = models.CharField(max_length=255, blank=True, default="")
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ("organization_id", "warehouse_id", "merchant_sku", "shelf", "id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("organization", "merchant_sku"),
+                condition=Q(warehouse__isnull=True),
+                name="unique_inventory_information_import_global_sku",
+            ),
+            models.UniqueConstraint(
+                fields=("organization", "warehouse", "merchant_sku"),
+                condition=Q(warehouse__isnull=False),
+                name="unique_inventory_information_import_scoped_sku",
+            ),
+        ]
+
+    def clean(self) -> None:
+        super().clean()
+        self.merchant_sku = self.merchant_sku.strip().upper()
+        self.product_name = self.product_name.strip()
+        self.shelf = self.shelf.strip().upper()
+        self.actual_length = self.actual_length.strip()
+        self.actual_width = self.actual_width.strip()
+        self.actual_height = self.actual_height.strip()
+        self.actual_weight = self.actual_weight.strip()
+        self.measurement_unit = self.measurement_unit.strip().lower()
+        self.merchant_code = self.merchant_code.strip()
+        self.customer_code = self.customer_code.strip().upper()
+        self.stock_status = self.stock_status.strip().upper()
+        self.created_by = self.created_by.strip()
+
+        errors: dict[str, str] = {}
+        if not self.merchant_sku:
+            errors["merchant_sku"] = "Merchant SKU cannot be blank."
+        if not self.shelf:
+            errors["shelf"] = "Shelf cannot be blank."
+        if self.organization_id and self.warehouse_id and self.warehouse.organization_id != self.organization_id:
+            errors["warehouse"] = "Warehouse must belong to the same organization as the import record."
+        if errors:
+            raise ValidationError(errors)
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.merchant_sku} / {self.shelf}"
+
+
 class InventoryAdjustmentReason(models.Model):
     organization = models.ForeignKey(
         Organization,
@@ -407,4 +495,3 @@ class InventoryAdjustmentApprovalRule(models.Model):
 
     def __str__(self) -> str:
         return f"{self.adjustment_reason.code} / {self.approver_role}"
-

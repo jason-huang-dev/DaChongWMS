@@ -20,6 +20,7 @@ interface BulkActionBarProps {
   helperText?: string;
   errorMessage?: string | null;
   extraControls?: ReactNode;
+  justifyContent?: "space-between" | "flex-start";
 }
 
 export function BulkActionBar({
@@ -29,6 +30,7 @@ export function BulkActionBar({
   helperText,
   errorMessage,
   extraControls,
+  justifyContent = "space-between",
 }: BulkActionBarProps) {
   const { t, translateText } = useI18n();
 
@@ -42,8 +44,11 @@ export function BulkActionBar({
       <Stack
         alignItems={{ md: "center" }}
         direction={{ xs: "column", md: "row" }}
-        justifyContent="space-between"
+        justifyContent={justifyContent}
         spacing={1.5}
+        sx={{
+          flexWrap: justifyContent === "flex-start" ? "wrap" : undefined,
+        }}
       >
         <Stack spacing={0.5}>
           <Chip color="primary" label={t("bulk.selectedCount", { count: selectedCount })} size="small" />

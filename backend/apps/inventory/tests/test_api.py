@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from io import BytesIO
+from decimal import Decimal
 
 from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -11,6 +12,15 @@ from openpyxl import Workbook, load_workbook
 from rest_framework import status
 from rest_framework.test import APIClient
 
+from apps.inbound.services.inbound_service import (
+    CreatePurchaseOrderInput,
+    CreatePurchaseOrderLineInput,
+    CreateReceiptInput,
+    ReceiptLineInput,
+    create_purchase_order,
+    record_receipt,
+)
+from apps.inventory.models import InventoryBalance, InventoryStatus
 from apps.iam.models import Role
 from apps.locations.services.location_service import (
     CreateLocationInput,
@@ -24,6 +34,7 @@ from apps.organizations.tests.test_factories import (
     add_membership,
     assign_role,
     grant_role_permission,
+    make_customer_account,
     make_organization,
     make_role,
     make_user,
@@ -44,6 +55,11 @@ class InventoryAPITests(TestCase):
             organization=self.organization,
             name="Primary",
             code="WH-A",
+        )
+        self.customer_account = make_customer_account(
+            self.organization,
+            name="Retail Client",
+            code="RTL-1",
         )
         self.product = Product.objects.create(
             organization=self.organization,
@@ -186,6 +202,189 @@ class InventoryAPITests(TestCase):
         self.assertEqual(list_response.status_code, status.HTTP_200_OK)
         self.assertEqual(create_response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_manager_can_list_backend_driven_inventory_movements(self) -> None:
+        self.client.force_authenticate(self.manager)
+        purchase_order = create_purchase_order(
+            CreatePurchaseOrderInput(
+                organization=self.organization,
+                warehouse=self.warehouse,
+                customer_account=self.customer_account,
+                po_number="PO-2001",
+                line_items=(
+                    CreatePurchaseOrderLineInput(
+                        line_number=1,
+                        product=self.product,
+                        ordered_qty=Decimal("8.0000"),
+                        unit_cost=Decimal("3.2500"),
+                    ),
+                ),
+            )
+        )
+        purchase_order_line = purchase_order.lines.get(line_number=1)
+        receipt = record_receipt(
+            payload=CreateReceiptInput(
+                purchase_order=purchase_order,
+                warehouse=self.warehouse,
+                receipt_location=self.location,
+                receipt_number="RCPT-2001",
+                reference_code="R5ZG260402210815",
+                line_items=(
+                    ReceiptLineInput(
+                        purchase_order_line=purchase_order_line,
+                        received_qty=Decimal("8.0000"),
+                        stock_status=InventoryStatus.AVAILABLE,
+                        lot_number="BO20260402008",
+                        serial_number="R5ZG260402210815",
+                        unit_cost=Decimal("3.2500"),
+                    ),
+                ),
+            ),
+            operator_name="manager@example.com",
+        )
+
+        list_response = self.client.get(
+            reverse(
+                "organization-inventory-movement-list",
+                kwargs={"organization_id": self.organization.id},
+            ),
+            {
+                "warehouse_id": self.warehouse.id,
+                "page_size": 50,
+                "movementTypes": '["RECEIPT"]',
+                "merchantSku": "SKU-001",
+                "locationCode": "A-01-01",
+                "performedBy": "manager@example.com",
+                "referenceCode": receipt.receipt_number,
+                "matchMode": "exact",
+            },
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["count"], 1)
+        row = list_response.data["results"][0]
+        self.assertEqual(row["merchantSku"], "SKU-001")
+        self.assertEqual(row["productName"], "Scanner")
+        self.assertEqual(row["warehouseName"], "Primary")
+        self.assertEqual(row["movementType"], "RECEIPT")
+        self.assertEqual(row["performedBy"], "manager@example.com")
+        self.assertEqual(row["resultingLocationCode"], "A-01-01")
+        self.assertEqual(row["clientCode"], "RTL-1")
+        self.assertEqual(row["clientName"], "Retail Client")
+        self.assertEqual(row["entryTypeLabel"], "Standard Stock-in")
+        self.assertEqual(row["purchaseOrderNumber"], "PO-2001")
+        self.assertEqual(row["receiptNumber"], "RCPT-2001")
+        self.assertEqual(row["sourceDocumentNumber"], "RCPT-2001")
+        self.assertEqual(row["batchNumber"], "BO20260402008")
+        self.assertEqual(row["serialNumber"], "R5ZG260402210815")
+        self.assertEqual(
+            row["linkedDocumentNumbers"],
+            [
+                {"label": "Stock-in No.", "value": "RCPT-2001"},
+                {"label": "Receiving Serial Number", "value": "R5ZG260402210815"},
+                {"label": "Listing Serial Number", "value": "PT-RCPT-2001-1"},
+            ],
+        )
+        self.assertEqual(
+            row["sourceDocumentNumbers"],
+            [
+                {"label": "Purchase Order", "value": "PO-2001"},
+                {"label": "Reference", "value": "R5ZG260402210815"},
+            ],
+        )
+        self.assertEqual(row["quantity"], 8)
+        self.assertEqual(
+            list_response.data["filterOptions"]["warehouses"],
+            [{"value": str(self.warehouse.id), "label": "Primary"}],
+        )
+        self.assertEqual(
+            list_response.data["filterOptions"]["movementTypes"],
+            [{"value": "RECEIPT", "label": "Receipt"}],
+        )
+
+    def test_manager_can_list_backend_driven_inventory_information(self) -> None:
+        self.client.force_authenticate(self.manager)
+        InventoryBalance.objects.create(
+            organization=self.organization,
+            warehouse=self.warehouse,
+            location=self.location,
+            product=self.product,
+            stock_status=InventoryStatus.AVAILABLE,
+            on_hand_qty="8.0000",
+            allocated_qty="2.0000",
+            hold_qty="1.0000",
+            unit_cost="3.2500",
+            currency="USD",
+        )
+
+        response = self.client.get(
+            reverse(
+                "organization-inventory-information-list",
+                kwargs={"organization_id": self.organization.id},
+            ),
+            {"warehouse_id": self.warehouse.id, "page_size": 50},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        row = response.data["results"][0]
+        self.assertEqual(row["merchantSku"], "SKU-001")
+        self.assertEqual(row["productName"], "Scanner")
+        self.assertEqual(row["warehouseName"], "Primary")
+        self.assertEqual(row["availableStock"], 5)
+        self.assertEqual(row["totalInventory"], 8)
+        self.assertEqual(
+            response.data["filterOptions"]["warehouses"],
+            [{"value": "Primary", "label": "Primary"}],
+        )
+        self.assertEqual(
+            response.data["filterOptions"]["skus"],
+            [{"value": "SKU-001", "label": "SKU-001"}],
+        )
+
+    def test_manager_can_hide_zero_stock_inventory_information_rows(self) -> None:
+        self.client.force_authenticate(self.manager)
+        zero_stock_product = Product.objects.create(
+            organization=self.organization,
+            sku="SKU-002",
+            name="Empty Bin Scanner",
+        )
+        InventoryBalance.objects.create(
+            organization=self.organization,
+            warehouse=self.warehouse,
+            location=self.location,
+            product=self.product,
+            stock_status=InventoryStatus.AVAILABLE,
+            on_hand_qty="8.0000",
+            allocated_qty="2.0000",
+            hold_qty="1.0000",
+            unit_cost="3.2500",
+            currency="USD",
+        )
+        InventoryBalance.objects.create(
+            organization=self.organization,
+            warehouse=self.warehouse,
+            location=self.location,
+            product=zero_stock_product,
+            stock_status=InventoryStatus.AVAILABLE,
+            on_hand_qty="0.0000",
+            allocated_qty="0.0000",
+            hold_qty="0.0000",
+            unit_cost="3.2500",
+            currency="USD",
+        )
+
+        response = self.client.get(
+            reverse(
+                "organization-inventory-information-list",
+                kwargs={"organization_id": self.organization.id},
+            ),
+            {"warehouse_id": self.warehouse.id, "hideZeroStock": "true", "page_size": 50},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 1)
+        self.assertEqual([row["merchantSku"] for row in response.data["results"]], ["SKU-001"])
+
     def test_manager_can_download_inventory_information_template(self) -> None:
         self.client.force_authenticate(self.manager)
 
@@ -252,7 +451,7 @@ class InventoryAPITests(TestCase):
                 "organization-inventory-information-import-upload",
                 kwargs={"organization_id": self.organization.id},
             ),
-            {"file": upload_file},
+            {"file": upload_file, "warehouse_id": str(self.warehouse.id)},
             format="multipart",
         )
 
@@ -265,6 +464,19 @@ class InventoryAPITests(TestCase):
         self.assertEqual(len(response.data["imported_rows"]), 1)
         self.assertEqual(response.data["imported_rows"][0]["merchant_sku"], "SKU-NEW-001")
         self.assertEqual(response.data["imported_rows"][0]["listing_time"], date.today().isoformat())
+
+        list_response = self.client.get(
+            reverse(
+                "organization-inventory-information-list",
+                kwargs={"organization_id": self.organization.id},
+            ),
+            {"warehouse_id": self.warehouse.id, "page_size": 50},
+        )
+
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(list_response.data["count"], 1)
+        self.assertEqual(list_response.data["results"][0]["merchantSku"], "SKU-NEW-001")
+        self.assertEqual(list_response.data["results"][0]["source"], "imported")
 
     def test_manager_inventory_import_fails_when_product_already_exists(self) -> None:
         self.client.force_authenticate(self.manager)

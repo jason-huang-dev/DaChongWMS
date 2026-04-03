@@ -7,6 +7,7 @@ from .views import (
     InventoryAdjustmentReasonListCreateAPIView,
     InventoryBalanceDetailAPIView,
     InventoryBalanceListAPIView,
+    InventoryInformationListAPIView,
     InventoryInformationImportTemplateAPIView,
     InventoryInformationImportUploadAPIView,
     InventoryHoldDetailAPIView,
@@ -20,6 +21,11 @@ urlpatterns = [
         "organizations/<int:organization_id>/inventory/balances/",
         InventoryBalanceListAPIView.as_view(),
         name="organization-inventory-balance-list",
+    ),
+    path(
+        "organizations/<int:organization_id>/inventory/information/",
+        InventoryInformationListAPIView.as_view(),
+        name="organization-inventory-information-list",
     ),
     path(
         "organizations/<int:organization_id>/inventory/balances/<int:inventory_balance_id>/",

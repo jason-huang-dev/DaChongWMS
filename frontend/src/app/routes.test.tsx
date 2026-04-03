@@ -169,36 +169,121 @@ test("renders the inventory workspace with breadcrumbs for authorized operators"
     if (url.pathname === "/api/staff/11/") {
       return jsonResponse(buildStaffRecord("Manager"));
     }
-    if (url.pathname === "/api/inventory/balances/") {
+    if (url.pathname === "/api/access/my-memberships/") {
       return jsonResponse(
         buildPaginatedResponse([
           {
             id: 1,
-            warehouse: 1,
-            warehouse_name: "Main WH",
-            location: 15,
-            location_code: "A-01-01",
-            goods: 101,
-            goods_code: "SKU-001",
-            stock_status: "AVAILABLE",
-            lot_number: "LOT-1",
-            serial_number: "",
-            on_hand_qty: "12.0000",
-            allocated_qty: "2.0000",
-            hold_qty: "1.0000",
-            available_qty: "9.0000",
-            unit_cost: "4.5000",
-            currency: "USD",
-            creator: "Route Tester",
-            last_movement_at: "2026-03-14T10:00:00Z",
-            create_time: "2026-03-14 09:00:00",
-            update_time: "2026-03-14 09:15:00",
+            company_id: 1,
+            company_name: "DaChong WMS",
+            company_code: "DCWMS",
+            company_openid: "tenant-openid",
+            company_description: "Primary workspace",
+            staff_id: 11,
+            staff_name: "Route Tester",
+            staff_type: "Manager",
+            username: "manager",
+            email: "manager@example.com",
+            profile_token: "token-1",
+            check_code: 8888,
+            is_lock: false,
+            default_warehouse: 1,
+            default_warehouse_name: "Main WH",
+            is_company_admin: true,
+            can_manage_users: true,
+            is_active: true,
+            last_selected_at: "2026-03-21T00:00:00Z",
+            is_current: true,
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
           },
         ]),
       );
     }
-    if (url.pathname === "/api/locations/") {
-      return jsonResponse(buildPaginatedResponse([buildLocationRecord()]));
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse_name: "Main WH",
+            warehouse_code: "WH-MAIN",
+            company: 1,
+            company_name: "DaChong WMS",
+            contact_name: "Route Tester",
+            contact_phone: "",
+            contact_email: "",
+            country: "",
+            state: "",
+            city: "",
+            district: "",
+            address_line_1: "",
+            address_line_2: "",
+            postal_code: "",
+            timezone: "America/New_York",
+            is_default: true,
+            is_active: true,
+            manager_name: "",
+            notes: "",
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
+          },
+        ]),
+      );
+    }
+    if (url.pathname.endsWith("/inventory/information/")) {
+      return jsonResponse(
+        {
+          ...buildPaginatedResponse([
+            {
+              id: "live:1:SKU-001",
+              merchantSku: "SKU-001",
+              productName: "Scanner",
+              productBarcode: "BC-001",
+              productCategory: "Hardware",
+              productBrand: "DaChong",
+              productDescription: "Warehouse scanner",
+              productTags: ["DaChong", "Hardware"],
+              clients: [],
+              shelf: "A-01-01",
+              shelves: ["A-01-01"],
+              inTransit: 0,
+              pendingReceival: 0,
+              toList: 1,
+              orderAllocated: 2,
+              availableStock: 9,
+              defectiveProducts: 0,
+              totalInventory: 12,
+              listingTime: "2026-03-14",
+              actualLength: "",
+              actualWidth: "",
+              actualHeight: "",
+              actualWeight: "",
+              measurementUnit: "EA",
+              merchantCode: "",
+              customerCode: "",
+              warehouseName: "Main WH",
+              stockStatus: "AVAILABLE",
+              stockStatuses: ["AVAILABLE"],
+              zoneCode: "STOR",
+              zoneCodes: ["STOR"],
+              locationTypeCode: "STORAGE",
+              locationTypeCodes: ["STORAGE"],
+              areaKey: "storage",
+              areaLabel: "Storage",
+              source: "live",
+            },
+          ]),
+          filterOptions: {
+            warehouses: [{ value: "Main WH", label: "Main WH" }],
+            tags: [
+              { value: "DaChong", label: "DaChong" },
+              { value: "Hardware", label: "Hardware" },
+            ],
+            clients: [],
+            skus: [{ value: "SKU-001", label: "SKU-001" }],
+          },
+        },
+      );
     }
     if (url.pathname === "/api/reporting/report-exports/") {
       return jsonResponse(buildPaginatedResponse([]));
@@ -230,7 +315,8 @@ test("renders the inventory workspace with breadcrumbs for authorized operators"
     expect(checkboxes.length).toBeGreaterThanOrEqual(2);
     await user.click(checkboxes[1]);
     expect(screen.getByText("1 selected")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Export selected rows" })).toHaveLength(2);
+    expect(screen.getAllByRole("button", { name: "Export selected rows" })).toHaveLength(1);
+    expect(screen.getAllByRole("button", { name: "Print selected labels" })).toHaveLength(1);
     expect(screen.queryByRole("navigation", { name: "Inventory quick access" })).not.toBeInTheDocument();
     const currentBreadcrumbLink = within(breadcrumb).getByRole("link", { name: "Inventory information" });
     expect(currentBreadcrumbLink).toHaveAttribute("href", "/inventory");
@@ -238,10 +324,146 @@ test("renders the inventory workspace with breadcrumbs for authorized operators"
     expect(within(breadcrumb).queryByRole("link", { name: "Inventory" })).not.toBeInTheDocument();
     expect(screen.queryByText("All inventory pages")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Hide inventory sidebar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inventory Movements" })).toHaveAttribute("href", "/inventory/movements");
     expect(screen.getByRole("link", { name: "Stock Age Report" })).toHaveAttribute("href", "/inventory/aging");
   } finally {
     restoreBreadcrumbMeasurements();
   }
+});
+
+test("renders the inventory movements page inside the inventory workspace", async () => {
+  saveStoredSession({
+    username: "manager",
+    openid: "tenant-openid",
+    operatorId: 11,
+    operatorName: "",
+    operatorRole: "",
+  });
+
+  installFetchMock((url) => {
+    if (url.pathname === "/api/staff/11/") {
+      return jsonResponse(buildStaffRecord("Manager"));
+    }
+    if (url.pathname === "/api/access/my-memberships/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            company_id: 1,
+            company_name: "DaChong WMS",
+            company_code: "DCWMS",
+            company_openid: "tenant-openid",
+            company_description: "Primary workspace",
+            staff_id: 11,
+            staff_name: "Route Tester",
+            staff_type: "Manager",
+            username: "manager",
+            email: "manager@example.com",
+            profile_token: "token-1",
+            check_code: 8888,
+            is_lock: false,
+            default_warehouse: 1,
+            default_warehouse_name: "Main WH",
+            is_company_admin: true,
+            can_manage_users: true,
+            is_active: true,
+            last_selected_at: "2026-03-21T00:00:00Z",
+            is_current: true,
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
+          },
+        ]),
+      );
+    }
+    if (url.pathname === "/api/warehouse/") {
+      return jsonResponse(
+        buildPaginatedResponse([
+          {
+            id: 1,
+            warehouse_name: "Main WH",
+            warehouse_code: "WH-MAIN",
+            company: 1,
+            company_name: "DaChong WMS",
+            contact_name: "Route Tester",
+            contact_phone: "",
+            contact_email: "",
+            country: "",
+            state: "",
+            city: "",
+            district: "",
+            address_line_1: "",
+            address_line_2: "",
+            postal_code: "",
+            timezone: "America/New_York",
+            is_default: true,
+            is_active: true,
+            manager_name: "",
+            notes: "",
+            create_time: "2026-03-21T00:00:00Z",
+            update_time: "2026-03-21T00:00:00Z",
+          },
+        ]),
+      );
+    }
+    if (url.pathname.endsWith("/inventory/movements/")) {
+      return jsonResponse({
+        ...buildPaginatedResponse([
+          {
+            id: 101,
+            warehouseId: 1,
+            warehouseName: "Main WH",
+            productId: 88,
+            merchantSku: "SKU-001",
+            productName: "Scanner",
+            productBarcode: "BC-001",
+            clientCode: "RTL-1",
+            clientName: "Retail Client",
+            movementType: "RECEIPT",
+            movementTypeLabel: "Receipt",
+            entryTypeLabel: "Standard Stock-in",
+            stockStatus: "AVAILABLE",
+            quantity: 8,
+            fromLocationCode: "",
+            toLocationCode: "A-01-01",
+            referenceCode: "PO-1001",
+            sourceDocumentNumber: "RCPT-2001",
+            linkedDocumentNumbers: [
+              { label: "Stock-in No.", value: "RCPT-2001" },
+              { label: "Receiving Serial Number", value: "R5ZG260402210815" },
+              { label: "Listing Serial Number", value: "PT-RCPT-2001-1" },
+            ],
+            sourceDocumentNumbers: [{ label: "Purchase Order", value: "PO-2001" }],
+            purchaseOrderNumber: "PO-2001",
+            receiptNumber: "RCPT-2001",
+            asnNumber: "",
+            batchNumber: "BO20260402008",
+            serialNumber: "R5ZG260402210815",
+            shelfCode: "A-01-01",
+            quantityBeforeChange: 0,
+            remainingBatchQuantity: 8,
+            reason: "Inbound receipt",
+            performedBy: "manager@example.com",
+            occurredAt: "2026-04-02T18:30:00Z",
+            resultingFromQty: null,
+            resultingToQty: 8,
+            resultingQuantity: 8,
+            resultingLocationCode: "A-01-01",
+          },
+        ]),
+        filterOptions: {
+          warehouses: [{ value: "1", label: "Main WH" }],
+          movementTypes: [{ value: "RECEIPT", label: "Receipt" }],
+        },
+      });
+    }
+    return undefined;
+  });
+
+  renderWithRouter(["/inventory/movements"]);
+
+  expect(await screen.findByText("SKU-001")).toBeInTheDocument();
+  expect(screen.getByRole("combobox", { name: "Movement Types" })).toBeInTheDocument();
+  expect(screen.getByRole("textbox", { name: "Merchant SKU" })).toBeInTheDocument();
 });
 
 test("records the dashboard breadcrumb only once when the root route redirects there", async () => {

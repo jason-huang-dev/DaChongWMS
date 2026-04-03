@@ -45,7 +45,7 @@ export function InventoryInformationImportDialog({
         <Stack spacing={2}>
           <Alert severity="info">
             {translateText(
-              "Upload the JiFengWMS-style inventory initialization template. The backend parses and validates the workbook, then returns the normalized rows to this inventory workspace.",
+              "Upload the JiFengWMS-style inventory initialization template. The backend parses, validates, and saves the normalized rows for this inventory workspace.",
             )}
           </Alert>
           {errorMessages.length > 0 ? (
