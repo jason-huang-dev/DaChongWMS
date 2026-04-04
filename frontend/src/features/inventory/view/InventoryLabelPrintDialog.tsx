@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  IconButton,
   MenuItem,
   Stack,
   TextField,
@@ -302,6 +303,22 @@ function parsePdfError(error: unknown, translateText: (value: string) => string)
   return translateText("Unable to generate the label PDF.");
 }
 
+function openPdfPreviewTab(pdfUrl: string, previewWindow: Window | null) {
+  if (previewWindow && !previewWindow.closed) {
+    previewWindow.location.replace(pdfUrl);
+    previewWindow.focus();
+    return true;
+  }
+
+  const fallbackWindow = window.open(pdfUrl, "_blank", "noopener,noreferrer");
+  if (fallbackWindow && !fallbackWindow.closed) {
+    fallbackWindow.focus();
+    return true;
+  }
+
+  return false;
+}
+
 function PreviewLabel({
   row,
   template,
@@ -453,15 +470,14 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
         template,
       });
       const pdfUrl = URL.createObjectURL(pdfBlob);
+      const openedPreview = openPdfPreviewTab(pdfUrl, previewWindow);
 
-      if (previewWindow && !previewWindow.closed) {
-        previewWindow.location.replace(pdfUrl);
-        previewWindow.focus();
-      } else {
-        const link = document.createElement("a");
-        link.href = pdfUrl;
-        link.download = `inventory-labels-${template.id}.pdf`;
-        link.click();
+      if (!openedPreview) {
+        setPrintError(translateText("Allow pop-ups to preview the label PDF in a new tab."));
+        window.setTimeout(() => {
+          URL.revokeObjectURL(pdfUrl);
+        }, 1_000);
+        return;
       }
 
       window.setTimeout(() => {
@@ -643,14 +659,27 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
                         type="number"
                         value={quantities[row.id] ?? 0}
                       />
-                      <Button
+                      <IconButton
+                        aria-label={translateText("Remove")}
                         color="inherit"
                         onClick={() => handleRemoveRow(row.id)}
-                        startIcon={<DeleteOutlineRoundedIcon />}
-                        sx={{ justifyContent: { xs: "flex-start", md: "center" } }}
+                        size="small"
+                        sx={(currentTheme) => ({
+                          backgroundColor: "transparent",
+                          boxShadow: `0 0 0 1px ${alpha(currentTheme.palette.error.main, 0.14)}`,
+                          color: currentTheme.palette.error.main,
+                          justifySelf: { xs: "flex-start", md: "center" },
+                          transition: currentTheme.transitions.create(["background-color", "box-shadow"], {
+                            duration: currentTheme.transitions.duration.shorter,
+                          }),
+                          "&:hover": {
+                            backgroundColor: "transparent",
+                            boxShadow: `0 0 0 4px ${alpha(currentTheme.palette.error.main, 0.18)}, 0 10px 24px -12px ${alpha(currentTheme.palette.error.main, 0.9)}`,
+                          },
+                        })}
                       >
-                        {translateText("Remove")}
-                      </Button>
+                        <DeleteOutlineRoundedIcon />
+                      </IconButton>
                     </Box>
                   </Box>
                 ))}

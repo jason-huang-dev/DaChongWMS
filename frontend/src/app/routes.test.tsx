@@ -956,10 +956,10 @@ test("renders client management for authorized operators", async () => {
 
   renderWithRouter(["/clients"]);
 
-  expect(await screen.findByText("Client management")).toBeInTheDocument();
-  expect(await screen.findByText("Acme Retail")).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Open account" })).toBeInTheDocument();
+  expect((await screen.findAllByText("Acme Retail")).length).toBeGreaterThan(0);
   expect(screen.getByText("ACM-1")).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "Create client account" })).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /Approved\(1\)/i })).toBeInTheDocument();
 });
 
 test("renders product management for authorized operators", async () => {

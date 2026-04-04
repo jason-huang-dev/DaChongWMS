@@ -1,38 +1,21 @@
-import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
-  Alert,
-  Autocomplete,
   Box,
   Button,
-  Card,
-  CardContent,
-  Checkbox,
-  Chip,
-  CircularProgress,
-  IconButton,
   InputAdornment,
   MenuItem,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TablePagination,
-  TableRow,
-  TableSortLabel,
   TextField,
-  Tooltip,
   Typography,
 } from "@mui/material";
-import { alpha, useTheme, type SxProps, type Theme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 
-import { brandColors, brandMotion } from "@/app/brand";
+import { brandColors } from "@/app/brand";
 import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
 import { inventoryApi } from "@/features/inventory/model/api";
@@ -42,18 +25,27 @@ import {
 } from "@/features/inventory/model/inventory-information";
 import type {
   InventoryMovementHistoryDocumentNumber,
-  InventoryMovementHistoryFilterOption,
   InventoryMovementHistoryListResponse,
   InventoryMovementHistoryRow,
   InventoryMovementHistorySortKey,
 } from "@/features/inventory/model/types";
+import {
+  ActionIconButton,
+} from "@/shared/components/action-icon-button";
+import {
+  DataTable,
+  type DataTableColumnDefinition,
+  type DataTableRowSelection,
+} from "@/shared/components/data-table";
+import { FilterCard } from "@/shared/components/filter-card";
+import { MultiSelectFilter } from "@/shared/components/multi-select-filter";
+import { RangePicker } from "@/shared/components/range-picker";
 import { useDataView, type DataViewFilters } from "@/shared/hooks/use-data-view";
 import { formatDateTime, formatNumber, formatStatusLabel } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 import { apiGet } from "@/lib/http";
 
 const movementHistoryPageSize = 15;
-const selectionColumnWidth = 44;
 const increaseMovementTypes = new Set(["OPENING", "RECEIPT", "PUTAWAY", "TRANSFER", "ADJUSTMENT_IN", "RELEASE_HOLD"]);
 const decreaseMovementTypes = new Set(["PICK", "SHIP", "ADJUSTMENT_OUT", "HOLD"]);
 
@@ -72,15 +64,7 @@ interface InventoryMovementFilters extends DataViewFilters {
   matchMode: string;
 }
 
-interface InventoryMovementColumnDefinition {
-  key: string;
-  header: string;
-  align?: "left" | "right" | "center";
-  minWidth?: number;
-  sortKey?: InventoryMovementHistorySortKey;
-  width?: number | string;
-  render: (row: InventoryMovementHistoryRow) => ReactNode;
-}
+type InventoryMovementColumnDefinition = DataTableColumnDefinition<InventoryMovementHistoryRow, InventoryMovementHistorySortKey>;
 
 function buildMovementHistoryQueryParams({
   page,
@@ -103,145 +87,6 @@ function buildMovementHistoryQueryParams({
     sortDirection: sorting.direction,
     ...filters,
   };
-}
-
-function InventoryMovementMultiSelectFilter({
-  label,
-  placeholder,
-  value,
-  options,
-  onChange,
-  sx,
-}: {
-  label: string;
-  placeholder: string;
-  value: string;
-  options: InventoryMovementHistoryFilterOption[];
-  onChange: (nextValue: string) => void;
-  sx?: SxProps<Theme>;
-}) {
-  const selectedValues = decodeInventoryInformationMultiValue(value);
-  const selectedOptions = options.filter((option) => selectedValues.includes(option.value));
-
-  return (
-    <Autocomplete
-      disableCloseOnSelect
-      limitTags={1}
-      multiple
-      onChange={(_event, nextOptions) =>
-        onChange(
-          nextOptions.length > 0
-            ? encodeInventoryInformationMultiValue(nextOptions.map((option) => option.value))
-            : "",
-        )
-      }
-      options={options}
-      getOptionLabel={(option) => option.label}
-      isOptionEqualToValue={(option, selectedOption) => option.value === selectedOption.value}
-      renderTags={(tagValue, getTagProps) => {
-        const primaryTag = tagValue[0];
-
-        if (!primaryTag) {
-          return null;
-        }
-
-        return (
-          <Box
-            sx={{
-              alignItems: "center",
-              display: "flex",
-              gap: 0.5,
-              maxWidth: "100%",
-              minWidth: 0,
-              overflow: "hidden",
-            }}
-          >
-            <Chip
-              {...getTagProps({ index: 0 })}
-              label={primaryTag.label}
-              size="small"
-              sx={{
-                maxWidth: tagValue.length > 1 ? "calc(100% - 24px)" : "100%",
-                minWidth: 0,
-                "& .MuiChip-label": {
-                  overflow: "hidden",
-                  px: 0.75,
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                },
-              }}
-            />
-            {tagValue.length > 1 ? (
-              <Box
-                component="span"
-                sx={{
-                  color: "text.secondary",
-                  flex: "0 0 auto",
-                  fontSize: (theme) => theme.typography.caption.fontSize,
-                  fontWeight: 700,
-                  whiteSpace: "nowrap",
-                }}
-              >
-                +{tagValue.length - 1}
-              </Box>
-            ) : null}
-          </Box>
-        );
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          hiddenLabel
-          inputProps={{
-            ...params.inputProps,
-            "aria-label": label,
-          }}
-          placeholder={selectedOptions.length === 0 ? placeholder : undefined}
-          size="small"
-        />
-      )}
-      renderOption={(props, option, { selected }) => (
-        <Box component="li" {...props} sx={{ fontSize: (theme) => theme.typography.body2.fontSize }}>
-          <Checkbox checked={selected} size="small" sx={{ mr: 1 }} />
-          {option.label}
-        </Box>
-      )}
-      sx={[
-        {
-          flex: "1 1 0",
-          minWidth: 168,
-          overflow: "hidden",
-          "& .MuiAutocomplete-tag": {
-            height: 20,
-            maxWidth: "100%",
-          },
-          "& .MuiChip-label": {
-            fontSize: (theme) => theme.typography.caption.fontSize,
-            px: 0.75,
-          },
-          "& .MuiAutocomplete-input": {
-            minWidth: "0 !important",
-          },
-          "& .MuiAutocomplete-inputRoot": {
-            flexWrap: "nowrap",
-            minWidth: 0,
-            overflow: "hidden",
-          },
-          "& .MuiInputBase-input": {
-            fontSize: (theme) => theme.typography.body2.fontSize,
-            minWidth: 0,
-            py: 0.875,
-          },
-          "& .MuiOutlinedInput-root": {
-            minHeight: 34,
-            overflow: "hidden",
-          },
-        },
-        ...(Array.isArray(sx) ? sx : sx ? [sx] : []),
-      ]}
-      value={selectedOptions}
-    />
-  );
 }
 
 function InventoryMovementProductCell({ row }: { row: InventoryMovementHistoryRow }) {
@@ -537,14 +382,28 @@ export function InventoryMovementsPage() {
 
   const selectableRowIds = rows.map((row) => row.id);
   const selectedVisibleCount = selectableRowIds.filter((rowId) => selectedRowIds.includes(rowId)).length;
-  const allSelected = selectableRowIds.length > 0 && selectedVisibleCount === selectableRowIds.length;
-  const partiallySelected = selectedVisibleCount > 0 && !allSelected;
+  const movementRowSelection = useMemo<DataTableRowSelection<InventoryMovementHistoryRow>>(
+    () => ({
+      selectedRowIds,
+      onToggleAll: (tableRows) => setSelectedRowIds((currentSelectedRowIds) => {
+        const tableRowIds = tableRows.map((row) => row.id);
+        const allTableRowsSelected = tableRowIds.length > 0 && tableRowIds.every((rowId) => currentSelectedRowIds.includes(rowId));
+        return allTableRowsSelected ? [] : tableRowIds;
+      }),
+      onToggleRow: (row) =>
+        setSelectedRowIds((currentSelectedRowIds) =>
+          currentSelectedRowIds.includes(row.id)
+            ? currentSelectedRowIds.filter((rowId) => rowId !== row.id)
+            : [...currentSelectedRowIds, row.id],
+        ),
+    }),
+    [selectedRowIds],
+  );
 
   return (
     <Stack spacing={2.5}>
-      <Card>
-        <CardContent>
-          <Stack spacing={1}>
+      <FilterCard>
+        <Stack spacing={1}>
             <Stack
               alignItems="center"
               direction="row"
@@ -555,61 +414,43 @@ export function InventoryMovementsPage() {
                 overflow: "hidden",
               }}
             >
-              <InventoryMovementMultiSelectFilter
+              <MultiSelectFilter
                 label={translateText("Warehouses")}
-                onChange={(nextValue) => movementView.updateFilter("warehouses", nextValue)}
+                onChange={(nextValues) =>
+                  movementView.updateFilter(
+                    "warehouses",
+                    nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "",
+                  )
+                }
                 options={filterOptions?.warehouses ?? []}
                 placeholder={translateText("Warehouses")}
-                value={movementView.filters.warehouses}
+                selectedValues={decodeInventoryInformationMultiValue(movementView.filters.warehouses)}
               />
-              <InventoryMovementMultiSelectFilter
+              <MultiSelectFilter
                 label={translateText("Movement Types")}
-                onChange={(nextValue) => movementView.updateFilter("movementTypes", nextValue)}
+                onChange={(nextValues) =>
+                  movementView.updateFilter(
+                    "movementTypes",
+                    nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "",
+                  )
+                }
                 options={filterOptions?.movementTypes ?? []}
                 placeholder={translateText("Movement Types")}
-                value={movementView.filters.movementTypes}
+                selectedValues={decodeInventoryInformationMultiValue(movementView.filters.movementTypes)}
               />
-              <TextField
-                hiddenLabel
-                onChange={(event) => movementView.updateFilter("dateFrom", event.target.value)}
-                size="small"
-                slotProps={{ htmlInput: { "aria-label": translateText("From date") } }}
-                sx={{
-                  flex: "0 1 168px",
-                  minWidth: 140,
-                  "& .MuiInputBase-input": {
-                    fontSize: theme.typography.body2.fontSize,
-                    py: 0.875,
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                    borderRadius: 2,
-                    minHeight: 34,
-                  },
+              <RangePicker
+                endAriaLabel={translateText("To date")}
+                endValue={movementView.filters.dateTo}
+                fieldSx={{
+                  minWidth: { xs: "100%", md: 168 },
+                  width: { md: 168 },
                 }}
-                type="date"
-                value={movementView.filters.dateFrom}
-              />
-              <TextField
-                hiddenLabel
-                onChange={(event) => movementView.updateFilter("dateTo", event.target.value)}
-                size="small"
-                slotProps={{ htmlInput: { "aria-label": translateText("To date") } }}
-                sx={{
-                  flex: "0 1 168px",
-                  minWidth: 140,
-                  "& .MuiInputBase-input": {
-                    fontSize: theme.typography.body2.fontSize,
-                    py: 0.875,
-                  },
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                    borderRadius: 2,
-                    minHeight: 34,
-                  },
-                }}
-                type="date"
-                value={movementView.filters.dateTo}
+                inputType="date"
+                onEndChange={(value) => movementView.updateFilter("dateTo", value)}
+                onStartChange={(value) => movementView.updateFilter("dateFrom", value)}
+                rootSx={{ flex: "0 0 auto" }}
+                startAriaLabel={translateText("From date")}
+                startValue={movementView.filters.dateFrom}
               />
             </Stack>
             <Stack
@@ -817,14 +658,14 @@ export function InventoryMovementsPage() {
                   <MenuItem value="contains">{translateText("Contains")}</MenuItem>
                   <MenuItem value="exact">{translateText("Exact")}</MenuItem>
                 </TextField>
-                <TextField
-                  hiddenLabel
-                  onChange={(event) => movementView.updateFilter("quantityMin", event.target.value)}
-                  placeholder={translateText("Min Qty")}
-                  size="small"
-                  slotProps={{ htmlInput: { "aria-label": translateText("Minimum quantity"), inputMode: "numeric" } }}
-                  sx={{
-                    flex: "0 0 110px",
+                <RangePicker
+                  endAriaLabel={translateText("Maximum quantity")}
+                  endInputProps={{ inputMode: "numeric", min: 0 }}
+                  endPlaceholder={translateText("Max Qty")}
+                  endValue={movementView.filters.quantityMax}
+                  fieldSx={{
+                    minWidth: { xs: "100%", md: 110 },
+                    width: { md: 110 },
                     "& .MuiInputBase-input": {
                       fontSize: theme.typography.body2.fontSize,
                       py: 0.875,
@@ -833,329 +674,101 @@ export function InventoryMovementsPage() {
                       minHeight: 34,
                     },
                   }}
-                  type="number"
-                  value={movementView.filters.quantityMin}
-                />
-                <TextField
-                  hiddenLabel
-                  onChange={(event) => movementView.updateFilter("quantityMax", event.target.value)}
-                  placeholder={translateText("Max Qty")}
-                  size="small"
-                  slotProps={{ htmlInput: { "aria-label": translateText("Maximum quantity"), inputMode: "numeric" } }}
-                  sx={{
-                    flex: "0 0 110px",
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      minHeight: 34,
-                    },
-                  }}
-                  type="number"
-                  value={movementView.filters.quantityMax}
+                  inputType="number"
+                  onEndChange={(value) => movementView.updateFilter("quantityMax", value)}
+                  onStartChange={(value) => movementView.updateFilter("quantityMin", value)}
+                  rootSx={{ flex: "0 0 auto" }}
+                  startAriaLabel={translateText("Minimum quantity")}
+                  startInputProps={{ inputMode: "numeric", min: 0 }}
+                  startPlaceholder={translateText("Min Qty")}
+                  startValue={movementView.filters.quantityMin}
                 />
               </Stack>
-              <Tooltip enterDelay={200} title={translateText("Clear all filters")}>
-                <span>
-                  <IconButton
-                    aria-label={translateText("Clear all filters")}
-                    disabled={movementView.activeFilterCount === 0}
-                    onClick={movementView.resetFilters}
-                    size="small"
-                    sx={{
-                      border: `1px solid ${alpha(theme.palette.divider, 0.78)}`,
-                      borderRadius: 2,
-                      flex: "0 0 auto",
-                    }}
-                  >
-                    <RestartAltRoundedIcon fontSize="small" />
-                  </IconButton>
-                </span>
-              </Tooltip>
+              <ActionIconButton
+                aria-label={translateText("Clear all filters")}
+                disabled={movementView.activeFilterCount === 0}
+                onClick={movementView.resetFilters}
+                sx={{ flex: "0 0 auto" }}
+                title={translateText("Clear all filters")}
+              >
+                <RestartAltRoundedIcon fontSize="small" />
+              </ActionIconButton>
             </Stack>
-          </Stack>
-        </CardContent>
-      </Card>
+        </Stack>
+      </FilterCard>
 
-      <Card>
-        <CardContent sx={{ pb: 1.5 }}>
-          <Stack spacing={2}>
-            {movementHistoryQuery.error ? <Alert severity="error">{parseApiError(movementHistoryQuery.error)}</Alert> : null}
+      <DataTable
+        columns={columns}
+        emptyMessage="No inventory movements match the current filters."
+        error={movementHistoryQuery.error ? parseApiError(movementHistoryQuery.error) : null}
+        getRowId={(row) => row.id}
+        isLoading={movementHistoryQuery.isLoading}
+        pagination={{
+          page: movementView.page,
+          pageSize: movementView.pageSize,
+          total: movementHistoryQuery.data?.count ?? 0,
+          onPageChange: movementView.setPage,
+        }}
+        renderMetaRow={(row) => {
+          const clientLabel = row.clientName
+            ? `${row.clientName}${row.clientCode ? ` [${row.clientCode}]` : ""}`
+            : "--";
+          const entryTypeLabel = row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType);
 
-            <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={2}>
-              <Stack alignItems="center" direction="row" spacing={1.25}>
-                <Typography color="text.secondary" variant="body2">
-                  {t("bulk.selectedCount", { count: selectedVisibleCount })}
-                </Typography>
-                {selectedVisibleCount > 0 ? (
-                  <Button onClick={() => setSelectedRowIds([])} size="small" sx={{ minWidth: 0, px: 1.25 }}>
-                    {translateText("Clear selection")}
-                  </Button>
-                ) : null}
-              </Stack>
-              <Typography color="text.secondary" variant="body2">
-                {t("inventory.resultCount", { count: movementHistoryQuery.data?.count ?? 0 })}
-              </Typography>
-            </Stack>
-
-            <TableContainer
-              sx={{
-                border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-                borderRadius: 2,
-                overflowX: "auto",
-                overflowY: "hidden",
-              }}
+          return (
+            <Stack
+              alignItems={{ md: "center", xs: "flex-start" }}
+              direction={{ md: "row", xs: "column" }}
+              justifyContent="space-between"
+              spacing={1}
             >
-              <Table size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
-                <colgroup>
-                  <col style={{ width: selectionColumnWidth }} />
-                  {columns.map((column) => (
-                    <col key={column.key} style={column.width ? { width: column.width } : undefined} />
-                  ))}
-                </colgroup>
-                <TableHead>
-                  <TableRow
-                    sx={{
-                      backgroundColor: alpha(theme.palette.text.primary, isDark ? 0.05 : 0.03),
-                    }}
-                  >
-                    <TableCell
-                      padding="none"
-                      sx={{
-                        borderBottomColor: alpha(theme.palette.divider, 0.8),
-                        boxSizing: "border-box",
-                        maxWidth: selectionColumnWidth,
-                        minWidth: selectionColumnWidth,
-                        px: 0.5,
-                        textAlign: "center",
-                        verticalAlign: "middle",
-                        width: selectionColumnWidth,
-                      }}
-                    >
-                      <Checkbox
-                        checked={allSelected}
-                        disabled={rows.length === 0}
-                        indeterminate={partiallySelected}
-                        onChange={() => setSelectedRowIds(allSelected ? [] : rows.map((row) => row.id))}
-                        size="small"
-                        sx={{ display: "block", mx: "auto", p: 0.5 }}
-                      />
-                    </TableCell>
-                    {columns.map((column) => (
-                      <TableCell
-                        align={column.align}
-                        key={column.key}
-                        sx={{
-                          borderBottomColor: alpha(theme.palette.divider, 0.8),
-                          color: theme.palette.text.primary,
-                          fontSize: theme.typography.body2.fontSize,
-                          fontWeight: 800,
-                          lineHeight: 1.3,
-                          minWidth: column.minWidth,
-                          px: 1.25,
-                          py: 1.2,
-                          textAlign: column.align,
-                          whiteSpace: "normal",
-                          width: column.width,
-                        }}
-                      >
-                        {column.sortKey ? (
-                          <TableSortLabel
-                            active={sorting.key === column.sortKey}
-                            direction={sorting.key === column.sortKey ? sorting.direction : "asc"}
-                            hideSortIcon={sorting.key !== column.sortKey}
-                            onClick={() => {
-                              setSorting((currentSorting) =>
-                                currentSorting.key === column.sortKey
-                                  ? {
-                                      direction: currentSorting.direction === "asc" ? "desc" : "asc",
-                                      key: column.sortKey!,
-                                    }
-                                  : {
-                                      direction: "asc",
-                                      key: column.sortKey!,
-                                    },
-                              );
-                              movementView.setPage(1);
-                            }}
-                            sx={{
-                              display: "inline-flex",
-                              fontSize: "inherit",
-                              justifyContent:
-                                column.align === "right"
-                                  ? "flex-end"
-                                  : column.align === "center"
-                                    ? "center"
-                                    : "flex-start",
-                              lineHeight: 1.3,
-                              textAlign: column.align,
-                              width: "100%",
-                            }}
-                          >
-                            {translateText(column.header)}
-                          </TableSortLabel>
-                        ) : (
-                          translateText(column.header)
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {movementHistoryQuery.isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={columns.length + 1}>
-                        <Stack alignItems="center" direction="row" justifyContent="center" spacing={1.5} sx={{ py: 4 }}>
-                          <CircularProgress size={20} />
-                          <Typography variant="body2">{translateText("Loading data...")}</Typography>
-                        </Stack>
-                      </TableCell>
-                    </TableRow>
-                  ) : rows.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={columns.length + 1}>
-                        <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
-                          {translateText("No inventory movements match the current filters.")}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    rows.map((row) => {
-                      const isSelected = selectedRowIds.includes(row.id);
-                      const clientLabel = row.clientName
-                        ? `${row.clientName}${row.clientCode ? ` [${row.clientCode}]` : ""}`
-                        : "--";
-                      const entryTypeLabel = row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType);
-                      const metaBackground = isSelected
-                        ? alpha(brandColors.accent, isDark ? 0.12 : 0.08)
-                        : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04);
-                      const detailBackground = isSelected
-                        ? alpha(brandColors.accent, isDark ? 0.06 : 0.035)
-                        : alpha(theme.palette.background.paper, isDark ? 0.94 : 0.99);
-                      const hoverBackground = isSelected
-                        ? alpha(brandColors.accent, isDark ? 0.1 : 0.06)
-                        : alpha(theme.palette.text.primary, isDark ? 0.04 : 0.025);
-
-                      return (
-                        <Fragment key={row.id}>
-                          <TableRow
-                            sx={{
-                              "& td": {
-                                backgroundColor: metaBackground,
-                                borderBottomColor: "transparent",
-                              },
-                            }}
-                          >
-                            <TableCell
-                              padding="none"
-                              sx={{
-                                boxShadow: isSelected ? `inset 3px 0 0 ${brandColors.accent}` : "none",
-                                maxWidth: selectionColumnWidth,
-                                minWidth: selectionColumnWidth,
-                                px: 0.5,
-                                textAlign: "center",
-                                verticalAlign: "middle",
-                                width: selectionColumnWidth,
-                              }}
-                            >
-                              <Checkbox
-                                checked={isSelected}
-                                onChange={() =>
-                                  setSelectedRowIds((currentSelectedRowIds) =>
-                                    currentSelectedRowIds.includes(row.id)
-                                      ? currentSelectedRowIds.filter((rowId) => rowId !== row.id)
-                                      : [...currentSelectedRowIds, row.id],
-                                  )
-                                }
-                                size="small"
-                                sx={{ display: "block", mx: "auto", p: 0.5 }}
-                              />
-                            </TableCell>
-                            <TableCell colSpan={columns.length} sx={{ px: 1.75, py: 1.1 }}>
-                              <Stack
-                                alignItems={{ md: "center", xs: "flex-start" }}
-                                direction={{ md: "row", xs: "column" }}
-                                justifyContent="space-between"
-                                spacing={1}
-                              >
-                                <Stack direction="row" flexWrap="wrap" spacing={3} useFlexGap>
-                                  <InventoryMovementMetaField label="Warehouse" value={row.warehouseName || "--"} />
-                                  <InventoryMovementMetaField label="Client" value={clientLabel} />
-                                  <InventoryMovementMetaField label="Type" value={entryTypeLabel} />
-                                </Stack>
-                                <InventoryMovementMetaField
-                                  label="Time"
-                                  value={row.occurredAt ? formatDateTime(row.occurredAt) : "--"}
-                                />
-                              </Stack>
-                            </TableCell>
-                          </TableRow>
-                          <TableRow
-                            hover
-                            sx={{
-                              "& td": {
-                                backgroundColor: detailBackground,
-                                borderBottomColor: alpha(theme.palette.divider, 0.62),
-                                fontSize: theme.typography.body2.fontSize,
-                                lineHeight: theme.typography.body2.lineHeight,
-                                py: 1.6,
-                                transition: [
-                                  `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
-                                  `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
-                                ].join(", "),
-                                verticalAlign: "top",
-                              },
-                              "&:hover td": {
-                                backgroundColor: hoverBackground,
-                              },
-                            }}
-                          >
-                            <TableCell
-                              sx={{
-                                backgroundColor: detailBackground,
-                                borderBottomColor: alpha(theme.palette.divider, 0.62),
-                                maxWidth: selectionColumnWidth,
-                                minWidth: selectionColumnWidth,
-                                px: 0,
-                                width: selectionColumnWidth,
-                              }}
-                            />
-                            {columns.map((column) => (
-                              <TableCell
-                                align={column.align}
-                                key={column.key}
-                                sx={{
-                                  minWidth: column.minWidth,
-                                  px: 1.25,
-                                  textAlign: column.align,
-                                  width: column.width,
-                                }}
-                              >
-                                {column.render(row)}
-                              </TableCell>
-                            ))}
-                          </TableRow>
-                        </Fragment>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-
-            <TablePagination
-              component="div"
-              count={movementHistoryQuery.data?.count ?? 0}
-              onPageChange={(_event, nextPage) => movementView.setPage(nextPage + 1)}
-              onRowsPerPageChange={() => undefined}
-              page={Math.max(movementView.page - 1, 0)}
-              rowsPerPage={movementView.pageSize}
-              rowsPerPageOptions={[movementView.pageSize]}
-            />
+              <Stack direction="row" flexWrap="wrap" spacing={3} useFlexGap>
+                <InventoryMovementMetaField label="Warehouse" value={row.warehouseName || "--"} />
+                <InventoryMovementMetaField label="Client" value={clientLabel} />
+                <InventoryMovementMetaField label="Type" value={entryTypeLabel} />
+              </Stack>
+              <InventoryMovementMetaField label="Time" value={row.occurredAt ? formatDateTime(row.occurredAt) : "--"} />
+            </Stack>
+          );
+        }}
+        rowSelection={movementRowSelection}
+        rows={rows}
+        sorting={{
+          direction: sorting.direction,
+          onSortChange: (nextSortKey) => {
+            setSorting((currentSorting) =>
+              currentSorting.key === nextSortKey
+                ? {
+                    direction: currentSorting.direction === "asc" ? "desc" : "asc",
+                    key: nextSortKey,
+                  }
+                : {
+                    direction: "asc",
+                    key: nextSortKey,
+                  },
+            );
+            movementView.setPage(1);
+          },
+          sortKey: sorting.key,
+        }}
+        toolbar={
+          <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={2}>
+            <Stack alignItems="center" direction="row" spacing={1.25}>
+              <Typography color="text.secondary" variant="body2">
+                {t("bulk.selectedCount", { count: selectedVisibleCount })}
+              </Typography>
+              {selectedVisibleCount > 0 ? (
+                <Button onClick={() => setSelectedRowIds([])} size="small" sx={{ minWidth: 0, px: 1.25 }}>
+                  {translateText("Clear selection")}
+                </Button>
+              ) : null}
+            </Stack>
+            <Typography color="text.secondary" variant="body2">
+              {t("inventory.resultCount", { count: movementHistoryQuery.data?.count ?? 0 })}
+            </Typography>
           </Stack>
-        </CardContent>
-      </Card>
+        }
+      />
     </Stack>
   );
 }

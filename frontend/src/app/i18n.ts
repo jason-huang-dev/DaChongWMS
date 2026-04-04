@@ -26,6 +26,7 @@ const keyedMessages = {
     "inventory.importRowsSuccess": "Imported {{count}} inventory rows successfully.",
     "inventory.resultCount": "{{count}} results",
     "bulk.selectedCount": "{{count}} selected",
+    "table.paginationDisplayedRows": "{{from}}-{{to}} of {{count}}",
   },
   "zh-CN": {
     "ui.language": "语言",
@@ -50,6 +51,7 @@ const keyedMessages = {
     "inventory.importRowsSuccess": "已成功导入 {{count}} 条库存信息。",
     "inventory.resultCount": "{{count}} 条结果",
     "bulk.selectedCount": "已选择 {{count}} 项",
+    "table.paginationDisplayedRows": "{{from}}-{{to}}, 共 {{count}}",
   },
 } as const satisfies Record<AppLocale, Record<string, TranslationValue>>;
 

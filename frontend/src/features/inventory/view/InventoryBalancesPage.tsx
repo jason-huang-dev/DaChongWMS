@@ -5,8 +5,7 @@ import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
-import { Alert, Button, IconButton, Stack, Tooltip } from "@mui/material";
-import { alpha, useTheme } from "@mui/material/styles";
+import { Alert, Button, Stack } from "@mui/material";
 
 import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
@@ -28,7 +27,8 @@ import {
   type InventoryInformationFilterOption,
   type InventoryInformationFilters,
 } from "@/features/inventory/view/InventoryInformationTable";
-import type { ResourceTableRowSelection } from "@/shared/components/resource-table";
+import { ActionIconButton } from "@/shared/components/action-icon-button";
+import type { DataTableRowSelection } from "@/shared/components/data-table";
 import { useBulkSelection } from "@/shared/hooks/use-bulk-selection";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { apiGet } from "@/lib/http";
@@ -97,8 +97,6 @@ async function fetchAllInventoryInformationRows({
 }
 
 export function InventoryBalancesPage() {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
   const queryClient = useQueryClient();
   const { t, translateText } = useI18n();
   const { company, activeWarehouseId } = useTenantScope();
@@ -198,7 +196,7 @@ export function InventoryBalancesPage() {
     [currentPageRowLookup, inventorySelection.selectedIds, selectedRowLookup],
   );
 
-  const inventoryRowSelection = useMemo<ResourceTableRowSelection<InventoryInformationRow>>(
+  const inventoryRowSelection = useMemo<DataTableRowSelection<InventoryInformationRow>>(
     () => ({
       selectedRowIds: inventorySelection.selectedIds,
       onToggleAll: (tableRows) => inventorySelection.toggleMany(tableRows.map((row) => row.id)),
@@ -297,96 +295,46 @@ export function InventoryBalancesPage() {
       <InventoryInformationTable
         actions={
           <Stack direction="row" spacing={0.75}>
-            <Tooltip
-              enterDelay={200}
+            <ActionIconButton
+              aria-label={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+              disabled={!companyId || isExporting || (selectedRows.length === 0 && !inventoryInformationQuery.data?.count)}
+              onClick={() => {
+                void handleExportRows();
+              }}
               title={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+              tone="success"
             >
-              <span>
-                <IconButton
-                  aria-label={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
-                  disabled={!companyId || isExporting || (selectedRows.length === 0 && !inventoryInformationQuery.data?.count)}
-                  onClick={() => {
-                    void handleExportRows();
-                  }}
-                  size="small"
-                  sx={{
-                    backgroundColor: alpha(theme.palette.success.main, isDark ? 0.2 : 0.12),
-                    border: `1px solid ${alpha(theme.palette.success.main, isDark ? 0.34 : 0.22)}`,
-                    borderRadius: 2,
-                    color: theme.palette.success.main,
-                    "&:hover": {
-                      backgroundColor: alpha(theme.palette.success.main, isDark ? 0.26 : 0.18),
-                    },
-                  }}
-                >
-                  <FileDownloadOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip enterDelay={200} title={translateText("Print selected labels")}>
-              <span>
-                <IconButton
-                  aria-label={translateText("Print selected labels")}
-                  disabled={selectedRows.length === 0}
-                  onClick={() => setIsPrintDialogOpen(true)}
-                  size="small"
-                  sx={{
-                    backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.22 : 0.14),
-                    border: `1px solid ${alpha(theme.palette.warning.main, isDark ? 0.36 : 0.22)}`,
-                    borderRadius: 2,
-                    color: theme.palette.warning.main,
-                    "&:hover": {
-                      backgroundColor: alpha(theme.palette.warning.main, isDark ? 0.28 : 0.18),
-                    },
-                  }}
-                >
-                  <LocalPrintshopOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip enterDelay={200} title={translateText("Download template")}>
-              <span>
-                <IconButton
-                  aria-label={translateText("Download template")}
-                  disabled={!companyId}
-                  onClick={() => {
-                    if (companyId) {
-                      void runInventoryInformationTemplateDownload(companyId);
-                    }
-                  }}
-                  size="small"
-                  sx={{
-                    backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.4 : 0.88),
-                    border: `1px solid ${alpha(theme.palette.divider, 0.86)}`,
-                    borderRadius: 2,
-                    color: theme.palette.text.primary,
-                    "&:hover": {
-                      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.58 : 0.98),
-                    },
-                  }}
-                >
-                  <DownloadOutlinedIcon fontSize="small" />
-                </IconButton>
-              </span>
-            </Tooltip>
-            <Tooltip enterDelay={200} title={translateText("Import XLSX")}>
-              <IconButton
-                aria-label={translateText("Import XLSX")}
-                onClick={handleOpenImportDialog}
-                size="small"
-                sx={{
-                  backgroundColor: alpha(theme.palette.primary.main, isDark ? 0.24 : 0.14),
-                  border: `1px solid ${alpha(theme.palette.primary.main, isDark ? 0.4 : 0.26)}`,
-                  borderRadius: 2,
-                  color: theme.palette.primary.main,
-                  "&:hover": {
-                    backgroundColor: alpha(theme.palette.primary.main, isDark ? 0.3 : 0.18),
-                  },
-                }}
-              >
-                <UploadFileOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+              <FileDownloadOutlinedIcon fontSize="small" />
+            </ActionIconButton>
+            <ActionIconButton
+              aria-label={translateText("Print selected labels")}
+              disabled={selectedRows.length === 0}
+              onClick={() => setIsPrintDialogOpen(true)}
+              title={translateText("Print selected labels")}
+              tone="warning"
+            >
+              <LocalPrintshopOutlinedIcon fontSize="small" />
+            </ActionIconButton>
+            <ActionIconButton
+              aria-label={translateText("Download template")}
+              disabled={!companyId}
+              onClick={() => {
+                if (companyId) {
+                  void runInventoryInformationTemplateDownload(companyId);
+                }
+              }}
+              title={translateText("Download template")}
+            >
+              <DownloadOutlinedIcon fontSize="small" />
+            </ActionIconButton>
+            <ActionIconButton
+              aria-label={translateText("Import XLSX")}
+              onClick={handleOpenImportDialog}
+              title={translateText("Import XLSX")}
+              tone="primary"
+            >
+              <UploadFileOutlinedIcon fontSize="small" />
+            </ActionIconButton>
           </Stack>
         }
         clientOptions={filterOptions?.clients ?? ([] as InventoryInformationFilterOption[])}

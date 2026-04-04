@@ -1,7 +1,7 @@
 import { Suspense, lazy, type ComponentType, type ReactElement } from "react";
 
 import type { RouteObject } from "react-router-dom";
-import { Navigate, createBrowserRouter } from "react-router-dom";
+import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "@/app/layout/app-shell";
 import { RequireAuth, RequireRoles } from "@/features/auth/view/components/RequireAuth";
@@ -65,7 +65,22 @@ const TransferOrderDetailPage = lazyNamedPage(
   "TransferOrderDetailPage",
 );
 const ReturnsPage = lazyNamedPage(() => import("@/features/returns/view/ReturnsPage"), "ReturnsPage");
-const ClientsPage = lazyNamedPage(() => import("@/features/clients/view/ClientsPage"), "ClientsPage");
+const ClientsPendingApprovalPage = lazyNamedPage(
+  () => import("@/features/clients/view/ClientsPage"),
+  "ClientsPendingApprovalPage",
+);
+const ClientsApprovedPage = lazyNamedPage(
+  () => import("@/features/clients/view/ClientsPage"),
+  "ClientsApprovedPage",
+);
+const ClientsReviewNotApprovedPage = lazyNamedPage(
+  () => import("@/features/clients/view/ClientsPage"),
+  "ClientsReviewNotApprovedPage",
+);
+const ClientsDeactivatedPage = lazyNamedPage(
+  () => import("@/features/clients/view/ClientsPage"),
+  "ClientsDeactivatedPage",
+);
 const ProductsPage = lazyNamedPage(() => import("@/features/products/view/ProductsPage"), "ProductsPage");
 const LogisticsPage = lazyNamedPage(() => import("@/features/logistics/view/LogisticsPage"), "LogisticsPage");
 const WorkOrdersPage = lazyNamedPage(() => import("@/features/work-orders/view/WorkOrdersPage"), "WorkOrdersPage");
@@ -249,8 +264,34 @@ export const appRoutes: RouteObject[] = [
               },
               {
                 path: "/clients",
-                element: withSuspense(<ClientsPage />),
+                element: <Outlet />,
                 handle: { crumb: "Clients" },
+                children: [
+                  {
+                    index: true,
+                    element: <Navigate replace to="approved" />,
+                  },
+                  {
+                    path: "pending-approval",
+                    element: withSuspense(<ClientsPendingApprovalPage />),
+                    handle: { crumb: "Pending approval clients" },
+                  },
+                  {
+                    path: "approved",
+                    element: withSuspense(<ClientsApprovedPage />),
+                    handle: { crumb: "Approved clients" },
+                  },
+                  {
+                    path: "review-not-approved",
+                    element: withSuspense(<ClientsReviewNotApprovedPage />),
+                    handle: { crumb: "Review not approved clients" },
+                  },
+                  {
+                    path: "deactivated",
+                    element: withSuspense(<ClientsDeactivatedPage />),
+                    handle: { crumb: "Deactivated clients" },
+                  },
+                ],
               },
               {
                 path: "/transfers",

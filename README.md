@@ -14,6 +14,7 @@ Authoritative design notes live inside the repo so they version with code:
   - `postgres13-to-16-migration.md`: explicit dump/restore workflow for the old PG13 Docker volume.
   - `caching-and-redis.md`, `background-jobs.md`, `error-handling-and-logging.md`: infrastructure guidance for cache, async work, and observability.
 - `frontend/ai/docs/` — frontend playbooks:
+  - `feature-architecture.md`: MVC+T feature layout and test-placement rules.
   - `frontend-architecture.md`: Vite/React/MUI stack overview and directory layout.
   - `routing-and-layout.md`: React Router patterns, layout shell, and navigation UX.
   - `api-client-and-state.md`: HTTP client, React Query usage, and state separation.

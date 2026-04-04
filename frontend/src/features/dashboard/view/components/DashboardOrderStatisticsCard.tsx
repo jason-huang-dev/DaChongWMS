@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 
-import EastRoundedIcon from "@mui/icons-material/EastRounded";
 import IosShareOutlinedIcon from "@mui/icons-material/IosShareOutlined";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
-import { Box, Button, Card, CardContent, Skeleton, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Card, CardContent, Skeleton, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import type {
@@ -13,6 +12,7 @@ import type {
 } from "@/features/dashboard/model/types";
 import type { DashboardRevenueOverviewSourceData } from "@/features/dashboard/view/components/DashboardRevenueOverviewCard";
 import { DashboardRevenueOverviewCard } from "@/features/dashboard/view/components/DashboardRevenueOverviewCard";
+import { RangePicker } from "@/shared/components/range-picker";
 import { formatNumber } from "@/shared/utils/format";
 
 interface DashboardOrderStatisticsCardProps {
@@ -623,88 +623,25 @@ export function DashboardOrderStatisticsCard({
                 })}
               </Box>
 
-              <Stack
-                alignItems="center"
-                direction={{ xs: "column", md: "row" }}
-                spacing={1}
-                sx={{
-                  backgroundColor: alpha(theme.palette.background.paper, 0.98),
-                  border: `1px solid ${alpha(timeWindow === "CUSTOM" ? theme.palette.primary.main : theme.palette.divider, timeWindow === "CUSTOM" ? 0.72 : 0.92)}`,
-                  borderRadius: "12px",
-                  height: { md: 48 },
-                  minHeight: { md: 48 },
-                  px: { xs: 1.25, md: 0.75 },
-                  py: { xs: 0.75, md: 0.5 },
-                  width: { xs: "100%", md: "auto" },
+              <RangePicker
+                active={timeWindow === "CUSTOM"}
+                disabled={isRestricted}
+                endAriaLabel="Range end"
+                endValue={draftDateTo}
+                error={isInvalidCustomRange}
+                inputType="datetime-local"
+                onEndChange={(value) => {
+                  setDraftDateTo(value);
+                  setHasPendingCustomSync(true);
                 }}
-              >
-                <Stack
-                  alignItems={{ xs: "stretch", md: "center" }}
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={0.75}
-                  sx={{ width: { xs: "100%", md: "auto" } }}
-                >
-                  <TextField
-                    disabled={isRestricted}
-                    error={isInvalidCustomRange}
-                    onChange={(event) => {
-                      setDraftDateFrom(event.target.value);
-                      setHasPendingCustomSync(true);
-                    }}
-                    size="small"
-                    slotProps={{
-                      htmlInput: { "aria-label": "Range start", step: 3600 },
-                    }}
-                    sx={{
-                      minWidth: { xs: "100%", md: 176 },
-                      "& .MuiOutlinedInput-root": {
-                        backgroundColor: alpha(theme.palette.background.default, 0.34),
-                        height: 38,
-                      },
-                    }}
-                    type="datetime-local"
-                    value={draftDateFrom}
-                  />
-                  <Box
-                    sx={{
-                      alignItems: "center",
-                      color: timeWindow === "CUSTOM" ? theme.palette.primary.main : theme.palette.text.secondary,
-                      display: "inline-flex",
-                      flexShrink: 0,
-                      justifyContent: "center",
-                      px: { xs: 0, md: 0.25 },
-                    }}
-                  >
-                    <EastRoundedIcon
-                      sx={{
-                        fontSize: 18,
-                        transform: { xs: "rotate(90deg)", md: "none" },
-                      }}
-                    />
-                  </Box>
-                  <TextField
-                    disabled={isRestricted}
-                    error={isInvalidCustomRange}
-                    onChange={(event) => {
-                      setDraftDateTo(event.target.value);
-                      setHasPendingCustomSync(true);
-                    }}
-                    size="small"
-                    slotProps={{
-                      htmlInput: { "aria-label": "Range end", step: 3600 },
-                    }}
-                    sx={{
-                      minWidth: { xs: "100%", md: 176 },
-                      "& .MuiOutlinedInput-root": {
-                        backgroundColor: alpha(theme.palette.background.default, 0.34),
-                        height: 38,
-                      },
-                    }}
-                    type="datetime-local"
-                    value={draftDateTo}
-                  />
-                </Stack>
-              </Stack>
+                onStartChange={(value) => {
+                  setDraftDateFrom(value);
+                  setHasPendingCustomSync(true);
+                }}
+                startAriaLabel="Range start"
+                startValue={draftDateFrom}
+                step={3600}
+              />
 
               <Button
                 disabled={!data || isLoading || isRestricted}

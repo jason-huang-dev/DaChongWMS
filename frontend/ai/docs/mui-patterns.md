@@ -46,6 +46,7 @@ The reference target is a dense operator console. To match that style without lo
 
 - support a compact theme variant for queue pages and workbenches
 - prefer shared toolbar, filter-row, secondary-nav, and workbench-card wrappers over large `sx` blocks in route files
+- dense queue chrome such as filter cards, icon utility buttons, and page tabs should be shared primitives with design-token-driven font sizes
 - queue pages may use multi-row filter bands above the table when the domain genuinely needs them
 - left secondary navigation for status buckets should be a shared pattern, not custom markup per module
 - table actions such as refresh, export, customize columns, and help should be placed consistently in the same region of the shell

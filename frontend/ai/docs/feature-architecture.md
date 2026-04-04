@@ -1,6 +1,6 @@
 # Feature Architecture
 
-The frontend uses a consistent MVC-inspired feature structure. The chosen layout is lower-case `model/`, `controller/`, and `view/` directories under each feature.
+The frontend uses a consistent MVC+T feature structure. The chosen layout is lower-case `model/`, `controller/`, `view/`, and `test/` directories under each feature.
 
 ## Chosen Structure
 
@@ -14,13 +14,17 @@ frontend/src/features/<feature>/
   controller/
     actions.ts
     use<Feature>Controller.ts
-    *.test.ts(x)
   view/
     <Feature>Page.tsx
     <Feature>Table.tsx
     <Feature>Form.tsx
     components/
       *.tsx
+  test/
+    <Feature>Page.test.tsx
+    <Feature>Table.test.tsx
+    <FeatureModel>.test.ts
+    components/
       *.test.tsx
 ```
 
@@ -31,7 +35,7 @@ Not every feature needs every file. Read-only features can omit `Form.tsx`; muta
 - It scales better than single-file `Model.ts` or `Controller.ts` layouts once a feature has multiple pages, tables, and scan flows.
 - It keeps imports predictable without forcing large barrel files or root-level re-export shims.
 - Lower-case directories avoid case-sensitivity drift between macOS and Linux.
-- Tests can live next to the layer they verify instead of piling up at the feature root.
+- Tests stay under a feature-local `test/` tree so the architecture stays visibly MVC+T instead of mixing test files into `view/` or `controller/`.
 
 ## Layer Responsibilities
 
@@ -83,11 +87,12 @@ Views may import controller hooks, shared presentational components, and model t
 - Route modules must import from `features/<feature>/view/*`.
 - Server mutations and query invalidation belong in controller hooks, not in views.
 - API payload mapping belongs in `model/mappers.ts` or `model/api.ts`, not in JSX files.
-- New tests should be colocated with the owning controller or view file.
+- New tests should live under `features/<feature>/test/` and mirror the owning layer in filename and folder shape.
+- If a legacy `*.test.tsx` file still lives under `view/`, `controller/`, or `model/`, move it into the feature `test/` tree when you touch that feature.
 
 ## Current Application
 
-This structure is now applied across `auth`, `dashboard`, `inventory`, `inbound`, `outbound`, `transfers`, `returns`, `counting`, `automation`, `integrations`, `reporting`, and `security`.
+This structure is now applied across the active feature work. `clients` and `inventory` already use the dedicated `test/` layer, and the remaining features should be migrated when they are next touched.
 
 ## JF-Inspired Packaging Additions
 

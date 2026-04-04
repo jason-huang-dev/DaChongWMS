@@ -1,111 +1,153 @@
-import Grid from "@mui/material/Grid";
+import { useEffect, useState } from "react";
+
 import { Alert, Stack } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 import { useClientsController } from "@/features/clients/controller/useClientsController";
+import {
+  buildClientLifecyclePath,
+} from "@/features/clients/model/client-accounts";
+import type { ClientLifecycleStatus } from "@/features/clients/model/types";
 import { ClientAccountForm } from "@/features/clients/view/ClientAccountForm";
 import { ClientAccountTable } from "@/features/clients/view/ClientAccountTable";
-import { PageHeader } from "@/shared/components/page-header";
-import { SummaryCard } from "@/shared/components/summary-card";
+import { useBulkSelection } from "@/shared/hooks/use-bulk-selection";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
-export function ClientsPage() {
+interface ClientsPageProps {
+  lifecycleBucket: ClientLifecycleStatus;
+}
+
+export function ClientsPage({ lifecycleBucket }: ClientsPageProps) {
+  const navigate = useNavigate();
   const {
-    activeWarehouse,
-    clearSelection,
     clientView,
     clientsQuery,
     company,
     createMutation,
     defaultValues,
     errorMessage,
+    filterOptions,
     filteredClientCount,
+    filteredClients,
+    isEditorOpen,
     isEditing,
+    lifecycleCounts,
+    openCreateEditor,
+    openEditEditor,
     pagedClients,
     selectedClient,
-    setSelectedClient,
+    closeEditor,
+    resetClientFilters,
+    setClientsActiveState,
     successMessage,
-    summary,
     updateMutation,
-  } = useClientsController();
+  } = useClientsController(lifecycleBucket);
+  const clientSelection = useBulkSelection<number>();
+  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const selectedClients = filteredClients.filter((client) => clientSelection.selectedIds.includes(client.id));
+
+  useEffect(() => {
+    clientSelection.clearSelection();
+  }, [clientSelection.clearSelection, clientView.queryFilters, lifecycleBucket]);
 
   return (
-    <Stack spacing={3}>
-      <PageHeader
-        description="Manage client accounts for dropshipping workflows, inbound stock submissions, and portal-linked customer visibility."
-        title="Client management"
+    <Stack spacing={2}>
+      {!company ? (
+        <Alert severity="info">
+          Select an active workspace membership before managing client accounts.
+        </Alert>
+      ) : null}
+      {infoMessage ? (
+        <Alert onClose={() => setInfoMessage(null)} severity="info">
+          {infoMessage}
+        </Alert>
+      ) : null}
+      {!isEditorOpen && successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
+      {!isEditorOpen && errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
+      <ClientAccountTable
+        clients={pagedClients}
+        dataView={clientView}
+        error={clientsQuery.error ? parseApiError(clientsQuery.error) : null}
+        exportRows={filteredClients}
+        filterOptions={filterOptions}
+        isLoading={clientsQuery.isLoading}
+        isWorkspaceReady={Boolean(company)}
+        lifecycleBucket={lifecycleBucket}
+        lifecycleCounts={lifecycleCounts}
+        onOpenBatchAssign={() => {
+          setInfoMessage("Batch charging-template assignment is planned but is not wired to the backend yet.");
+        }}
+        onEdit={openEditEditor}
+        onLifecycleBucketChange={(nextBucket) => navigate(buildClientLifecyclePath(nextBucket))}
+        onOpenCreate={openCreateEditor}
+        onOpenDistributionPermissions={() => {
+          setInfoMessage("Distribution permission updates will be enabled once the client permission APIs are available.");
+        }}
+        onOpenOmsLoginDirectory={() => {
+          setInfoMessage("OMS login URL shortcuts will be enabled once the backend exposes workspace-level client login links.");
+        }}
+        onOpenOmsLogin={(client) => {
+          if (client.oms_login_url && typeof window !== "undefined") {
+            window.open(client.oms_login_url, "_blank", "noopener,noreferrer");
+            return;
+          }
+          setInfoMessage("OMS login redirect will be enabled once the backend exposes client-specific login URLs.");
+        }}
+        onOpenPortalAccess={() => {
+          setInfoMessage("Client-scoped portal access management is planned but not yet wired to the IAM API.");
+        }}
+        onResetFilters={resetClientFilters}
+        onToggleActive={async (client, nextActive) => {
+          setInfoMessage(null);
+          await setClientsActiveState([client], nextActive);
+        }}
+        rowSelection={{
+          onToggleAll: (rows) => clientSelection.toggleMany(rows.map((row) => row.id)),
+          onToggleRow: (row) => clientSelection.toggleOne(row.id),
+          selectedRowIds: clientSelection.selectedIds,
+        }}
+        selectedClients={selectedClients}
+        selectedCount={clientSelection.selectedCount}
+        onBulkDeactivate={async () => {
+          setInfoMessage(null);
+          await setClientsActiveState(selectedClients, false);
+          clientSelection.clearSelection();
+        }}
+        onBulkReactivate={async () => {
+          setInfoMessage(null);
+          await setClientsActiveState(selectedClients, true);
+          clientSelection.clearSelection();
+        }}
+        onClearSelection={clientSelection.clearSelection}
+        total={filteredClientCount}
       />
-      <Grid container spacing={2.5}>
-        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
-          <SummaryCard
-            description="Current workspace and warehouse context for client operations."
-            items={[
-              { label: "Workspace", value: company?.label ?? "No workspace selected" },
-              { label: "Warehouse context", value: activeWarehouse?.warehouse_name ?? "All warehouses" },
-            ]}
-            title="Scope"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
-          <SummaryCard
-            description="Top-level client account volume."
-            items={[
-              { label: "All clients", value: String(summary.total) },
-              { label: "Active clients", value: String(summary.active) },
-            ]}
-            title="Coverage"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
-          <SummaryCard
-            description="Clients allowed to place dropshipping demand."
-            items={[
-              { label: "Dropship enabled", value: String(summary.dropshipEnabled) },
-              { label: "Inbound enabled", value: String(summary.inboundEnabled) },
-            ]}
-            title="Workflow rights"
-          />
-        </Grid>
-        <Grid size={{ xs: 12, md: 6, xl: 3 }}>
-          <SummaryCard
-            description="The current filtered working set."
-            items={[
-              { label: "Filtered result count", value: String(filteredClientCount) },
-              { label: "Selected client", value: selectedClient?.name ?? "None" },
-            ]}
-            title="Current view"
-          />
-        </Grid>
-        {!company ? (
-          <Grid size={{ xs: 12 }}>
-            <Alert severity="info">
-              Select an active workspace membership before managing client accounts.
-            </Alert>
-          </Grid>
-        ) : null}
-        <Grid size={{ xs: 12, xl: 4 }}>
-          <ClientAccountForm
-            defaultValues={defaultValues}
-            errorMessage={errorMessage}
-            isEditing={isEditing}
-            isSubmitting={createMutation.isPending || updateMutation.isPending}
-            onCancelEdit={clearSelection}
-            onSubmit={(values) => (isEditing ? updateMutation.mutateAsync(values) : createMutation.mutateAsync(values))}
-            successMessage={successMessage}
-          />
-        </Grid>
-        <Grid size={{ xs: 12, xl: 8 }}>
-          <ClientAccountTable
-            activeWarehouseName={activeWarehouse?.warehouse_name ?? null}
-            clients={pagedClients}
-            companyLabel={company?.label ?? null}
-            dataView={clientView}
-            error={clientsQuery.error ? parseApiError(clientsQuery.error) : null}
-            isLoading={clientsQuery.isLoading}
-            onEdit={setSelectedClient}
-            total={filteredClientCount}
-          />
-        </Grid>
-      </Grid>
+      <ClientAccountForm
+        client={selectedClient}
+        defaultValues={defaultValues}
+        errorMessage={errorMessage}
+        isEditing={isEditing}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
+        onClose={closeEditor}
+        onSubmit={(values) => (isEditing ? updateMutation.mutateAsync(values) : createMutation.mutateAsync(values))}
+        open={isEditorOpen}
+        successMessage={successMessage}
+      />
     </Stack>
   );
+}
+
+export function ClientsPendingApprovalPage() {
+  return <ClientsPage lifecycleBucket="PENDING_APPROVAL" />;
+}
+
+export function ClientsApprovedPage() {
+  return <ClientsPage lifecycleBucket="APPROVED" />;
+}
+
+export function ClientsReviewNotApprovedPage() {
+  return <ClientsPage lifecycleBucket="REVIEW_NOT_APPROVED" />;
+}
+
+export function ClientsDeactivatedPage() {
+  return <ClientsPage lifecycleBucket="DEACTIVATED" />;
 }

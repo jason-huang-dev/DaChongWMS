@@ -20,6 +20,10 @@ The frontend now uses a guarded application shell that separates login from auth
 - `/returns`
 - `/returns/return-orders/:returnOrderId`
 - `/clients`
+- `/clients/pending-approval`
+- `/clients/approved`
+- `/clients/review-not-approved`
+- `/clients/deactivated`
 - `/products`
 - `/logistics`
 - `/work-orders`
@@ -86,6 +90,7 @@ Each routed domain packages code using the feature architecture contract in `fro
 - `model/` for endpoint contracts, mapper functions, and validators
 - `controller/` for query and mutation orchestration
 - `view/` for routed pages, tables, forms, and route-local components
+- `test/` for feature-local route, table, dialog, and model coverage
 
 Routes must lazy-load page modules from `features/<domain>/view/*`. Shared layout logic stays in `app/layout/`; tables, cards, and formatting that are cross-domain stay in `shared/`.
 
@@ -109,7 +114,7 @@ Scan-first action panels and selector-driven create panels are packaged as route
 - Finance now lands on the fees workbench, while finance invoice detail still exposes finalize and finance-review actions with invoice-line detail on the legacy invoice route.
 - Statistics expose stock in/out, standard stock-in, stock-out throughput, warehouse analysis, staff performance, receiving, listing, picking, packing, after-sales, and direct-shipping views from one route-level workbench.
 - Security exposes company membership provisioning, invite issuance, password-reset issuance, access audit review, staff directory management, role assignment, lock-state control, and a direct path to personal MFA management.
-- Clients exposes customer-account management for dropshipping and inbound-submission workflows.
+- Clients exposes route-backed lifecycle subpages instead of local bucket state. `/clients` redirects to `/clients/approved`, and each lifecycle queue (`pending-approval`, `approved`, `review-not-approved`, `deactivated`) is a first-class subpage with its own URL while reusing the same dense filters, row actions, and staged editor.
 - Products exposes product master data plus selected-product management for distribution products, serial-number policy, packaging, and product marks.
 - Logistics exposes provider/channel configuration, customer routing preferences, logistics rules, charging strategy, and logistics cost capture as a first-class routed module under the authenticated shell.
 - Work orders expose type management plus ranked execution scheduling so managers can see which orders need to be fulfilled first.

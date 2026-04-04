@@ -5,34 +5,73 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenantScope } from "@/app/scope-context";
 import { runClientAccountCreate, runClientAccountUpdate } from "@/features/clients/controller/actions";
 import { buildClientAccountsPath } from "@/features/clients/model/api";
+import {
+  matchesClientSearch,
+  resolveClientLifecycleStatus,
+  type ClientSearchField,
+  type ClientSearchMode,
+} from "@/features/clients/model/client-accounts";
 import { defaultClientAccountFormValues, mapClientAccountToFormValues } from "@/features/clients/model/mappers";
-import type { ClientAccountFormValues, ClientAccountRecord } from "@/features/clients/model/types";
+import type {
+  ClientAccountFormValues,
+  ClientAccountRecord,
+  ClientLifecycleStatus,
+} from "@/features/clients/model/types";
 import { useDataView } from "@/shared/hooks/use-data-view";
 import { useResource } from "@/shared/hooks/use-resource";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
-function matchesToggleFilter(filterValue: string, currentValue: boolean) {
+type ClientEditorMode = "create" | "edit" | null;
+
+export interface ClientWorkbenchFilters {
+  [key: string]: string;
+  searchField: ClientSearchField;
+  searchMode: ClientSearchMode;
+  searchQuery: string;
+  warehouse: string;
+  chargingTemplate: string;
+  settlementCurrency: string;
+  contactPerson: string;
+  distribution: string;
+}
+
+function matchesOptionalTextFilter(filterValue: string, currentValue?: string | null) {
   if (filterValue === "") {
     return true;
   }
-  return filterValue === "true" ? currentValue : !currentValue;
+  return currentValue === filterValue;
 }
 
-export function useClientsController() {
+function matchesListFilter(filterValue: string, currentValues?: string[] | null) {
+  if (filterValue === "") {
+    return true;
+  }
+  return (currentValues ?? []).includes(filterValue);
+}
+
+function buildUniqueSortedValues(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean))).sort((left, right) => left.localeCompare(right));
+}
+
+export function useClientsController(lifecycleBucket: ClientLifecycleStatus) {
   const queryClient = useQueryClient();
-  const { company, activeWarehouse } = useTenantScope();
+  const { company } = useTenantScope();
   const [selectedClient, setSelectedClient] = useState<ClientAccountRecord | null>(null);
+  const [editorMode, setEditorMode] = useState<ClientEditorMode>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const clientView = useDataView({
+  const clientView = useDataView<ClientWorkbenchFilters>({
     viewKey: `clients.accounts.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      name: "",
-      code: "",
-      is_active: "",
-      allow_dropshipping_orders: "",
-      allow_inbound_goods: "",
+      searchField: "code",
+      searchMode: "exact",
+      searchQuery: "",
+      warehouse: "",
+      chargingTemplate: "",
+      settlementCurrency: "",
+      contactPerson: "",
+      distribution: "",
     },
     pageSize: 10,
   });
@@ -45,29 +84,80 @@ export function useClientsController() {
   );
 
   const allClients = clientsQuery.data ?? [];
-  const filteredClients = useMemo(() => {
-    const normalizedName = clientView.filters.name.trim().toLowerCase();
-    const normalizedCode = clientView.filters.code.trim().toLowerCase();
+  const lifecycleCounts = useMemo(
+    () =>
+      allClients.reduce<Record<ClientLifecycleStatus, number>>(
+        (counts, client) => {
+          counts[resolveClientLifecycleStatus(client)] += 1;
+          return counts;
+        },
+        {
+          PENDING_APPROVAL: 0,
+          APPROVED: 0,
+          REVIEW_NOT_APPROVED: 0,
+          DEACTIVATED: 0,
+        },
+      ),
+    [allClients],
+  );
 
+  const filterOptions = useMemo(
+    () => ({
+      warehouses: buildUniqueSortedValues(allClients.flatMap((client) => client.warehouse_assignments ?? [])),
+      chargingTemplates: buildUniqueSortedValues(allClients.map((client) => client.charging_template_name ?? "")),
+      settlementCurrencies: buildUniqueSortedValues(allClients.map((client) => client.settlement_currency ?? "")),
+      contactPeople: buildUniqueSortedValues(
+        allClients.flatMap((client) =>
+          [
+            client.contact_name,
+            ...(client.contact_people ?? []).map((person) => person.name),
+          ].filter(Boolean) as string[],
+        ),
+      ),
+      distributionModes: buildUniqueSortedValues(allClients.map((client) => client.distribution_mode ?? "")),
+    }),
+    [allClients],
+  );
+
+  const filteredClients = useMemo(() => {
     return allClients.filter((client) => {
-      if (normalizedName && !client.name.toLowerCase().includes(normalizedName)) {
+      if (resolveClientLifecycleStatus(client) !== lifecycleBucket) {
         return false;
       }
-      if (normalizedCode && !client.code.toLowerCase().includes(normalizedCode)) {
+      if (
+        !matchesClientSearch(
+          client,
+          clientView.filters.searchField,
+          clientView.filters.searchQuery,
+          clientView.filters.searchMode,
+        )
+      ) {
         return false;
       }
-      if (!matchesToggleFilter(clientView.filters.is_active, client.is_active)) {
+      if (!matchesListFilter(clientView.filters.warehouse, client.warehouse_assignments)) {
         return false;
       }
-      if (!matchesToggleFilter(clientView.filters.allow_dropshipping_orders, client.allow_dropshipping_orders)) {
+      if (!matchesOptionalTextFilter(clientView.filters.chargingTemplate, client.charging_template_name)) {
         return false;
       }
-      if (!matchesToggleFilter(clientView.filters.allow_inbound_goods, client.allow_inbound_goods)) {
+      if (!matchesOptionalTextFilter(clientView.filters.settlementCurrency, client.settlement_currency)) {
+        return false;
+      }
+      if (
+        clientView.filters.contactPerson &&
+        ![
+          client.contact_name,
+          ...(client.contact_people ?? []).map((person) => person.name),
+        ].includes(clientView.filters.contactPerson)
+      ) {
+        return false;
+      }
+      if (!matchesOptionalTextFilter(clientView.filters.distribution, client.distribution_mode)) {
         return false;
       }
       return true;
     });
-  }, [allClients, clientView.filters]);
+  }, [allClients, clientView.filters, lifecycleBucket]);
 
   const pagedClients = useMemo(() => {
     const startIndex = (clientView.page - 1) * clientView.pageSize;
@@ -85,6 +175,7 @@ export function useClientsController() {
       setErrorMessage(null);
       setSuccessMessage(`Client ${client.name} created.`);
       setSelectedClient(client);
+      setEditorMode("edit");
       await queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
     onError: (error) => {
@@ -112,30 +203,87 @@ export function useClientsController() {
     },
   });
 
+  async function setClientsActiveState(clients: ClientAccountRecord[], isActive: boolean) {
+    if (!company?.id) {
+      throw new Error("No active workspace selected");
+    }
+    if (clients.length === 0) {
+      return;
+    }
+
+    setSuccessMessage(null);
+    setErrorMessage(null);
+
+    try {
+      const updatedClients: ClientAccountRecord[] = [];
+
+      for (const client of clients) {
+        const updatedClient = await runClientAccountUpdate(company.id, client.id, {
+          ...mapClientAccountToFormValues(client),
+          is_active: isActive,
+        });
+        updatedClients.push(updatedClient);
+      }
+
+      const updatedSelectedClient = selectedClient
+        ? updatedClients.find((client) => client.id === selectedClient.id) ?? null
+        : null;
+
+      if (updatedSelectedClient) {
+        setSelectedClient(updatedSelectedClient);
+      }
+
+      setSuccessMessage(
+        clients.length === 1
+          ? `Client ${clients[0].name} ${isActive ? "reactivated" : "deactivated"}.`
+          : `${clients.length} client accounts ${isActive ? "reactivated" : "deactivated"}.`,
+      );
+      await queryClient.invalidateQueries({ queryKey: ["clients"] });
+    } catch (error) {
+      setSuccessMessage(null);
+      setErrorMessage(parseApiError(error));
+      throw error;
+    }
+  }
+
   return {
     company,
-    activeWarehouse,
+    allClients,
     selectedClient,
-    setSelectedClient,
-    clearSelection: () => {
+    openCreateEditor: () => {
       setSelectedClient(null);
       setSuccessMessage(null);
       setErrorMessage(null);
+      setEditorMode("create");
     },
-    defaultValues: selectedClient ? mapClientAccountToFormValues(selectedClient) : defaultClientAccountFormValues,
-    isEditing: Boolean(selectedClient),
+    openEditEditor: (client: ClientAccountRecord) => {
+      setSelectedClient(client);
+      setSuccessMessage(null);
+      setErrorMessage(null);
+      setEditorMode("edit");
+    },
+    closeEditor: () => {
+      setSelectedClient(null);
+      setSuccessMessage(null);
+      setErrorMessage(null);
+      setEditorMode(null);
+    },
+    defaultValues: editorMode === "edit" && selectedClient ? mapClientAccountToFormValues(selectedClient) : defaultClientAccountFormValues,
+    isEditing: editorMode === "edit",
+    isEditorOpen: editorMode !== null,
     clientView,
+    lifecycleCounts,
+    resetClientFilters: () => {
+      clientView.resetFilters();
+    },
+    filterOptions,
     clientsQuery,
+    filteredClients,
     pagedClients,
     filteredClientCount: filteredClients.length,
-    summary: {
-      total: allClients.length,
-      active: allClients.filter((client) => client.is_active).length,
-      dropshipEnabled: allClients.filter((client) => client.allow_dropshipping_orders).length,
-      inboundEnabled: allClients.filter((client) => client.allow_inbound_goods).length,
-    },
     createMutation,
     updateMutation,
+    setClientsActiveState,
     successMessage,
     errorMessage,
   };

@@ -49,6 +49,8 @@ frontend/
           <Feature>Table.tsx
           <Feature>Form.tsx
           components/
+        test/
+          *.test.ts(x)
     lib/
       config.ts
       http.ts
@@ -71,13 +73,14 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Feature-local `model/` files own endpoint constants, payload mappers, shared feature types, and Zod validators.
 - Feature-local `controller/` files own mutation orchestration, query invalidation, and feature coordination.
 - Feature-local `view/` files own JSX, MUI layout, and presentational composition.
-- Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, and `ResourceTable` keep the first set of screens consistent while the product surface grows.
+- Feature-local `test/` files mirror the feature tree so the package reads as MVC+T rather than interleaving tests with `view/` or `controller/`.
+- Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, `ResourceTable`, the inventory-style `DataTable`, and dense queue chrome (`FilterCard`, `PageTabs`, and `ActionIconButton`) keep the first set of screens consistent while the product surface grows.
 - Exception-first surfaces use shared `ExceptionLane` tables so overdue, blocked, and failed workflow queues keep the same visual contract across domains.
 - Shared bulk queue actions use `useBulkSelection`, `BulkActionBar`, and `executeBulkAction` so selection state, batch orchestration, and operator feedback stay consistent across features.
 - Repeated selector-driven create flows use shared `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, JSON helpers, and reference-option hooks under `src/shared/` instead of rebuilding those primitives per feature.
 - Workspace and warehouse context are centralized through `src/app/scope-context.tsx`, which keeps page flows aligned on the currently selected company membership and warehouse scope.
 - UI locale and color mode are centralized through `src/app/ui-preferences.tsx`; the root provider persists browser preferences and rebuilds the MUI theme for light, dark, English, and Simplified Chinese modes.
-- Repeated table filtering and saved views use shared modules (`useDataView`, `DataViewToolbar`, and `ResourceTable` with toolbar slots) instead of per-page one-off controls.
+- Repeated table filtering and saved views use shared modules (`useDataView`, `DataViewToolbar`, `ResourceTable`, and the denser inventory-style `DataTable`) instead of per-page one-off controls.
 - Repeated branding usage goes through reusable modules: raw logo files live in `src/assets/logo/`, and the live UI consumes them through shared components such as `BrandLogo` and `AuthShell`.
 - JF-style shell state now lives in shared app modules: `src/app/workspace-preferences.ts` owns workspace-tab and workbench-preference queries, while `app/layout/*` owns the horizontal module nav and workspace-tab strip.
 
@@ -89,7 +92,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - `MfaEnrollmentPage`: authenticated TOTP setup, verification, and recovery-code display.
 - `SecurityPage`: tenant staff access management, role assignment, lock-state control, and MFA posture summary.
 - `SecurityPage`: company membership provisioning, browser-account management, staff directory controls, role assignment, lock-state control, and MFA posture summary.
-- `ClientsPage`: internal client-account management for dropshipping order intake, billing contacts, and inbound-submission permissions.
+- `ClientsPage`: client-account queue pages under `/clients/*` with route-backed lifecycle subpages, dense filters, bulk export/activation controls, and a dialog-based editor for portal and warehouse readiness.
 - `ProductsPage`: product master data plus selected-product subworkflows for distribution products, serial settings, packaging, and product marks.
 - `DashboardPage`: workbench-style operational summary with persisted time window and right-rail widgets.
 - `InventoryBalancesPage`: inventory workbench covering tenant-scoped stock positions, count escalation, internal moves, stock-age reporting, manual adjustments, and cross-warehouse planning.
@@ -119,7 +122,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Feature routes import directly from `features/<domain>/view/*`.
 - Scan-first mutations and detail actions are split into `model/`, `controller/`, and `view/` layers for inbound, outbound, counting, reporting, auth, and MFA.
 - Shared modules such as `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
-- Shared modules such as `WorkspaceContextSwitcher`, `DataViewToolbar`, `useDataView(...)`, `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
+- Shared modules such as `WorkspaceContextSwitcher`, `DataViewToolbar`, `DataTable`, `useDataView(...)`, `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Brand palette, gradients, and shadows come from `src/app/brand.ts`, so auth screens, page headers, and the shell all stay aligned with the gold/copper/charcoal logo theme.
 - Shared UI primitives translate known shell/auth/common copy through `src/app/i18n.ts` so locale coverage can expand incrementally without rewriting every feature page at once.
 - The authenticated shell is now JF-inspired: horizontal module nav first, workspace-tab strip second, content canvas third. Mobile keeps a drawer fallback.
@@ -129,7 +132,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Queue-heavy screens now reuse the same row-selection and bulk-action contract where backend endpoints support batch-safe orchestration.
 - Inbound and outbound now expose exception-first lanes for overdue receipts and explicit short-pick records before operators drop into the deeper queues.
 - Read-mostly domains such as dashboard and inventory use the same feature shape, with table components extracted into `view/*Table.tsx`.
-- Tests are colocated with the controller or view layer they exercise.
+- Tests now belong under the owning feature's `test/` directory. Legacy colocated tests are being moved during normal feature work.
 - Test coverage now covers auth restore, route guards, first route/data rendering, scan-first mutation panels, remote selector behavior, and transfer/return/automation/integration detail routes through Vitest + Testing Library.
 
 ## Immediate Next Frontend Work

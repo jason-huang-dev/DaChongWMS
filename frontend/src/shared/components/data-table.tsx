@@ -1,8 +1,7 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import {
   Alert,
-  Box,
   Card,
   CardContent,
   Checkbox,
@@ -16,7 +15,6 @@ import {
   TablePagination,
   TableRow,
   TableSortLabel,
-  Tooltip,
   Typography,
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
@@ -24,85 +22,66 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { brandColors, brandMotion } from "@/app/brand";
 import { useI18n } from "@/app/ui-preferences";
 
-interface ColumnDefinition<TRow> {
+export interface DataTableColumnDefinition<TRow, TSortKey extends string = string> {
   key: string;
   header: string;
   align?: "left" | "right" | "center";
-  headerAlign?: "left" | "right" | "center";
-  headerTooltip?: string;
-  fitContent?: boolean;
   minWidth?: number | string;
-  nowrap?: boolean;
-  wrapHeader?: boolean;
-  sortKey?: string;
+  sortKey?: TSortKey;
   width?: number | string;
   render: (row: TRow) => ReactNode;
 }
 
-interface PaginationState {
+interface DataTablePaginationState {
   page: number;
   pageSize: number;
   total: number;
   onPageChange: (page: number) => void;
 }
 
-export interface ResourceTableRowSelection<TRow> {
+export interface DataTableRowSelection<TRow> {
   selectedRowIds: Array<string | number>;
   onToggleRow: (row: TRow) => void;
   onToggleAll: (rows: TRow[]) => void;
   isRowSelectable?: (row: TRow) => boolean;
 }
 
-interface ResourceTableProps<TRow> {
-  title?: string;
-  subtitle?: string;
+interface DataTableProps<TRow, TSortKey extends string = string> {
   rows: TRow[];
-  columns: ColumnDefinition<TRow>[];
+  columns: DataTableColumnDefinition<TRow, TSortKey>[];
   getRowId: (row: TRow) => string | number;
   isLoading?: boolean;
   error?: string | null;
-  pagination?: PaginationState;
   emptyMessage?: string;
   toolbar?: ReactNode;
-  rowSelection?: ResourceTableRowSelection<TRow>;
-  tableBorderRadius?: number | string;
-  compact?: boolean;
-  allowHorizontalScroll?: boolean;
-  preserveHeaderCase?: boolean;
+  pagination?: DataTablePaginationState;
+  rowSelection?: DataTableRowSelection<TRow>;
+  renderMetaRow?: (row: TRow) => ReactNode;
+  selectionColumnWidth?: number;
   sorting?: {
     direction: "asc" | "desc";
-    onSortChange: (sortKey: string) => void;
-    sortKey: string;
+    onSortChange: (sortKey: TSortKey) => void;
+    sortKey: TSortKey;
   };
 }
 
-export function ResourceTable<TRow>({
-  title,
-  subtitle,
+export function DataTable<TRow, TSortKey extends string = string>({
   rows,
   columns,
   getRowId,
-  isLoading,
+  isLoading = false,
   error,
-  pagination,
   emptyMessage = "No records found.",
   toolbar,
+  pagination,
   rowSelection,
-  tableBorderRadius = 3,
-  compact = false,
-  allowHorizontalScroll = false,
-  preserveHeaderCase = false,
+  renderMetaRow,
+  selectionColumnWidth = 44,
   sorting,
-}: ResourceTableProps<TRow>) {
-  const selectionColumnWidth = compact ? 36 : 44;
-  const defaultCompactCellPaddingX = compact ? 1.25 : undefined;
-  const fitContentCompactCellPaddingX = compact ? 0.875 : undefined;
+}: DataTableProps<TRow, TSortKey>) {
   const theme = useTheme();
-  const { locale, t, translateText } = useI18n();
+  const { t, translateText } = useI18n();
   const isDark = theme.palette.mode === "dark";
-  const isChineseLocale = locale === "zh-CN";
-  const compactHeaderFontSize = compact ? theme.typography.overline.fontSize : 12;
-  const usesFixedTableLayout = allowHorizontalScroll && (Boolean(rowSelection) || columns.some((column) => column.width));
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
     : [];
@@ -113,47 +92,26 @@ export function ResourceTable<TRow>({
 
   return (
     <Card>
-      <CardContent>
+      <CardContent sx={{ pb: 1.5 }}>
         <Stack spacing={2}>
-          {title || subtitle ? (
-            <Box>
-              {title ? <Typography variant="h6">{translateText(title)}</Typography> : null}
-              {subtitle ? (
-                <Typography color="text.secondary" variant="body2">
-                  {translateText(subtitle)}
-                </Typography>
-              ) : null}
-            </Box>
-          ) : null}
           {toolbar}
           {error ? <Alert severity="error">{error}</Alert> : null}
+
           <TableContainer
             sx={{
               border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
-              borderRadius: tableBorderRadius,
-              overflowX: allowHorizontalScroll ? "auto" : "hidden",
+              borderRadius: 1.5,
+              overflowX: "auto",
               overflowY: "hidden",
             }}
           >
-            <Table
-              size="small"
-              sx={
-                allowHorizontalScroll
-                  ? {
-                      tableLayout: usesFixedTableLayout ? "fixed" : "auto",
-                      width: "100%",
-                    }
-                  : undefined
-              }
-            >
-              {usesFixedTableLayout ? (
-                <colgroup>
-                  {rowSelection ? <col style={{ width: selectionColumnWidth }} /> : null}
-                  {columns.map((column) => (
-                    <col key={column.key} style={column.width ? { width: column.width } : undefined} />
-                  ))}
-                </colgroup>
-              ) : null}
+            <Table size="small" sx={{ tableLayout: "fixed", width: "100%" }}>
+              <colgroup>
+                {rowSelection ? <col style={{ width: selectionColumnWidth }} /> : null}
+                {columns.map((column) => (
+                  <col key={column.key} style={column.width ? { width: column.width } : undefined} />
+                ))}
+              </colgroup>
               <TableHead>
                 <TableRow
                   sx={{
@@ -168,7 +126,7 @@ export function ResourceTable<TRow>({
                         boxSizing: "border-box",
                         maxWidth: selectionColumnWidth,
                         minWidth: selectionColumnWidth,
-                        px: compact ? 0.25 : 0.5,
+                        px: 0.5,
                         textAlign: "center",
                         verticalAlign: "middle",
                         width: selectionColumnWidth,
@@ -180,72 +138,29 @@ export function ResourceTable<TRow>({
                         indeterminate={partiallySelected}
                         onChange={() => rowSelection.onToggleAll(selectableRows)}
                         size="small"
-                        sx={{ display: "block", mx: "auto", p: compact ? 0.25 : 0.5 }}
+                        sx={{ display: "block", mx: "auto", p: 0.5 }}
                       />
                     </TableCell>
                   ) : null}
                   {columns.map((column) => (
                     <TableCell
-                      align={column.headerAlign ?? column.align}
+                      align={column.align}
                       key={column.key}
                       sx={{
                         borderBottomColor: alpha(theme.palette.divider, 0.8),
-                        color: theme.palette.text.secondary,
-                        fontSize: compactHeaderFontSize,
+                        color: theme.palette.text.primary,
+                        fontSize: theme.typography.body2.fontSize,
                         fontWeight: 800,
-                        letterSpacing:
-                          isChineseLocale || preserveHeaderCase
-                            ? 0
-                            : compact
-                              ? theme.typography.overline.letterSpacing
-                              : "0.08em",
-                        lineHeight: column.wrapHeader ? 1.3 : undefined,
+                        lineHeight: 1.3,
                         minWidth: column.minWidth,
-                        px: column.fitContent ? fitContentCompactCellPaddingX : defaultCompactCellPaddingX,
-                        py: compact ? 1 : undefined,
-                        textAlign: column.headerAlign ?? column.align,
-                        whiteSpace: column.wrapHeader ? "normal" : column.nowrap ? "nowrap" : undefined,
+                        px: 1.25,
+                        py: 1.2,
+                        textAlign: column.align,
+                        whiteSpace: "normal",
                         width: column.width,
-                        textTransform: isChineseLocale || preserveHeaderCase ? "none" : "uppercase",
                       }}
                     >
-                      {column.headerTooltip ? (
-                        <Tooltip enterDelay={200} title={translateText(column.headerTooltip)}>
-                          <Box component="span" sx={{ display: "block", width: "100%" }}>
-                            {sorting && column.sortKey ? (
-                              <TableSortLabel
-                                active={sorting.sortKey === column.sortKey}
-                                direction={sorting.sortKey === column.sortKey ? sorting.direction : "asc"}
-                                hideSortIcon={sorting.sortKey !== column.sortKey}
-                                onClick={() => sorting.onSortChange(column.sortKey!)}
-                                sx={{
-                                  display: "inline-flex",
-                                  fontSize: "inherit",
-                                  justifyContent:
-                                    (column.headerAlign ?? column.align) === "right"
-                                      ? "flex-end"
-                                      : (column.headerAlign ?? column.align) === "center"
-                                        ? "center"
-                                        : "flex-start",
-                                  letterSpacing: "inherit",
-                                  lineHeight: column.wrapHeader ? 1.3 : undefined,
-                                  textAlign: column.headerAlign ?? column.align,
-                                  textTransform: "inherit",
-                                  whiteSpace: column.wrapHeader ? "normal" : "nowrap",
-                                  width: "100%",
-                                  "& .MuiTableSortLabel-icon": {
-                                    marginLeft: isChineseLocale ? "2px" : undefined,
-                                  },
-                                }}
-                              >
-                                {translateText(column.header)}
-                              </TableSortLabel>
-                            ) : (
-                              translateText(column.header)
-                            )}
-                          </Box>
-                        </Tooltip>
-                      ) : sorting && column.sortKey ? (
+                      {sorting && column.sortKey ? (
                         <TableSortLabel
                           active={sorting.sortKey === column.sortKey}
                           direction={sorting.sortKey === column.sortKey ? sorting.direction : "asc"}
@@ -255,20 +170,14 @@ export function ResourceTable<TRow>({
                             display: "inline-flex",
                             fontSize: "inherit",
                             justifyContent:
-                              (column.headerAlign ?? column.align) === "right"
+                              column.align === "right"
                                 ? "flex-end"
-                                : (column.headerAlign ?? column.align) === "center"
+                                : column.align === "center"
                                   ? "center"
                                   : "flex-start",
-                            letterSpacing: "inherit",
-                            lineHeight: column.wrapHeader ? 1.3 : undefined,
-                            textAlign: column.headerAlign ?? column.align,
-                            textTransform: "inherit",
-                            whiteSpace: column.wrapHeader ? "normal" : "nowrap",
+                            lineHeight: 1.3,
+                            textAlign: column.align,
                             width: "100%",
-                            "& .MuiTableSortLabel-icon": {
-                              marginLeft: isChineseLocale ? "2px" : undefined,
-                            },
                           }}
                         >
                           {translateText(column.header)}
@@ -299,10 +208,109 @@ export function ResourceTable<TRow>({
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((row, index) => {
+                  rows.map((row) => {
                     const rowId = getRowId(row);
                     const isSelected = rowSelection ? rowSelection.selectedRowIds.includes(rowId) : false;
                     const canSelect = rowSelection ? (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true) : false;
+                    const metaBackground = isSelected
+                      ? alpha(brandColors.accent, isDark ? 0.12 : 0.08)
+                      : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04);
+                    const detailBackground = isSelected
+                      ? alpha(brandColors.accent, isDark ? 0.06 : 0.035)
+                      : alpha(theme.palette.background.paper, isDark ? 0.94 : 0.99);
+                    const hoverBackground = isSelected
+                      ? alpha(brandColors.accent, isDark ? 0.1 : 0.06)
+                      : alpha(theme.palette.text.primary, isDark ? 0.04 : 0.025);
+
+                    if (renderMetaRow) {
+                      return (
+                        <Fragment key={rowId}>
+                          <TableRow
+                            sx={{
+                              "& td": {
+                                backgroundColor: metaBackground,
+                                borderBottomColor: "transparent",
+                              },
+                              opacity: rowSelection && !canSelect ? 0.68 : 1,
+                            }}
+                          >
+                            {rowSelection ? (
+                              <TableCell
+                                padding="none"
+                                sx={{
+                                  boxShadow: isSelected ? `inset 3px 0 0 ${brandColors.accent}` : "none",
+                                  maxWidth: selectionColumnWidth,
+                                  minWidth: selectionColumnWidth,
+                                  px: 0.5,
+                                  textAlign: "center",
+                                  verticalAlign: "middle",
+                                  width: selectionColumnWidth,
+                                }}
+                              >
+                                <Checkbox
+                                  checked={isSelected}
+                                  disabled={!canSelect}
+                                  onChange={() => rowSelection.onToggleRow(row)}
+                                  size="small"
+                                  sx={{ display: "block", mx: "auto", p: 0.5 }}
+                                />
+                              </TableCell>
+                            ) : null}
+                            <TableCell colSpan={columns.length} sx={{ px: 1.75, py: 1.1 }}>
+                              {renderMetaRow(row)}
+                            </TableCell>
+                          </TableRow>
+                          <TableRow
+                            hover
+                            sx={{
+                              "& td": {
+                                backgroundColor: detailBackground,
+                                borderBottomColor: alpha(theme.palette.divider, 0.62),
+                                fontSize: theme.typography.body2.fontSize,
+                                lineHeight: theme.typography.body2.lineHeight,
+                                py: 1.6,
+                                transition: [
+                                  `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
+                                  `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
+                                ].join(", "),
+                                verticalAlign: "top",
+                              },
+                              "&:hover td": {
+                                backgroundColor: hoverBackground,
+                              },
+                              opacity: rowSelection && !canSelect ? 0.68 : 1,
+                            }}
+                          >
+                            {rowSelection ? (
+                              <TableCell
+                                sx={{
+                                  backgroundColor: detailBackground,
+                                  borderBottomColor: alpha(theme.palette.divider, 0.62),
+                                  maxWidth: selectionColumnWidth,
+                                  minWidth: selectionColumnWidth,
+                                  px: 0,
+                                  width: selectionColumnWidth,
+                                }}
+                              />
+                            ) : null}
+                            {columns.map((column) => (
+                              <TableCell
+                                align={column.align}
+                                key={column.key}
+                                sx={{
+                                  minWidth: column.minWidth,
+                                  px: 1.25,
+                                  textAlign: column.align,
+                                  width: column.width,
+                                }}
+                              >
+                                {column.render(row)}
+                              </TableCell>
+                            ))}
+                          </TableRow>
+                        </Fragment>
+                      );
+                    }
 
                     return (
                       <TableRow
@@ -310,24 +318,19 @@ export function ResourceTable<TRow>({
                         key={rowId}
                         sx={{
                           "& td": {
-                            backgroundColor: isSelected
-                              ? alpha(brandColors.accent, isDark ? 0.12 : 0.08)
-                              : index % 2 === 0
-                                ? alpha(theme.palette.background.paper, isDark ? 0.92 : 0.98)
-                                : alpha(theme.palette.text.primary, isDark ? 0.02 : 0.015),
+                            backgroundColor: detailBackground,
                             borderBottomColor: alpha(theme.palette.divider, 0.62),
+                            fontSize: theme.typography.body2.fontSize,
+                            lineHeight: theme.typography.body2.lineHeight,
+                            py: 1.6,
                             transition: [
                               `background-color ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
                               `box-shadow ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
                             ].join(", "),
-                          },
-                          "& td:first-of-type": {
-                            boxShadow: isSelected ? `inset 3px 0 0 ${brandColors.accent}` : "none",
+                            verticalAlign: "middle",
                           },
                           "&:hover td": {
-                            backgroundColor: isSelected
-                              ? alpha(brandColors.accent, isDark ? 0.16 : 0.1)
-                              : alpha(theme.palette.text.primary, isDark ? 0.06 : 0.04),
+                            backgroundColor: hoverBackground,
                           },
                           opacity: rowSelection && !canSelect ? 0.68 : 1,
                         }}
@@ -336,10 +339,10 @@ export function ResourceTable<TRow>({
                           <TableCell
                             padding="none"
                             sx={{
-                              boxSizing: "border-box",
+                              boxShadow: isSelected ? `inset 3px 0 0 ${brandColors.accent}` : "none",
                               maxWidth: selectionColumnWidth,
                               minWidth: selectionColumnWidth,
-                              px: compact ? 0.25 : 0.5,
+                              px: 0.5,
                               textAlign: "center",
                               verticalAlign: "middle",
                               width: selectionColumnWidth,
@@ -350,7 +353,7 @@ export function ResourceTable<TRow>({
                               disabled={!canSelect}
                               onChange={() => rowSelection.onToggleRow(row)}
                               size="small"
-                              sx={{ display: "block", mx: "auto", p: compact ? 0.25 : 0.5 }}
+                              sx={{ display: "block", mx: "auto", p: 0.5 }}
                             />
                           </TableCell>
                         ) : null}
@@ -359,13 +362,9 @@ export function ResourceTable<TRow>({
                             align={column.align}
                             key={column.key}
                             sx={{
-                              fontSize: compact ? theme.typography.body2.fontSize : 13,
-                              lineHeight: compact ? theme.typography.body2.lineHeight : undefined,
                               minWidth: column.minWidth,
-                              px: column.fitContent ? fitContentCompactCellPaddingX : defaultCompactCellPaddingX,
-                              py: compact ? 1 : undefined,
-                              verticalAlign: "middle",
-                              whiteSpace: column.nowrap ? "nowrap" : undefined,
+                              px: 1.25,
+                              textAlign: column.align,
                               width: column.width,
                             }}
                           >
@@ -379,6 +378,7 @@ export function ResourceTable<TRow>({
               </TableBody>
             </Table>
           </TableContainer>
+
           {pagination ? (
             <TablePagination
               component="div"

@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalanceWalletOutlined";
-import EastRoundedIcon from "@mui/icons-material/EastRounded";
-import { Box, Card, CardContent, Skeleton, Stack, TextField, Typography } from "@mui/material";
+import { Box, Card, CardContent, Skeleton, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
 import type {
@@ -12,6 +11,7 @@ import type {
   RentDetailRecord,
   VoucherRecord,
 } from "@/features/fees/model/types";
+import { RangePicker } from "@/shared/components/range-picker";
 import { formatNumber } from "@/shared/utils/format";
 
 export interface DashboardRevenueOverviewSourceData {
@@ -604,80 +604,17 @@ export function DashboardRevenueOverviewCard({
 
             {!isRestricted ? (
               <Stack spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
-                <Stack
-                  alignItems="center"
-                  direction={{ xs: "column", md: "row" }}
-                  spacing={1}
-                  sx={{
-                    backgroundColor: alpha(theme.palette.background.paper, 0.98),
-                    border: `1px solid ${alpha(isInvalidRange ? theme.palette.error.main : theme.palette.divider, isInvalidRange ? 0.7 : 0.92)}`,
-                    borderRadius: "12px",
-                    height: { md: 48 },
-                    minHeight: { md: 48 },
-                    px: { xs: 1.25, md: 0.75 },
-                    py: { xs: 0.75, md: 0.5 },
-                    width: { xs: "100%", md: "auto" },
-                  }}
-                >
-                  <Stack
-                    alignItems={{ xs: "stretch", md: "center" }}
-                    direction={{ xs: "column", md: "row" }}
-                    spacing={0.75}
-                    sx={{ width: { xs: "100%", md: "auto" } }}
-                  >
-                    <TextField
-                      error={isInvalidRange}
-                      onChange={(event) => setDraftDateFrom(event.target.value)}
-                      size="small"
-                      slotProps={{
-                        htmlInput: { "aria-label": "Revenue range start", step: 3600 },
-                      }}
-                      sx={{
-                        minWidth: { xs: "100%", md: 176 },
-                        "& .MuiOutlinedInput-root": {
-                          backgroundColor: alpha(theme.palette.background.default, 0.34),
-                          height: 38,
-                        },
-                      }}
-                      type="datetime-local"
-                      value={draftDateFrom}
-                    />
-                    <Box
-                      sx={{
-                        alignItems: "center",
-                        color: theme.palette.text.secondary,
-                        display: "inline-flex",
-                        flexShrink: 0,
-                        justifyContent: "center",
-                        px: { xs: 0, md: 0.25 },
-                      }}
-                    >
-                      <EastRoundedIcon
-                        sx={{
-                          fontSize: 18,
-                          transform: { xs: "rotate(90deg)", md: "none" },
-                        }}
-                      />
-                    </Box>
-                    <TextField
-                      error={isInvalidRange}
-                      onChange={(event) => setDraftDateTo(event.target.value)}
-                      size="small"
-                      slotProps={{
-                        htmlInput: { "aria-label": "Revenue range end", step: 3600 },
-                      }}
-                      sx={{
-                        minWidth: { xs: "100%", md: 176 },
-                        "& .MuiOutlinedInput-root": {
-                          backgroundColor: alpha(theme.palette.background.default, 0.34),
-                          height: 38,
-                        },
-                      }}
-                      type="datetime-local"
-                      value={draftDateTo}
-                    />
-                  </Stack>
-                </Stack>
+                <RangePicker
+                  endAriaLabel="Revenue range end"
+                  endValue={draftDateTo}
+                  error={isInvalidRange}
+                  inputType="datetime-local"
+                  onEndChange={setDraftDateTo}
+                  onStartChange={setDraftDateFrom}
+                  startAriaLabel="Revenue range start"
+                  startValue={draftDateFrom}
+                  step={3600}
+                />
               </Stack>
             ) : null}
           </Stack>
