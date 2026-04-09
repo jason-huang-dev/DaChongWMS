@@ -25,6 +25,8 @@ class CustomerAccount(models.Model):
     allow_inbound_goods = models.BooleanField(default=True)
     notes = models.TextField(blank=True, default="")
     is_active = models.BooleanField(default=True)
+    create_time = models.DateTimeField(auto_now_add=True)
+    update_time = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ("organization_id", "name", "id")

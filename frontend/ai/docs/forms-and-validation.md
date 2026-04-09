@@ -9,13 +9,13 @@ The first frontend form layer is now in place and follows the documented RHF + Z
 - `frontend/src/features/auth/view/LoginPage.tsx` uses React Hook Form and Zod for login validation.
 - `frontend/src/features/auth/view/SignupPage.tsx` uses React Hook Form and Zod for manager-account signup validation.
 - `frontend/src/features/mfa/view/MfaChallengePage.tsx` and `frontend/src/features/mfa/view/MfaEnrollmentPage.tsx` use React Hook Form and Zod for MFA verification and enrollment.
-- `frontend/src/shared/components/form-text-field.tsx` wraps MUI `TextField` with RHF `Controller` integration.
-- `frontend/src/shared/components/form-autocomplete.tsx`, `frontend/src/shared/components/reference-autocomplete-field.tsx`, and `frontend/src/shared/components/form-switch-field.tsx` now cover repeated selector and boolean inputs.
-- `frontend/src/shared/components/data-view-toolbar.tsx` now acts as the dense queue-filter band for enterprise pages and supports compact date inputs in addition to text/select fields.
+- `frontend/src/shared/components/form-text-field/form-text-field.tsx` wraps MUI `TextField` with RHF `Controller` integration.
+- `frontend/src/shared/components/form-autocomplete/form-autocomplete.tsx`, `frontend/src/shared/components/reference-autocomplete-field/reference-autocomplete-field.tsx`, and `frontend/src/shared/components/form-switch-field/form-switch-field.tsx` now cover repeated selector and boolean inputs.
+- `frontend/src/shared/components/data-view-toolbar/data-view-toolbar.tsx` now acts as the dense queue-filter band for enterprise pages and supports compact date inputs in addition to text/select fields.
 - Scan-first mutation forms now exist for receive, putaway, pick, ship, and assigned count completion, each using feature-local validators and controller actions.
 - Detail/action forms now exist for purchase-order edits, sales-order edits, transfer-order edits, return-order edits, count-approval decisions, invoice finance actions, and selector-driven create flows for receipts, shipments, transfer orders, return orders, return receipts, and return dispositions through `view/*Form.tsx` or route-local view components.
 - Access-management forms now exist for tenant staff directory maintenance, role assignment, verification-code control, and lock-state management.
-- Repeated header-field layouts are shared through `frontend/src/shared/components/document-header-fields.tsx` instead of duplicating the same date/reference/notes markup in each detail screen.
+- Repeated header-field layouts are shared through `frontend/src/shared/components/document-header-fields/document-header-fields.tsx` instead of duplicating the same date/reference/notes markup in each detail screen.
 
 ## MVC Rule
 

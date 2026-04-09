@@ -92,6 +92,21 @@ class CustomerAccountAPITests(TestCase):
         self.assertEqual(response.data["code"], "ACM-1")
         self.assertEqual(response.data["contact_name"], "Store Ops")
         self.assertTrue(response.data["allow_dropshipping_orders"])
+        self.assertEqual(response.data["approval_status"], "APPROVED")
+        self.assertEqual(response.data["company_name"], "Acme Retail")
+        self.assertEqual(response.data["distribution_mode"], "NOT_SUPPORTED")
+        self.assertEqual(response.data["total_available_balance"], 0)
+        self.assertEqual(response.data["credit_limit"], 0)
+        self.assertEqual(response.data["credit_used"], 0)
+        self.assertEqual(response.data["authorized_order_quantity"], 0)
+        self.assertFalse(response.data["limit_balance_documents"])
+        self.assertEqual(
+            response.data["contact_people"],
+            [{"name": "Store Ops", "email": "ops@acme.example", "phone": "+1-555-0100"}],
+        )
+        self.assertEqual(response.data["warehouse_assignments"], [])
+        self.assertIsNotNone(response.data["create_time"])
+        self.assertIsNotNone(response.data["update_time"])
 
     def test_manager_list_includes_inactive_customer_accounts(self) -> None:
         create_customer_account(
@@ -114,6 +129,13 @@ class CustomerAccountAPITests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertFalse(response.data[0]["is_active"])
+        self.assertEqual(response.data[0]["approval_status"], "DEACTIVATED")
+        self.assertEqual(response.data[0]["company_name"], "Inactive Client")
+        self.assertEqual(response.data[0]["distribution_mode"], "NOT_SUPPORTED")
+        self.assertEqual(response.data[0]["total_available_balance"], 0)
+        self.assertEqual(response.data[0]["warehouse_assignments"], [])
+        self.assertIsNotNone(response.data[0]["create_time"])
+        self.assertIsNotNone(response.data[0]["update_time"])
 
     def test_client_user_only_sees_assigned_customer_accounts(self) -> None:
         visible = create_customer_account(

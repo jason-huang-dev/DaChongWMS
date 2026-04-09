@@ -54,6 +54,15 @@ Mutation flows now invalidate the relevant domain query keys (`inbound`, `outbou
 
 Repeated invalidation logic is centralized through `frontend/src/shared/lib/query-invalidation.ts` so new domains can reuse the same controller-side pattern.
 
+## Client-Account Compatibility Payload
+
+The clients workbench reads `/api/v1/organizations/:organizationId/customer-accounts/` directly into the `ClientAccountRecord` shape. The backend serializer therefore exposes a compatibility payload even before the dedicated finance, charging-template, and client-permission backends exist.
+
+- core account fields (`id`, `name`, `code`, contacts, active state, timestamps) come from `partners.CustomerAccount`
+- compatibility display fields such as `company_name` alias back to the current account name until a richer client master record exists
+- queue fields not backed by dedicated domain models yet, such as finance totals, charging template, warehouse assignments, and permission-adjacent metadata, are returned as safe read-only defaults so dense table layouts can render without special-case API branching in the view layer
+- the frontend should still keep display fallbacks for optional compatibility fields, because older seeded responses and partially upgraded environments may omit some of them
+
 Selector-backed creation flows now depend on shared reference hooks in `frontend/src/shared/hooks/use-reference-options.ts`. The rule is:
 
 - controllers own the mutation and invalidation

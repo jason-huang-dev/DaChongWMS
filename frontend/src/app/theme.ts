@@ -134,12 +134,19 @@ export function createAppTheme(themeMode: AppThemeMode, locale: AppLocale) {
               boxSizing: "border-box",
             },
             html: {
+              height: "100%",
               scrollBehavior: "smooth",
             },
             body: {
               background: isDark ? brandGradients.shellBodyDark : brandGradients.shellBodyLight,
               color: tokens.textPrimary,
+              height: "100%",
+              margin: 0,
+              overflow: "hidden",
               textRendering: "optimizeLegibility",
+            },
+            "#root": {
+              height: "100%",
             },
             "a, button": {
               transition: [

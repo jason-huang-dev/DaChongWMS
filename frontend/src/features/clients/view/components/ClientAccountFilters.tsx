@@ -1,328 +1,388 @@
-import { useEffect, useMemo, useState } from "react";
-
-import RestartAltOutlinedIcon from "@mui/icons-material/RestartAltOutlined";
-import SearchOutlinedIcon from "@mui/icons-material/SearchOutlined";
-import Grid from "@mui/material/Grid";
-import { Button, MenuItem, Stack, TextField, Typography } from "@mui/material";
+import { Box, MenuItem, Stack, TextField } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { ActionIconButton } from "@/shared/components/action-icon-button";
+import { useI18n } from "@/app/ui-preferences";
+import type { ClientWorkbenchFilters } from "@/features/clients/controller/useClientsController";
+import {
+  clientCompanySearchFieldOptions,
+  clientCustomerSearchFieldOptions,
+  clientSearchPlaceholders,
+  clientSetupSearchFieldOptions,
+  clientTimeFieldOptions,
+  clientMetricFieldOptions,
+  type ClientCompanySearchField,
+  type ClientCustomerSearchField,
+  type ClientMetricField,
+  type ClientSetupSearchField,
+  type ClientTimeField,
+} from "@/features/clients/model/client-accounts";
+import { RangePicker } from "@/shared/components/range-picker";
 
 interface ClientAccountFiltersProps {
-  filters: {
-    searchField: string;
-    searchMode: string;
-    searchQuery: string;
-    warehouse: string;
-    chargingTemplate: string;
-    settlementCurrency: string;
-    contactPerson: string;
-    distribution: string;
-  };
-  activeFilterCount: number;
-  filterOptions: {
-    warehouses: string[];
-    chargingTemplates: string[];
-    settlementCurrencies: string[];
-    contactPeople: string[];
-    distributionModes: string[];
-  };
-  onChange: (key: string, value: string) => void;
-  onReset: () => void;
-}
-
-function toSelectOptions(values: string[], formatter?: (value: string) => string) {
-  return values.map((value) => ({
-    label: formatter ? formatter(value) : value,
-    value,
-  }));
-}
-
-function formatDistributionLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
+  filters: ClientWorkbenchFilters;
+  onChange: (key: keyof ClientWorkbenchFilters & string, value: string) => void;
 }
 
 export function ClientAccountFilters({
   filters,
-  activeFilterCount,
-  filterOptions,
   onChange,
-  onReset,
 }: ClientAccountFiltersProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const [draftSearchQuery, setDraftSearchQuery] = useState(filters.searchQuery);
+  const { translateText } = useI18n();
 
-  const advancedFilterOptions = useMemo(
-    () => ({
-      warehouses: toSelectOptions(filterOptions.warehouses),
-      chargingTemplates: toSelectOptions(filterOptions.chargingTemplates),
-      settlementCurrencies: toSelectOptions(filterOptions.settlementCurrencies),
-      contactPeople: toSelectOptions(filterOptions.contactPeople),
-      distributionModes: toSelectOptions(filterOptions.distributionModes, formatDistributionLabel),
-    }),
-    [filterOptions],
-  );
-
-  useEffect(() => {
-    setDraftSearchQuery(filters.searchQuery);
-  }, [filters.searchQuery]);
-
-  function applySearch() {
-    onChange("searchQuery", draftSearchQuery);
-  }
-
-  const fieldSx = {
+  const surfaceColor = alpha(theme.palette.background.paper, isDark ? 0.52 : 0.88);
+  const surfaceBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.52 : 0.8)}`;
+  const groupShellSx = {
+    alignItems: "center",
+    backgroundColor: surfaceColor,
+    border: surfaceBorder,
+    borderRadius: 2.5,
+    boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, isDark ? 0.05 : 0.72)}`,
+    minHeight: 42,
+    px: 0.625,
+    py: 0.375,
+  } as const;
+  const compoundFieldSx = {
+    "& .MuiInputBase-input": {
+      fontSize: theme.typography.pxToRem(12),
+      py: 0.625,
+    },
     "& .MuiOutlinedInput-root": {
-      backgroundColor: isDark ? alpha(theme.palette.common.white, 0.03) : theme.palette.common.white,
-      borderRadius: 1.5,
-      minHeight: 44,
+      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
+      borderRadius: 999,
+      height: 34,
+      minHeight: 34,
     },
   } as const;
+  const compactSelectorWidth = 156;
+  const financeSelectorWidth = 168;
+  const dateSelectorWidth = 156;
 
   return (
-    <Stack spacing={1.75}>
-      <Grid container spacing={1.5}>
-        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-          <TextField
-            aria-label="Warehouse filter"
-            fullWidth
-            onChange={(event) => onChange("warehouse", event.target.value)}
-            select
-            SelectProps={{
-              displayEmpty: true,
-              renderValue: (value) => {
-                const selectedValue = typeof value === "string" ? value : "";
-                return selectedValue || "All Warehouses";
-              },
-            }}
-            size="small"
-            sx={fieldSx}
-            value={filters.warehouse}
-          >
-            <MenuItem value="">All Warehouses</MenuItem>
-            {advancedFilterOptions.warehouses.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-          <TextField
-            aria-label="Charging template filter"
-            fullWidth
-            onChange={(event) => onChange("chargingTemplate", event.target.value)}
-            select
-            SelectProps={{
-              displayEmpty: true,
-              renderValue: (value) => {
-                const selectedValue = typeof value === "string" ? value : "";
-                return selectedValue || "All Charging Template";
-              },
-            }}
-            size="small"
-            sx={fieldSx}
-            value={filters.chargingTemplate}
-          >
-            <MenuItem value="">All Charging Template</MenuItem>
-            {advancedFilterOptions.chargingTemplates.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-          <TextField
-            aria-label="Settlement currency filter"
-            fullWidth
-            onChange={(event) => onChange("settlementCurrency", event.target.value)}
-            select
-            SelectProps={{
-              displayEmpty: true,
-              renderValue: (value) => {
-                const selectedValue = typeof value === "string" ? value : "";
-                return selectedValue || "Assign Currency";
-              },
-            }}
-            size="small"
-            sx={fieldSx}
-            value={filters.settlementCurrency}
-          >
-            <MenuItem value="">Assign Currency</MenuItem>
-            {advancedFilterOptions.settlementCurrencies.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-          <TextField
-            aria-label="Contact person filter"
-            fullWidth
-            onChange={(event) => onChange("contactPerson", event.target.value)}
-            select
-            SelectProps={{
-              displayEmpty: true,
-              renderValue: (value) => {
-                const selectedValue = typeof value === "string" ? value : "";
-                return selectedValue || "All Contact Person";
-              },
-            }}
-            size="small"
-            sx={fieldSx}
-            value={filters.contactPerson}
-          >
-            <MenuItem value="">All Contact Person</MenuItem>
-            {advancedFilterOptions.contactPeople.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 6, lg: 2.4 }}>
-          <TextField
-            aria-label="Distribution filter"
-            fullWidth
-            onChange={(event) => onChange("distribution", event.target.value)}
-            select
-            SelectProps={{
-              displayEmpty: true,
-              renderValue: (value) => {
-                const selectedValue = typeof value === "string" ? value : "";
-                return (selectedValue && formatDistributionLabel(selectedValue)) || "Distribution";
-              },
-            }}
-            size="small"
-            sx={fieldSx}
-            value={filters.distribution}
-          >
-            <MenuItem value="">Distribution</MenuItem>
-            {advancedFilterOptions.distributionModes.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-      </Grid>
-
-      <Stack
-        alignItems={{ sm: "stretch", lg: "center" }}
-        direction={{ xs: "column", lg: "row" }}
-        justifyContent="space-between"
-        spacing={1.5}
+    <Stack spacing={0.875} sx={{ minWidth: 0 }}>
+      <Box
+        sx={{
+          alignItems: "start",
+          display: "grid",
+          gap: 0.875,
+          gridTemplateColumns: {
+            lg: "minmax(0, 1fr) minmax(0, 1fr) auto",
+            md: "repeat(2, minmax(0, 1fr))",
+            xs: "minmax(0, 1fr)",
+          },
+          minWidth: 0,
+        }}
       >
-        <Grid container spacing={0} sx={{ flex: 1, minWidth: 0 }}>
-          <Grid size={{ xs: 12, sm: 4, md: 3 }}>
-            <TextField
-              aria-label="Search field"
-              fullWidth
-              onChange={(event) => onChange("searchField", event.target.value)}
-              select
-              size="small"
-              sx={{
-                ...fieldSx,
-                "& .MuiOutlinedInput-root": {
-                  ...fieldSx["& .MuiOutlinedInput-root"],
-                  borderBottomRightRadius: { xs: 1.5, sm: 0 },
-                  borderRight: { xs: undefined, sm: "none" },
-                  borderTopRightRadius: { xs: 1.5, sm: 0 },
-                },
-              }}
-              value={filters.searchField}
-            >
-              <MenuItem value="all">All Fields</MenuItem>
-              <MenuItem value="code">Client Code</MenuItem>
-              <MenuItem value="name">Client Name</MenuItem>
-              <MenuItem value="contact">Contact</MenuItem>
-              <MenuItem value="company">Company</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 8, md: 5 }}>
-            <TextField
-              aria-label="Client search query"
-              fullWidth
-              onChange={(event) => setDraftSearchQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  applySearch();
-                }
-              }}
-              placeholder="Please enter"
-              size="small"
-              sx={{
-                ...fieldSx,
-                "& .MuiOutlinedInput-root": {
-                  ...fieldSx["& .MuiOutlinedInput-root"],
-                  borderRadius: { xs: 1.5, md: 0 },
-                  borderRight: { xs: undefined, md: "none" },
-                },
-              }}
-              value={draftSearchQuery}
-            />
-          </Grid>
-          <Grid size={{ xs: 12, sm: 8, md: 3 }}>
-            <TextField
-              aria-label="Search mode"
-              fullWidth
-              onChange={(event) => onChange("searchMode", event.target.value)}
-              select
-              size="small"
-              sx={{
-                ...fieldSx,
-                "& .MuiOutlinedInput-root": {
-                  ...fieldSx["& .MuiOutlinedInput-root"],
-                  borderRadius: { xs: 1.5, md: 0 },
-                  borderRight: { xs: undefined, md: "none" },
-                },
-              }}
-              value={filters.searchMode}
-            >
-              <MenuItem value="exact">Precise Search</MenuItem>
-              <MenuItem value="contains">Fuzzy Search</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid size={{ xs: 12, sm: 4, md: 1 }}>
-            <Stack direction="row" height="100%">
-              <ActionIconButton
-                aria-label="Search clients"
-                onClick={applySearch}
-                sx={{
-                  borderBottomLeftRadius: { xs: 1.5, md: 0 },
-                  borderBottomRightRadius: 1.5,
-                  borderTopLeftRadius: { xs: 1.5, md: 0 },
-                  borderTopRightRadius: 1.5,
-                  height: 44,
-                  width: { xs: "100%", md: 48 },
-                }}
-                title="Search clients"
-              >
-                <SearchOutlinedIcon fontSize="small" />
-              </ActionIconButton>
-            </Stack>
-          </Grid>
-        </Grid>
-        {activeFilterCount > 0 ? (
-          <Button color="inherit" onClick={onReset} size="small" startIcon={<RestartAltOutlinedIcon />} sx={{ flexShrink: 0 }}>
-            Reset
-          </Button>
-        ) : null}
-      </Stack>
+        <Stack
+          alignItems="center"
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{
+            ...groupShellSx,
+            flexWrap: "wrap",
+            minWidth: 0,
+          }}
+        >
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("customerField", event.target.value as ClientCustomerSearchField)}
+          select
+          size="small"
+          value={filters.customerField}
+          slotProps={{
+            htmlInput: {
+              "aria-label": translateText("Customer information field"),
+            },
+          }}
+          sx={{
+            flex: `0 0 ${compactSelectorWidth}px`,
+            minWidth: compactSelectorWidth,
+            width: compactSelectorWidth,
+            ...compoundFieldSx,
+          }}
+        >
+          {clientCustomerSearchFieldOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {translateText(option.label)}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("customerQuery", event.target.value)}
+          placeholder={translateText(clientSearchPlaceholders[filters.customerField])}
+          size="small"
+          value={filters.customerQuery}
+          slotProps={{
+            htmlInput: {
+              "aria-label": translateText("Customer information"),
+              autoCapitalize: "none",
+              autoCorrect: "off",
+              spellCheck: false,
+            },
+          }}
+          sx={{
+            flex: "1 1 220px",
+            minWidth: 0,
+            ...compoundFieldSx,
+          }}
+        />
+        </Stack>
 
-      {activeFilterCount > 0 ? (
-        <Typography color="text.secondary" variant="caption">
-          {activeFilterCount} active filter{activeFilterCount === 1 ? "" : "s"}
-        </Typography>
-      ) : null}
+        <Stack
+          alignItems="center"
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{
+            ...groupShellSx,
+            flexWrap: "wrap",
+            minWidth: 0,
+          }}
+        >
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("companyField", event.target.value as ClientCompanySearchField)}
+          select
+          size="small"
+          value={filters.companyField}
+          slotProps={{
+            htmlInput: {
+              "aria-label": translateText("Company information field"),
+            },
+          }}
+          sx={{
+            flex: `0 0 ${compactSelectorWidth}px`,
+            minWidth: compactSelectorWidth,
+            width: compactSelectorWidth,
+            ...compoundFieldSx,
+          }}
+        >
+          {clientCompanySearchFieldOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {translateText(option.label)}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("companyQuery", event.target.value)}
+          placeholder={translateText(clientSearchPlaceholders[filters.companyField])}
+          size="small"
+          value={filters.companyQuery}
+          slotProps={{
+            htmlInput: {
+              "aria-label": translateText("Company information"),
+              autoCapitalize: "none",
+              autoCorrect: "off",
+              spellCheck: false,
+            },
+          }}
+          sx={{
+            flex: "1 1 220px",
+            minWidth: 0,
+            ...compoundFieldSx,
+          }}
+        />
+        </Stack>
+
+        <RangePicker
+          endAriaLabel={translateText("Maximum finance value")}
+          endInputProps={{ inputMode: "numeric" }}
+          endPlaceholder={translateText("Max")}
+          endValue={filters.financeMax}
+          fieldSx={{
+            minWidth: 0,
+            width: { md: 108, xs: "100%" },
+            ...compoundFieldSx,
+          }}
+          inputType="number"
+          leadingContent={
+            <TextField
+              hiddenLabel
+              onChange={(event) => onChange("financeField", event.target.value as ClientMetricField)}
+              select
+              size="small"
+              value={filters.financeField}
+              slotProps={{
+                htmlInput: {
+                  "aria-label": translateText("Finance field"),
+                },
+              }}
+              sx={{
+                minWidth: { md: financeSelectorWidth, xs: "100%" },
+                width: { md: financeSelectorWidth, xs: "100%" },
+                ...compoundFieldSx,
+              }}
+            >
+              {clientMetricFieldOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {translateText(option.label)}
+                </MenuItem>
+              ))}
+            </TextField>
+          }
+          onEndChange={(value) => onChange("financeMax", value)}
+          onStartChange={(value) => onChange("financeMin", value)}
+          rootSx={{
+            ...groupShellSx,
+            gridColumn: {
+              md: "1 / -1",
+              lg: "auto",
+            },
+            height: "auto",
+            justifySelf: {
+              md: "start",
+              xs: "stretch",
+            },
+            maxWidth: "100%",
+            minHeight: 42,
+            minWidth: 0,
+            px: 0.625,
+            py: 0.375,
+            width: {
+              lg: "fit-content",
+              md: "100%",
+              xs: "100%",
+            },
+          }}
+          startAriaLabel={translateText("Minimum finance value")}
+          startInputProps={{ inputMode: "numeric" }}
+          startPlaceholder={translateText("Min")}
+          startValue={filters.financeMin}
+        />
+      </Box>
+
+      <Box
+        sx={{
+          alignItems: "start",
+          display: "grid",
+          gap: 0.875,
+          gridTemplateColumns: {
+            md: "minmax(0, 1fr) auto",
+            xs: "minmax(0, 1fr)",
+          },
+          minWidth: 0,
+        }}
+      >
+        <Stack
+          alignItems="center"
+          direction="row"
+          spacing={1}
+          useFlexGap
+          sx={{
+            ...groupShellSx,
+            flexWrap: "wrap",
+            minWidth: 0,
+          }}
+        >
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("setupField", event.target.value as ClientSetupSearchField)}
+          select
+          size="small"
+          value={filters.setupField}
+          slotProps={{
+            htmlInput: {
+              "aria-label": translateText("Account setup field"),
+            },
+          }}
+          sx={{
+            flex: `0 0 ${compactSelectorWidth}px`,
+            minWidth: compactSelectorWidth,
+            width: compactSelectorWidth,
+            ...compoundFieldSx,
+          }}
+        >
+          {clientSetupSearchFieldOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {translateText(option.label)}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("setupQuery", event.target.value)}
+          placeholder={translateText(clientSearchPlaceholders[filters.setupField])}
+          size="small"
+          value={filters.setupQuery}
+          slotProps={{
+            htmlInput: {
+              "aria-label": translateText("Account setup"),
+              autoCapitalize: "none",
+              autoCorrect: "off",
+              spellCheck: false,
+            },
+          }}
+          sx={{
+            flex: "1 1 220px",
+            minWidth: 0,
+            ...compoundFieldSx,
+          }}
+        />
+        </Stack>
+
+        <RangePicker
+          endAriaLabel={translateText("Time to")}
+          endPlaceholder={translateText("To")}
+          endValue={filters.timeEnd}
+          fieldSx={{
+            minWidth: 0,
+            width: { md: 140, xs: "100%" },
+            ...compoundFieldSx,
+          }}
+          inputType="date"
+          leadingContent={
+            <TextField
+              hiddenLabel
+              onChange={(event) => onChange("timeField", event.target.value as ClientTimeField)}
+              select
+              size="small"
+              value={filters.timeField}
+              slotProps={{
+                htmlInput: {
+                  "aria-label": translateText("Time field"),
+                },
+              }}
+              sx={{
+                minWidth: { md: dateSelectorWidth, xs: "100%" },
+                width: { md: dateSelectorWidth, xs: "100%" },
+                ...compoundFieldSx,
+              }}
+            >
+              {clientTimeFieldOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {translateText(option.label)}
+                </MenuItem>
+              ))}
+            </TextField>
+          }
+          onEndChange={(value) => onChange("timeEnd", value)}
+          onStartChange={(value) => onChange("timeStart", value)}
+          rootSx={{
+            ...groupShellSx,
+            height: "auto",
+            justifySelf: {
+              md: "start",
+              xs: "stretch",
+            },
+            maxWidth: "100%",
+            minHeight: 42,
+            minWidth: 0,
+            px: 0.625,
+            py: 0.375,
+            width: {
+              md: "fit-content",
+              xs: "100%",
+            },
+          }}
+          startAriaLabel={translateText("Time from")}
+          startPlaceholder={translateText("From")}
+          startValue={filters.timeStart}
+        />
+      </Box>
     </Stack>
   );
 }

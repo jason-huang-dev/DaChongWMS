@@ -3,7 +3,6 @@ import { useState } from "react";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
-import OpenInNewOutlinedIcon from "@mui/icons-material/OpenInNewOutlined";
 import { IconButton, Menu, MenuItem, Stack, Tooltip } from "@mui/material";
 
 import type { ClientAccountRecord } from "@/features/clients/model/types";
@@ -13,7 +12,8 @@ interface ClientAccountRowActionsProps {
   onEdit: (client: ClientAccountRecord) => void;
   onToggleActive: (client: ClientAccountRecord, nextActive: boolean) => Promise<void> | void;
   onOpenPortalAccess: (client: ClientAccountRecord) => void;
-  onOpenOmsLogin: (client: ClientAccountRecord) => void;
+  onResetPassword: (client: ClientAccountRecord) => void;
+  onObtainToken: (client: ClientAccountRecord) => void;
 }
 
 export function ClientAccountRowActions({
@@ -21,21 +21,17 @@ export function ClientAccountRowActions({
   onEdit,
   onToggleActive,
   onOpenPortalAccess,
-  onOpenOmsLogin,
+  onResetPassword,
+  onObtainToken,
 }: ClientAccountRowActionsProps) {
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
   return (
     <>
-      <Stack direction="row" spacing={0.25}>
+      <Stack direction="row" spacing={0.25} sx={{ justifyContent: "flex-start" }}>
         <Tooltip title="Portal access">
           <IconButton aria-label={`Open portal access for ${client.name}`} onClick={() => onOpenPortalAccess(client)} size="small">
             <ManageAccountsOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="OMS login">
-          <IconButton aria-label={`Open OMS login for ${client.name}`} onClick={() => onOpenOmsLogin(client)} size="small">
-            <OpenInNewOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
         <Tooltip title="Edit client">
@@ -65,7 +61,7 @@ export function ClientAccountRowActions({
         <MenuItem
           onClick={() => {
             setMenuAnchor(null);
-            onOpenPortalAccess(client);
+            onResetPassword(client);
           }}
         >
           Reset Password
@@ -73,18 +69,10 @@ export function ClientAccountRowActions({
         <MenuItem
           onClick={() => {
             setMenuAnchor(null);
-            onOpenPortalAccess(client);
+            onObtainToken(client);
           }}
         >
           Obtain Token
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            setMenuAnchor(null);
-            onOpenOmsLogin(client);
-          }}
-        >
-          Redirect to OMS login
         </MenuItem>
       </Menu>
     </>

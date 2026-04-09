@@ -7,6 +7,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Box,
   Button,
+  Chip,
   InputAdornment,
   MenuItem,
   Stack,
@@ -40,6 +41,8 @@ import {
 import { FilterCard } from "@/shared/components/filter-card";
 import { MultiSelectFilter } from "@/shared/components/multi-select-filter";
 import { RangePicker } from "@/shared/components/range-picker";
+import { StickyTableLayout } from "@/shared/components/sticky-table-layout";
+import { useCollapsibleTablePageChrome } from "@/shared/hooks/use-collapsible-table-page-chrome";
 import { useDataView, type DataViewFilters } from "@/shared/hooks/use-data-view";
 import { formatDateTime, formatNumber, formatStatusLabel } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
@@ -399,11 +402,27 @@ export function InventoryMovementsPage() {
     }),
     [selectedRowIds],
   );
+  const pageChrome = useCollapsibleTablePageChrome();
 
   return (
-    <Stack spacing={2.5}>
-      <FilterCard>
-        <Stack spacing={1}>
+    <StickyTableLayout
+      spacing={2.5}
+      filters={
+        <Box
+          aria-hidden={pageChrome.isCollapsed}
+          data-collapse-progress="0.00"
+          data-testid="inventory-movements-page-chrome"
+          ref={pageChrome.wrapperRef}
+          sx={pageChrome.wrapperSx}
+        >
+          <Box ref={pageChrome.contentRef}>
+            <FilterCard
+              contentSx={{
+                pb: "14px !important",
+                pt: 1.25,
+              }}
+            >
+              <Stack spacing={0.75}>
             <Stack
               alignItems="center"
               direction="row"
@@ -684,91 +703,117 @@ export function InventoryMovementsPage() {
                   startValue={movementView.filters.quantityMin}
                 />
               </Stack>
-              <ActionIconButton
-                aria-label={translateText("Clear all filters")}
-                disabled={movementView.activeFilterCount === 0}
-                onClick={movementView.resetFilters}
-                sx={{ flex: "0 0 auto" }}
-                title={translateText("Clear all filters")}
-              >
-                <RestartAltRoundedIcon fontSize="small" />
-              </ActionIconButton>
             </Stack>
-        </Stack>
-      </FilterCard>
-
-      <DataTable
-        columns={columns}
-        emptyMessage="No inventory movements match the current filters."
-        error={movementHistoryQuery.error ? parseApiError(movementHistoryQuery.error) : null}
-        getRowId={(row) => row.id}
-        isLoading={movementHistoryQuery.isLoading}
-        pagination={{
-          page: movementView.page,
-          pageSize: movementView.pageSize,
-          total: movementHistoryQuery.data?.count ?? 0,
-          onPageChange: movementView.setPage,
-        }}
-        renderMetaRow={(row) => {
-          const clientLabel = row.clientName
-            ? `${row.clientName}${row.clientCode ? ` [${row.clientCode}]` : ""}`
-            : "--";
-          const entryTypeLabel = row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType);
-
-          return (
             <Stack
-              alignItems={{ md: "center", xs: "flex-start" }}
-              direction={{ md: "row", xs: "column" }}
+              alignItems={{ xs: "stretch", md: "center" }}
+              direction={{ xs: "column", md: "row" }}
               justifyContent="space-between"
-              spacing={1}
+              spacing={0.5}
+              sx={{ minWidth: 0 }}
             >
-              <Stack direction="row" flexWrap="wrap" spacing={3} useFlexGap>
-                <InventoryMovementMetaField label="Warehouse" value={row.warehouseName || "--"} />
-                <InventoryMovementMetaField label="Client" value={clientLabel} />
-                <InventoryMovementMetaField label="Type" value={entryTypeLabel} />
+              <Stack
+                alignItems={{ xs: "stretch", md: "center" }}
+                direction={{ xs: "column", md: "row" }}
+                spacing={0.5}
+                sx={{ flex: "1 1 auto", minWidth: 0 }}
+              >
+                <Chip
+                  color={selectedVisibleCount > 0 ? "primary" : "default"}
+                  label={t("bulk.selectedCount", { count: selectedVisibleCount })}
+                  size="small"
+                  sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
+                />
+                {selectedVisibleCount > 0 ? (
+                  <Button onClick={() => setSelectedRowIds([])} size="small" sx={{ alignSelf: { xs: "flex-start", md: "center" }, minHeight: 28, px: 1 }}>
+                    {translateText("Clear selection")}
+                  </Button>
+                ) : null}
               </Stack>
-              <InventoryMovementMetaField label="Time" value={row.occurredAt ? formatDateTime(row.occurredAt) : "--"} />
+              <Stack
+                alignItems="center"
+                direction="row"
+                spacing={0.5}
+                sx={{ flex: "0 0 auto", flexWrap: "wrap", justifyContent: { xs: "flex-start", md: "flex-end" } }}
+              >
+                <Typography color="text.secondary" sx={{ fontSize: theme.typography.pxToRem(12), whiteSpace: "nowrap" }} variant="body2">
+                  {t("inventory.resultCount", { count: movementHistoryQuery.data?.count ?? 0 })}
+                </Typography>
+                <ActionIconButton
+                  aria-label={translateText("Clear all filters")}
+                  disabled={movementView.activeFilterCount === 0}
+                  onClick={movementView.resetFilters}
+                  sx={{ flex: "0 0 auto" }}
+                  title={translateText("Clear all filters")}
+                >
+                  <RestartAltRoundedIcon fontSize="small" />
+                </ActionIconButton>
+              </Stack>
             </Stack>
-          );
-        }}
-        rowSelection={movementRowSelection}
-        rows={rows}
-        sorting={{
-          direction: sorting.direction,
-          onSortChange: (nextSortKey) => {
-            setSorting((currentSorting) =>
-              currentSorting.key === nextSortKey
-                ? {
-                    direction: currentSorting.direction === "asc" ? "desc" : "asc",
-                    key: nextSortKey,
-                  }
-                : {
-                    direction: "asc",
-                    key: nextSortKey,
-                  },
+              </Stack>
+            </FilterCard>
+          </Box>
+        </Box>
+      }
+      table={
+        <DataTable
+          columns={columns}
+          emptyMessage="No inventory movements match the current filters."
+          error={movementHistoryQuery.error ? parseApiError(movementHistoryQuery.error) : null}
+          fillHeight
+          getRowId={(row) => row.id}
+          isLoading={movementHistoryQuery.isLoading}
+          pagination={{
+            page: movementView.page,
+            pageSize: movementView.pageSize,
+            total: movementHistoryQuery.data?.count ?? 0,
+            onPageChange: movementView.setPage,
+          }}
+          onScrollStateChange={pageChrome.handleTableScrollStateChange}
+          renderMetaRow={(row) => {
+            const clientLabel = row.clientName
+              ? `${row.clientName}${row.clientCode ? ` [${row.clientCode}]` : ""}`
+              : "--";
+            const entryTypeLabel = row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType);
+
+            return (
+              <Stack
+                alignItems={{ md: "center", xs: "flex-start" }}
+                direction={{ md: "row", xs: "column" }}
+                justifyContent="space-between"
+                spacing={1}
+              >
+                <Stack direction="row" flexWrap="wrap" spacing={3} useFlexGap>
+                  <InventoryMovementMetaField label="Warehouse" value={row.warehouseName || "--"} />
+                  <InventoryMovementMetaField label="Client" value={clientLabel} />
+                  <InventoryMovementMetaField label="Type" value={entryTypeLabel} />
+                </Stack>
+                <InventoryMovementMetaField label="Time" value={row.occurredAt ? formatDateTime(row.occurredAt) : "--"} />
+              </Stack>
             );
-            movementView.setPage(1);
-          },
-          sortKey: sorting.key,
-        }}
-        toolbar={
-          <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={2}>
-            <Stack alignItems="center" direction="row" spacing={1.25}>
-              <Typography color="text.secondary" variant="body2">
-                {t("bulk.selectedCount", { count: selectedVisibleCount })}
-              </Typography>
-              {selectedVisibleCount > 0 ? (
-                <Button onClick={() => setSelectedRowIds([])} size="small" sx={{ minWidth: 0, px: 1.25 }}>
-                  {translateText("Clear selection")}
-                </Button>
-              ) : null}
-            </Stack>
-            <Typography color="text.secondary" variant="body2">
-              {t("inventory.resultCount", { count: movementHistoryQuery.data?.count ?? 0 })}
-            </Typography>
-          </Stack>
-        }
-      />
-    </Stack>
+          }}
+          rowSelection={movementRowSelection}
+          rows={rows}
+          sorting={{
+            direction: sorting.direction,
+            onSortChange: (nextSortKey) => {
+              setSorting((currentSorting) =>
+                currentSorting.key === nextSortKey
+                  ? {
+                      direction: currentSorting.direction === "asc" ? "desc" : "asc",
+                      key: nextSortKey,
+                    }
+                  : {
+                      direction: "asc",
+                      key: nextSortKey,
+                    },
+              );
+              movementView.setPage(1);
+            },
+            sortKey: sorting.key,
+          }}
+          stickyHeader
+        />
+      }
+    />
   );
 }

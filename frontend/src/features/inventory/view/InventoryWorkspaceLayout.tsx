@@ -295,11 +295,12 @@ export function InventoryWorkspaceLayout() {
   ]);
 
   return (
-    <Stack spacing={2.5}>
+    <Stack spacing={2.5} sx={{ height: "100%", minHeight: 0 }}>
       <Box
         sx={{
-          alignItems: "start",
+          alignItems: "stretch",
           display: "grid",
+          flex: "1 1 auto",
           gap: 3,
           gridTemplateColumns: {
             xs: "minmax(0, 1fr)",
@@ -308,6 +309,7 @@ export function InventoryWorkspaceLayout() {
                 ? "28px minmax(0, 1fr)"
                 : "72px minmax(0, 1fr)",
           },
+          minHeight: 0,
         }}
       >
         {layoutPayload.sidebar_mode === "hidden" ? (
@@ -323,7 +325,14 @@ export function InventoryWorkspaceLayout() {
             onHide={() => persistLayout({ sidebar_mode: "hidden" })}
           />
         )}
-        <Box sx={{ minWidth: 0 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+            minWidth: 0,
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

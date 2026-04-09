@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { renderWithProviders } from "@/test/render";
@@ -109,5 +109,39 @@ describe("InventoryMovementsPage", () => {
         warehouse_id: 7,
       }),
     );
+  });
+
+  test("uses the standard sticky-table page chrome collapse interaction", async () => {
+    renderWithProviders(<InventoryMovementsPage />);
+
+    expect(await screen.findByText("SKU-001")).toBeInTheDocument();
+    expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("data-collapse-progress", "0.00");
+
+    const tableScrollRegion = screen.getByRole("table").parentElement;
+    expect(tableScrollRegion).not.toBeNull();
+
+    fireEvent.scroll(tableScrollRegion!, { target: { scrollTop: 80 } });
+
+    await waitFor(() => {
+      expect(Number(screen.getByTestId("inventory-movements-page-chrome").getAttribute("data-collapse-progress"))).toBeGreaterThan(0);
+    });
+
+    expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByRole("textbox", { name: "Search all text" })).toBeInTheDocument();
+
+    fireEvent.scroll(tableScrollRegion!, { target: { scrollTop: 220 } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("aria-hidden", "true");
+    });
+
+    expect(screen.queryByRole("textbox", { name: "Search all text" })).not.toBeInTheDocument();
+
+    fireEvent.scroll(tableScrollRegion!, { target: { scrollTop: 0 } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("aria-hidden", "false");
+    });
   });
 });

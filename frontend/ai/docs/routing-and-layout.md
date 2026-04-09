@@ -79,6 +79,40 @@ Route configuration lives in `frontend/src/app/routes.tsx`.
 - operator identity menu and sign-out action
 - responsive drawer behavior for smaller screens
 
+## Sticky Table Workspace Standard
+
+Dense queue and list pages should use the bounded sticky-table workspace pattern instead of allowing the document body to grow with rows.
+
+- `app-shell.tsx` owns the viewport and navbar. The shell is fixed to `100dvh` and the authenticated content area owns page-level scrolling.
+- `shared/components/sticky-table-layout/sticky-table-layout.tsx` owns the page split between normal chrome above and the bounded table workspace below.
+- `shared/components/data-table/data-table.tsx` owns row scrolling. The `TableContainer` is the only vertical row-scroll container; toolbar and pagination stay outside that scroll area.
+- `shared/components/data-table/data-table.tsx` also owns opt-in sticky left/right columns, so action rails can stay pinned without page-specific table forks.
+
+### Standard scroll interaction
+
+This is the default scroll-interaction contract for every page that uses the bounded sticky-table workspace with `shared/components/data-table/data-table.tsx`.
+
+When a sticky-table page has filters or tabs above the table, use `shared/hooks/use-collapsible-table-page-chrome.ts` instead of implementing page-specific scroll collapse logic.
+
+- collapse starts after a short threshold rather than immediately on the first wheel tick
+- the page chrome eases toward the collapsed state on `requestAnimationFrame`
+- the collapse is driven by table-body scroll, not document scroll
+- the interaction is measured from the actual page-chrome height, so wrapped filters still collapse cleanly
+
+Current `DataTable` pages using this standard:
+
+- `features/clients/view/ClientAccountTable.tsx`
+- `features/inventory/view/InventoryInformationTable.tsx`
+- `features/inventory/view/InventoryMovementsPage.tsx`
+
+Implementation rules for new list pages:
+
+- wrap filters/tabs in `StickyTableLayout.pageChrome` or `filters`
+- mount `DataTable` with `fillHeight` and `stickyHeader`
+- pass `useCollapsibleTablePageChrome().handleTableScrollStateChange` into `DataTable.onScrollStateChange`
+- wrap the page chrome in the hook's `wrapperRef` / `contentRef` container pair
+- do not add per-page `scrollTop` state or direct scroll scrubbing when this shared interaction already applies
+
 ## Breadcrumbs
 
 Breadcrumbs are derived from route metadata through `handle.crumb` values and rendered in `frontend/src/app/layout/route-breadcrumbs.tsx`. The breadcrumb renderer now passes labels through the shared translation layer so route metadata can remain stable while the UI swaps between English and Simplified Chinese.
@@ -114,7 +148,7 @@ Scan-first action panels and selector-driven create panels are packaged as route
 - Finance now lands on the fees workbench, while finance invoice detail still exposes finalize and finance-review actions with invoice-line detail on the legacy invoice route.
 - Statistics expose stock in/out, standard stock-in, stock-out throughput, warehouse analysis, staff performance, receiving, listing, picking, packing, after-sales, and direct-shipping views from one route-level workbench.
 - Security exposes company membership provisioning, invite issuance, password-reset issuance, access audit review, staff directory management, role assignment, lock-state control, and a direct path to personal MFA management.
-- Clients exposes route-backed lifecycle subpages instead of local bucket state. `/clients` redirects to `/clients/approved`, and each lifecycle queue (`pending-approval`, `approved`, `review-not-approved`, `deactivated`) is a first-class subpage with its own URL while reusing the same dense filters, row actions, and staged editor.
+- Clients exposes route-backed lifecycle subpages instead of local bucket state. `/clients` redirects to `/clients/approved`, and each lifecycle queue (`pending-approval`, `approved`, `review-not-approved`, `deactivated`) is a first-class subpage with its own URL while reusing the same dense filters, icon-style row actions, and staged editor. The primary client table now leads with customer code above customer name, then groups customer information, contact person, finance, account setup, and time into fixed queue columns.
 - Products exposes product master data plus selected-product management for distribution products, serial-number policy, packaging, and product marks.
 - Logistics exposes provider/channel configuration, customer routing preferences, logistics rules, charging strategy, and logistics cost capture as a first-class routed module under the authenticated shell.
 - Work orders expose type management plus ranked execution scheduling so managers can see which orders need to be fulfilled first.

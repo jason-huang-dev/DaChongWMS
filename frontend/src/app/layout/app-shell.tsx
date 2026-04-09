@@ -35,6 +35,12 @@ import { hasAnyRole } from "@/shared/utils/permissions";
 
 const mobileDrawerWidth = 300;
 const shellNavPillHeight = 32;
+const shellToolbarHeight = { md: "54px", xs: "50px" } as const;
+const shellTopRailHeight = "6px";
+const shellHeaderHeight = {
+  md: `calc(${shellToolbarHeight.md} + ${shellTopRailHeight})`,
+  xs: `calc(${shellToolbarHeight.xs} + ${shellTopRailHeight})`,
+} as const;
 
 export function AppShell() {
   const theme = useTheme();
@@ -166,9 +172,35 @@ export function AppShell() {
   );
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100dvh", width: "100%" }}>
-      <AppBar color="inherit" elevation={0} position="sticky">
-        <Toolbar sx={{ gap: 1, minHeight: { xs: 50, md: 54 }, px: { xs: 1.25, lg: 2 } }}>
+    <Box
+      data-testid="app-shell"
+      sx={{
+        "--AppShell-header-height": shellHeaderHeight,
+        "--AppShell-toolbar-height": shellToolbarHeight,
+        display: "flex",
+        flexDirection: "column",
+        height: "100dvh",
+        overflow: "hidden",
+        width: "100%",
+      }}
+    >
+      <AppBar
+        color="inherit"
+        elevation={0}
+        position="sticky"
+        sx={{
+          flex: "0 0 auto",
+          height: "var(--AppShell-header-height)",
+        }}
+      >
+        <Toolbar
+          sx={{
+            gap: 1,
+            height: "var(--AppShell-toolbar-height)",
+            minHeight: "var(--AppShell-toolbar-height)",
+            px: { xs: 1.25, lg: 2 },
+          }}
+        >
           <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ display: { lg: "none" } }}>
             <MenuIcon sx={{ fontSize: 28 }} />
           </IconButton>
@@ -311,9 +343,9 @@ export function AppShell() {
               ? brandGradients.topRailDark
               : brandGradients.topRailLight,
             borderTop: `1px solid ${alpha(brandColors.accentStrong, 0.12)}`,
-            height: 6,
-            maxHeight: 6,
-            minHeight: 6,
+            height: shellTopRailHeight,
+            maxHeight: shellTopRailHeight,
+            minHeight: shellTopRailHeight,
           }}
         />
       </AppBar>
@@ -334,9 +366,16 @@ export function AppShell() {
       </Drawer>
       <Box
         component="main"
+        data-testid="app-shell-main"
         sx={{
           boxSizing: "border-box",
-          flex: "1 1 auto",
+          display: "flex",
+          flexDirection: "column",
+          flex: "0 0 auto",
+          height: "calc(100dvh - var(--AppShell-header-height))",
+          minHeight: 0,
+          minWidth: 0,
+          overflow: "hidden",
           overflowX: "hidden",
           p: { xs: 1.25, md: 1.5 },
           transition: `padding ${brandMotion.duration.fast} ${brandMotion.easing.standard}`,
@@ -348,7 +387,19 @@ export function AppShell() {
             <RouteBreadcrumbs />
           </Box>
         </Stack>
-        <Outlet />
+        <Box
+          data-testid="app-shell-scroll-region"
+          sx={{
+            flex: "1 1 auto",
+            height: "100%",
+            minHeight: 0,
+            minWidth: 0,
+            overflowX: "hidden",
+            overflowY: "auto",
+          }}
+        >
+          <Outlet />
+        </Box>
       </Box>
     </Box>
   );

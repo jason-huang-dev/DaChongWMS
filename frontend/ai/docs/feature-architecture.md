@@ -81,6 +81,26 @@ Views may import controller hooks, shared presentational components, and model t
 - `model -> controller/view` is forbidden
 - `controller -> view` is forbidden
 
+## Shared Component Packaging
+
+Reusable UI under `frontend/src/shared/components/` now follows a folder-per-component layout:
+
+```text
+frontend/src/shared/components/
+  <component>/
+    <component>.tsx
+    <component>.test.tsx
+    index.ts
+```
+
+Rules:
+
+- `index.ts` should re-export the component so feature imports can stay at `@/shared/components/<component>`.
+- Colocate component tests in the same folder as `<component>.test.tsx` when tests exist.
+- If a presentational pattern is reused across features or is clearly becoming a shared primitive, extract it into `shared/components/<component>/` instead of duplicating JSX in feature `view/` trees.
+- Do not leave new reusable UI as flat files directly under `shared/components/`.
+- If a flat `shared/components/<component>.tsx` file exists, it should be a temporary compatibility re-export only and must not contain the real implementation.
+
 ## Enforcement Rules
 
 - Do not add root-level feature shims like `features/auth/login-page.tsx`.

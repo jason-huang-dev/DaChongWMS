@@ -6,10 +6,15 @@ import { useTenantScope } from "@/app/scope-context";
 import { runClientAccountCreate, runClientAccountUpdate } from "@/features/clients/controller/actions";
 import { buildClientAccountsPath } from "@/features/clients/model/api";
 import {
+  matchesClientMetricRange,
   matchesClientSearch,
+  matchesClientTimeRange,
   resolveClientLifecycleStatus,
-  type ClientSearchField,
-  type ClientSearchMode,
+  type ClientCompanySearchField,
+  type ClientCustomerSearchField,
+  type ClientMetricField,
+  type ClientSetupSearchField,
+  type ClientTimeField,
 } from "@/features/clients/model/client-accounts";
 import { defaultClientAccountFormValues, mapClientAccountToFormValues } from "@/features/clients/model/mappers";
 import type {
@@ -25,32 +30,18 @@ type ClientEditorMode = "create" | "edit" | null;
 
 export interface ClientWorkbenchFilters {
   [key: string]: string;
-  searchField: ClientSearchField;
-  searchMode: ClientSearchMode;
-  searchQuery: string;
-  warehouse: string;
-  chargingTemplate: string;
-  settlementCurrency: string;
-  contactPerson: string;
-  distribution: string;
-}
-
-function matchesOptionalTextFilter(filterValue: string, currentValue?: string | null) {
-  if (filterValue === "") {
-    return true;
-  }
-  return currentValue === filterValue;
-}
-
-function matchesListFilter(filterValue: string, currentValues?: string[] | null) {
-  if (filterValue === "") {
-    return true;
-  }
-  return (currentValues ?? []).includes(filterValue);
-}
-
-function buildUniqueSortedValues(values: string[]) {
-  return Array.from(new Set(values.filter(Boolean))).sort((left, right) => left.localeCompare(right));
+  customerField: ClientCustomerSearchField;
+  customerQuery: string;
+  companyField: ClientCompanySearchField;
+  companyQuery: string;
+  financeField: ClientMetricField;
+  financeMin: string;
+  financeMax: string;
+  setupField: ClientSetupSearchField;
+  setupQuery: string;
+  timeField: ClientTimeField;
+  timeStart: string;
+  timeEnd: string;
 }
 
 export function useClientsController(lifecycleBucket: ClientLifecycleStatus) {
@@ -64,14 +55,18 @@ export function useClientsController(lifecycleBucket: ClientLifecycleStatus) {
   const clientView = useDataView<ClientWorkbenchFilters>({
     viewKey: `clients.accounts.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      searchField: "code",
-      searchMode: "exact",
-      searchQuery: "",
-      warehouse: "",
-      chargingTemplate: "",
-      settlementCurrency: "",
-      contactPerson: "",
-      distribution: "",
+      customerField: "customerCode",
+      customerQuery: "",
+      companyField: "companyName",
+      companyQuery: "",
+      financeField: "availableBalance",
+      financeMin: "",
+      financeMax: "",
+      setupField: "chargingTemplate",
+      setupQuery: "",
+      timeField: "createdDate",
+      timeStart: "",
+      timeEnd: "",
     },
     pageSize: 10,
   });
@@ -101,58 +96,26 @@ export function useClientsController(lifecycleBucket: ClientLifecycleStatus) {
     [allClients],
   );
 
-  const filterOptions = useMemo(
-    () => ({
-      warehouses: buildUniqueSortedValues(allClients.flatMap((client) => client.warehouse_assignments ?? [])),
-      chargingTemplates: buildUniqueSortedValues(allClients.map((client) => client.charging_template_name ?? "")),
-      settlementCurrencies: buildUniqueSortedValues(allClients.map((client) => client.settlement_currency ?? "")),
-      contactPeople: buildUniqueSortedValues(
-        allClients.flatMap((client) =>
-          [
-            client.contact_name,
-            ...(client.contact_people ?? []).map((person) => person.name),
-          ].filter(Boolean) as string[],
-        ),
-      ),
-      distributionModes: buildUniqueSortedValues(allClients.map((client) => client.distribution_mode ?? "")),
-    }),
-    [allClients],
-  );
-
   const filteredClients = useMemo(() => {
     return allClients.filter((client) => {
       if (resolveClientLifecycleStatus(client) !== lifecycleBucket) {
         return false;
       }
-      if (
-        !matchesClientSearch(
-          client,
-          clientView.filters.searchField,
-          clientView.filters.searchQuery,
-          clientView.filters.searchMode,
-        )
-      ) {
+      if (!matchesClientSearch(client, clientView.filters.customerField, clientView.filters.customerQuery)) {
         return false;
       }
-      if (!matchesListFilter(clientView.filters.warehouse, client.warehouse_assignments)) {
+      if (!matchesClientSearch(client, clientView.filters.companyField, clientView.filters.companyQuery)) {
         return false;
       }
-      if (!matchesOptionalTextFilter(clientView.filters.chargingTemplate, client.charging_template_name)) {
+      if (!matchesClientMetricRange(client, clientView.filters.financeField, clientView.filters.financeMin, clientView.filters.financeMax)) {
         return false;
       }
-      if (!matchesOptionalTextFilter(clientView.filters.settlementCurrency, client.settlement_currency)) {
+      if (!matchesClientSearch(client, clientView.filters.setupField, clientView.filters.setupQuery)) {
         return false;
       }
       if (
-        clientView.filters.contactPerson &&
-        ![
-          client.contact_name,
-          ...(client.contact_people ?? []).map((person) => person.name),
-        ].includes(clientView.filters.contactPerson)
+        !matchesClientTimeRange(client, clientView.filters.timeField, clientView.filters.timeStart, clientView.filters.timeEnd)
       ) {
-        return false;
-      }
-      if (!matchesOptionalTextFilter(clientView.filters.distribution, client.distribution_mode)) {
         return false;
       }
       return true;
@@ -173,9 +136,9 @@ export function useClientsController(lifecycleBucket: ClientLifecycleStatus) {
     },
     onSuccess: async (client) => {
       setErrorMessage(null);
-      setSuccessMessage(`Client ${client.name} created.`);
-      setSelectedClient(client);
-      setEditorMode("edit");
+      setSuccessMessage(`Client account for ${client.name} opened successfully.`);
+      setSelectedClient(null);
+      setEditorMode(null);
       await queryClient.invalidateQueries({ queryKey: ["clients"] });
     },
     onError: (error) => {
@@ -268,6 +231,9 @@ export function useClientsController(lifecycleBucket: ClientLifecycleStatus) {
       setErrorMessage(null);
       setEditorMode(null);
     },
+    clearSuccessMessage: () => {
+      setSuccessMessage(null);
+    },
     defaultValues: editorMode === "edit" && selectedClient ? mapClientAccountToFormValues(selectedClient) : defaultClientAccountFormValues,
     isEditing: editorMode === "edit",
     isEditorOpen: editorMode !== null,
@@ -276,7 +242,6 @@ export function useClientsController(lifecycleBucket: ClientLifecycleStatus) {
     resetClientFilters: () => {
       clientView.resetFilters();
     },
-    filterOptions,
     clientsQuery,
     filteredClients,
     pagedClients,

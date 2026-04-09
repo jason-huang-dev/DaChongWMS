@@ -100,7 +100,7 @@ export function ClientAccountForm({
               {activeTab === "basic" ? (
                 <Stack spacing={2.5}>
                   <Alert severity="info">
-                    Core create and update flows are wired today. The second tab stages warehouse assignments, charging templates, and OMS handoff details as the backend contract expands.
+                    Core create and update flows are wired today. The second tab stages warehouse assignments, charging templates, and portal access details as the backend contract expands.
                   </Alert>
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, md: 4 }}>
@@ -225,15 +225,11 @@ export function ClientAccountForm({
                             : "Pending backend support",
                         },
                         {
-                          label: "OMS login URL",
-                          value: client?.oms_login_url || "Not issued",
-                        },
-                        {
                           label: "Limited document balance",
                           value: client?.limit_balance_documents ? "Enabled" : "Disabled",
                         },
                       ]}
-                      title="Portal and OMS"
+                      title="Portal readiness"
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 6 }}>
@@ -253,7 +249,7 @@ export function ClientAccountForm({
                   </Grid>
                   <Grid size={{ xs: 12 }}>
                     <Alert severity="info">
-                      The warehouse-assignment, charging-template, portal-token, and OMS-login panels are scaffolded here so the page layout is ready before the remaining backend endpoints land.
+                      The warehouse-assignment, charging-template, and portal-token panels are scaffolded here so the page layout is ready before the remaining backend endpoints land.
                     </Alert>
                   </Grid>
                 </Grid>

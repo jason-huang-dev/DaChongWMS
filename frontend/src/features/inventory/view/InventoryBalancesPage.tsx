@@ -1,20 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
 import FileDownloadOutlinedIcon from "@mui/icons-material/FileDownloadOutlined";
 import LocalPrintshopOutlinedIcon from "@mui/icons-material/LocalPrintshopOutlined";
 import UploadFileOutlinedIcon from "@mui/icons-material/UploadFileOutlined";
-import { Alert, Button, Stack } from "@mui/material";
+import { Alert, Box, Button, Stack } from "@mui/material";
 
 import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
+import {
+  compareInventoryInformationText,
+  decodeInventoryInformationMultiValue,
+  downloadInventoryInformationRowsCsv,
+  sortInventoryInformationRowsByDirection,
+} from "@/features/inventory/model/inventory-information";
 import {
   runInventoryInformationTemplateDownload,
   runInventoryInformationWorkbookUpload,
 } from "@/features/inventory/controller/actions";
 import { inventoryApi } from "@/features/inventory/model/api";
-import { downloadInventoryInformationRowsCsv } from "@/features/inventory/model/inventory-information";
 import type {
   InventoryInformationListResponse,
   InventoryInformationRow,
@@ -24,8 +29,12 @@ import { InventoryInformationImportDialog } from "@/features/inventory/view/Inve
 import { InventoryLabelPrintDialog } from "@/features/inventory/view/InventoryLabelPrintDialog";
 import {
   InventoryInformationTable,
+  type InventoryInformationAreaFilter,
+  type InventoryInformationAreaTabItem,
   type InventoryInformationFilterOption,
   type InventoryInformationFilters,
+  type InventoryInformationMetricField,
+  type InventoryInformationProductSearchField,
 } from "@/features/inventory/view/InventoryInformationTable";
 import { ActionIconButton } from "@/shared/components/action-icon-button";
 import type { DataTableRowSelection } from "@/shared/components/data-table";
@@ -36,6 +45,161 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 const inventoryInformationPageSize = 10;
 const exportBatchSize = 500;
+
+function normalizeFilterText(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function buildWarehouseOptions(rows: InventoryInformationRow[]): InventoryInformationFilterOption[] {
+  return Array.from(
+    new Set(rows.map((row) => row.warehouseName).filter(Boolean)),
+  )
+    .sort(compareInventoryInformationText)
+    .map((warehouseName) => ({ label: warehouseName, value: warehouseName }));
+}
+
+function buildClientOptions(rows: InventoryInformationRow[]): InventoryInformationFilterOption[] {
+  const clientMap = new Map<string, string>();
+
+  rows.forEach((row) => {
+    if (row.customerCode && !clientMap.has(row.customerCode)) {
+      clientMap.set(row.customerCode, row.clients[0]?.label || row.customerCode);
+    }
+    row.clients.forEach((client) => {
+      if (client.code && !clientMap.has(client.code)) {
+        clientMap.set(client.code, client.label || client.code);
+      }
+    });
+  });
+
+  return Array.from(clientMap.entries())
+    .sort((left, right) => compareInventoryInformationText(left[1], right[1]))
+    .map(([value, label]) => ({ label, value }));
+}
+
+function readProductSearchValue(row: InventoryInformationRow, field: InventoryInformationProductSearchField) {
+  switch (field) {
+    case "merchantCode":
+      return row.merchantCode;
+    case "productBarcode":
+      return row.productBarcode;
+    case "productName":
+      return row.productName || row.merchantSku;
+    case "merchantSku":
+    default:
+      return row.merchantSku;
+  }
+}
+
+function readMetricValue(row: InventoryInformationRow, field: InventoryInformationMetricField) {
+  switch (field) {
+    case "inTransit":
+      return row.inTransit;
+    case "pendingReceival":
+      return row.pendingReceival;
+    case "toList":
+      return row.toList;
+    case "orderAllocated":
+      return row.orderAllocated;
+    case "availableStock":
+      return row.availableStock;
+    case "defectiveProducts":
+      return row.defectiveProducts;
+    case "totalInventory":
+    default:
+      return row.totalInventory;
+  }
+}
+
+function matchesTextSearch(value: string, query: string) {
+  const normalizedQuery = normalizeFilterText(query);
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  return value.toLowerCase().includes(normalizedQuery);
+}
+
+function matchesAreaFilter(row: InventoryInformationRow, area: InventoryInformationAreaFilter) {
+  if (area === "all") {
+    return true;
+  }
+
+  return row.areaKey === area;
+}
+
+function filterInventoryInformationRows(
+  rows: InventoryInformationRow[],
+  filters: InventoryInformationFilters,
+  options?: { includeArea?: boolean },
+) {
+  const includeArea = options?.includeArea ?? true;
+  const selectedWarehouses = decodeInventoryInformationMultiValue(filters.warehouses);
+  const selectedClients = decodeInventoryInformationMultiValue(filters.clients);
+  const normalizedShelfQuery = normalizeFilterText(filters.shelfQuery);
+  const normalizedProductSearch = normalizeFilterText(filters.productSearchValue);
+  const metricMin = filters.metricMin.trim() ? Number(filters.metricMin) : null;
+  const metricMax = filters.metricMax.trim() ? Number(filters.metricMax) : null;
+
+  return rows.filter((row) => {
+    if (selectedWarehouses.length > 0 && !selectedWarehouses.includes(row.warehouseName)) {
+      return false;
+    }
+
+    if (selectedClients.length > 0) {
+      const rowClientCodes = [row.customerCode, ...row.clients.map((client) => client.code)].filter(Boolean);
+      if (!rowClientCodes.some((clientCode) => selectedClients.includes(clientCode))) {
+        return false;
+      }
+    }
+
+    if (normalizedProductSearch) {
+      const productFieldValue = readProductSearchValue(row, filters.productSearchField);
+      if (!matchesTextSearch(productFieldValue, normalizedProductSearch)) {
+        return false;
+      }
+    }
+
+    if (normalizedShelfQuery) {
+      const shelves = [row.shelf, ...row.shelves].filter(Boolean);
+      if (!shelves.some((shelf) => shelf.toLowerCase().includes(normalizedShelfQuery))) {
+        return false;
+      }
+    }
+
+    const metricValue = readMetricValue(row, filters.metricField);
+    if (metricMin !== null && Number.isFinite(metricMin) && metricValue < metricMin) {
+      return false;
+    }
+    if (metricMax !== null && Number.isFinite(metricMax) && metricValue > metricMax) {
+      return false;
+    }
+
+    if (filters.hideZeroStock === "true" && row.totalInventory <= 0) {
+      return false;
+    }
+
+    if (includeArea && !matchesAreaFilter(row, filters.area)) {
+      return false;
+    }
+
+    return true;
+  });
+}
+
+function buildAreaTabs(rows: InventoryInformationRow[]): InventoryInformationAreaTabItem[] {
+  return [
+    { count: rows.length, label: "All areas", value: "all" },
+    { count: rows.filter((row) => row.areaKey === "storage").length, label: "Storage area", value: "storage" },
+    { count: rows.filter((row) => row.areaKey === "picking").length, label: "Picking area", value: "picking" },
+    { count: rows.filter((row) => row.areaKey === "defect").length, label: "Defective area", value: "defect" },
+  ];
+}
+
+function paginateRows(rows: InventoryInformationRow[], page: number, pageSize: number) {
+  const start = Math.max(page - 1, 0) * pageSize;
+  return rows.slice(start, start + pageSize);
+}
 
 function buildInventoryInformationQueryParams({
   page,
@@ -112,20 +276,21 @@ export function InventoryBalancesPage() {
     key: "merchantSku",
     direction: "asc",
   });
-  const [selectedRowLookup, setSelectedRowLookup] = useState<Record<string, InventoryInformationRow>>({});
   const inventorySelection = useBulkSelection<string>();
   const companyId = company?.id !== undefined && company?.id !== null ? Number(company.id) : null;
 
   const inventoryView = useDataView<InventoryInformationFilters>({
     viewKey: `inventory-information.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      query: "",
+      area: "all",
       warehouses: "",
-      tags: "",
       clients: "",
-      merchantSkus: "",
-      inventoryCountMin: "",
-      inventoryCountMax: "",
+      productSearchField: "merchantSku",
+      productSearchValue: "",
+      shelfQuery: "",
+      metricField: "totalInventory",
+      metricMin: "",
+      metricMax: "",
       hideZeroStock: "",
     },
     pageSize: inventoryInformationPageSize,
@@ -135,65 +300,78 @@ export function InventoryBalancesPage() {
     queryKey: [
       "inventory",
       "information",
+      "all",
       companyId,
-      activeWarehouseId ?? "all",
-      inventoryView.page,
-      inventoryView.pageSize,
-      inventoryView.queryFilters,
-      sorting,
     ],
     queryFn: () =>
-      apiGet<InventoryInformationListResponse>(
-        inventoryApi.information(companyId ?? "0"),
-        buildInventoryInformationQueryParams({
-          page: inventoryView.page,
-          pageSize: inventoryView.pageSize,
-          warehouseId: activeWarehouseId,
-          filters: inventoryView.queryFilters,
-          sorting,
-        }),
-      ),
+      fetchAllInventoryInformationRows({
+        organizationId: companyId ?? 0,
+        warehouseId: null,
+        filters: {},
+        sorting: {
+          key: "merchantSku",
+          direction: "asc",
+        },
+      }),
     enabled: Boolean(companyId),
-    placeholderData: keepPreviousData,
   });
 
   useEffect(() => {
     inventorySelection.clearSelection();
-    setSelectedRowLookup({});
   }, [activeWarehouseId, companyId, inventorySelection.clearSelection, inventoryView.queryFilters]);
 
-  useEffect(() => {
-    const rows = inventoryInformationQuery.data?.results ?? [];
-    if (rows.length === 0) {
-      return;
-    }
-
-    setSelectedRowLookup((current) => ({
-      ...current,
-      ...Object.fromEntries(rows.map((row) => [row.id, row])),
-    }));
-  }, [inventoryInformationQuery.data?.results]);
-
-  useEffect(() => {
-    if (inventorySelection.selectedIds.length > 0) {
-      return;
-    }
-
-    setSelectedRowLookup({});
-  }, [inventorySelection.selectedIds.length]);
-
-  const rows = inventoryInformationQuery.data?.results ?? [];
-  const filterOptions = inventoryInformationQuery.data?.filterOptions;
-  const currentPageRowLookup = useMemo(
-    () => Object.fromEntries(rows.map((row) => [row.id, row])),
-    [rows],
+  const allRows = inventoryInformationQuery.data ?? [];
+  const warehouseOptions = useMemo(() => buildWarehouseOptions(allRows), [allRows]);
+  const clientOptions = useMemo(() => buildClientOptions(allRows), [allRows]);
+  const filteredRowsWithoutArea = useMemo(
+    () => filterInventoryInformationRows(allRows, inventoryView.filters, { includeArea: false }),
+    [allRows, inventoryView.filters],
   );
+  const areaTabs = useMemo(() => buildAreaTabs(filteredRowsWithoutArea), [filteredRowsWithoutArea]);
+  const filteredRows = useMemo(
+    () => filterInventoryInformationRows(filteredRowsWithoutArea, inventoryView.filters),
+    [filteredRowsWithoutArea, inventoryView.filters],
+  );
+  const activeFilterCount = useMemo(
+    () =>
+      [
+        inventoryView.filters.area !== "all",
+        Boolean(inventoryView.filters.warehouses),
+        Boolean(inventoryView.filters.clients),
+        Boolean(inventoryView.filters.productSearchValue.trim()),
+        Boolean(inventoryView.filters.shelfQuery.trim()),
+        Boolean(inventoryView.filters.metricMin.trim()),
+        Boolean(inventoryView.filters.metricMax.trim()),
+        inventoryView.filters.hideZeroStock === "true",
+      ].filter(Boolean).length,
+    [inventoryView.filters],
+  );
+  const sortedRows = useMemo(
+    () => sortInventoryInformationRowsByDirection(filteredRows, sorting.key, sorting.direction),
+    [filteredRows, sorting.direction, sorting.key],
+  );
+  const rows = useMemo(
+    () => paginateRows(sortedRows, inventoryView.page, inventoryView.pageSize),
+    [inventoryView.page, inventoryView.pageSize, sortedRows],
+  );
+  const allRowsById = useMemo(
+    () => Object.fromEntries(allRows.map((row) => [row.id, row])),
+    [allRows],
+  );
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(sortedRows.length / inventoryView.pageSize));
+    if (inventoryView.page > maxPage) {
+      inventoryView.setPage(maxPage);
+    }
+  }, [inventoryView.page, inventoryView.pageSize, inventoryView.setPage, sortedRows.length]);
+
   const selectedRows = useMemo(
     () =>
       inventorySelection.selectedIds
-        .map((id) => selectedRowLookup[id] ?? currentPageRowLookup[id])
+        .map((id) => allRowsById[id])
         .filter((row): row is InventoryInformationRow => Boolean(row)),
-    [currentPageRowLookup, inventorySelection.selectedIds, selectedRowLookup],
+    [allRowsById, inventorySelection.selectedIds],
   );
 
   const inventoryRowSelection = useMemo<DataTableRowSelection<InventoryInformationRow>>(
@@ -224,15 +402,7 @@ export function InventoryBalancesPage() {
 
     setIsExporting(true);
     try {
-      const exportRows =
-        selectedRows.length > 0
-          ? selectedRows
-          : await fetchAllInventoryInformationRows({
-              organizationId: companyId,
-              warehouseId: activeWarehouseId,
-              filters: inventoryView.queryFilters,
-              sorting,
-            });
+      const exportRows = selectedRows.length > 0 ? selectedRows : sortedRows;
 
       downloadInventoryInformationRowsCsv(
         exportRows,
@@ -265,7 +435,7 @@ export function InventoryBalancesPage() {
       }
 
       await queryClient.invalidateQueries({
-        queryKey: ["inventory", "information", companyId, activeWarehouseId ?? "all"],
+        queryKey: ["inventory", "information", "all", companyId],
       });
       setImportSuccessMessage(t("inventory.importRowsSuccess", { count: result.importedRows.length }));
       setImportWarningMessages(result.warnings);
@@ -278,7 +448,7 @@ export function InventoryBalancesPage() {
   };
 
   return (
-    <Stack spacing={3}>
+    <Stack spacing={3} sx={{ height: "100%", minHeight: 0 }}>
       {!company ? (
         <Alert severity="info">{translateText("Select an active workspace membership before managing inventory information.")}</Alert>
       ) : null}
@@ -292,90 +462,94 @@ export function InventoryBalancesPage() {
           </Stack>
         </Alert>
       ) : null}
-      <InventoryInformationTable
-        actions={
-          <Stack direction="row" spacing={0.75}>
-            <ActionIconButton
-              aria-label={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
-              disabled={!companyId || isExporting || (selectedRows.length === 0 && !inventoryInformationQuery.data?.count)}
-              onClick={() => {
-                void handleExportRows();
-              }}
-              title={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
-              tone="success"
-            >
-              <FileDownloadOutlinedIcon fontSize="small" />
-            </ActionIconButton>
-            <ActionIconButton
-              aria-label={translateText("Print selected labels")}
-              disabled={selectedRows.length === 0}
-              onClick={() => setIsPrintDialogOpen(true)}
-              title={translateText("Print selected labels")}
-              tone="warning"
-            >
-              <LocalPrintshopOutlinedIcon fontSize="small" />
-            </ActionIconButton>
-            <ActionIconButton
-              aria-label={translateText("Download template")}
-              disabled={!companyId}
-              onClick={() => {
-                if (companyId) {
-                  void runInventoryInformationTemplateDownload(companyId);
-                }
-              }}
-              title={translateText("Download template")}
-            >
-              <DownloadOutlinedIcon fontSize="small" />
-            </ActionIconButton>
-            <ActionIconButton
-              aria-label={translateText("Import XLSX")}
-              onClick={handleOpenImportDialog}
-              title={translateText("Import XLSX")}
-              tone="primary"
-            >
-              <UploadFileOutlinedIcon fontSize="small" />
-            </ActionIconButton>
-          </Stack>
-        }
-        clientOptions={filterOptions?.clients ?? ([] as InventoryInformationFilterOption[])}
-        dataView={inventoryView}
-        error={inventoryInformationQuery.error ? parseApiError(inventoryInformationQuery.error) : null}
-        isLoading={inventoryInformationQuery.isLoading}
-        hideZeroStock={inventoryView.filters.hideZeroStock === "true"}
-        onHideZeroStockChange={(checked) => inventoryView.updateFilter("hideZeroStock", checked ? "true" : "")}
-        rowSelection={inventoryRowSelection}
-        rows={rows}
-        selectedCount={inventorySelection.selectedIds.length}
-        sortDirection={sorting.direction}
-        sortKey={sorting.key}
-        onSortChange={(nextSortKey) => {
-          setSorting((currentSorting) =>
-            currentSorting.key === nextSortKey
-              ? {
-                  direction: currentSorting.direction === "asc" ? "desc" : "asc",
-                  key: nextSortKey,
-                }
-              : {
-                  direction: "asc",
-                  key: nextSortKey,
-                },
-          );
-          inventoryView.setPage(1);
-        }}
-        selectionBar={
-          inventorySelection.selectedIds.length > 0 ? (
-            <Stack alignItems="center" direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
-              <Button color="inherit" onClick={inventorySelection.clearSelection} size="small">
-                {translateText("Clear selection")}
-              </Button>
+      <Box sx={{ flex: "1 1 auto", minHeight: 0 }}>
+        <InventoryInformationTable
+          activeFilterCount={activeFilterCount}
+          actions={
+            <Stack direction="row" spacing={0.75}>
+              <ActionIconButton
+                aria-label={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+                disabled={!companyId || isExporting || (selectedRows.length === 0 && sortedRows.length === 0)}
+                onClick={() => {
+                  void handleExportRows();
+                }}
+                title={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+                tone="success"
+              >
+                <FileDownloadOutlinedIcon fontSize="small" />
+              </ActionIconButton>
+              <ActionIconButton
+                aria-label={translateText("Print selected labels")}
+                disabled={selectedRows.length === 0}
+                onClick={() => setIsPrintDialogOpen(true)}
+                title={translateText("Print selected labels")}
+                tone="warning"
+              >
+                <LocalPrintshopOutlinedIcon fontSize="small" />
+              </ActionIconButton>
+              <ActionIconButton
+                aria-label={translateText("Download template")}
+                disabled={!companyId}
+                onClick={() => {
+                  if (companyId) {
+                    void runInventoryInformationTemplateDownload(companyId);
+                  }
+                }}
+                title={translateText("Download template")}
+              >
+                <DownloadOutlinedIcon fontSize="small" />
+              </ActionIconButton>
+              <ActionIconButton
+                aria-label={translateText("Import XLSX")}
+                onClick={handleOpenImportDialog}
+                title={translateText("Import XLSX")}
+                tone="primary"
+              >
+                <UploadFileOutlinedIcon fontSize="small" />
+              </ActionIconButton>
             </Stack>
-          ) : null
-        }
-        skuOptions={filterOptions?.skus ?? ([] as InventoryInformationFilterOption[])}
-        tagOptions={filterOptions?.tags ?? ([] as InventoryInformationFilterOption[])}
-        total={inventoryInformationQuery.data?.count ?? 0}
-        warehouseOptions={filterOptions?.warehouses ?? ([] as InventoryInformationFilterOption[])}
-      />
+          }
+          areaFilter={inventoryView.filters.area}
+          areaTabs={areaTabs}
+          clientOptions={clientOptions}
+          dataView={inventoryView}
+          error={inventoryInformationQuery.error ? parseApiError(inventoryInformationQuery.error) : null}
+          isLoading={inventoryInformationQuery.isLoading}
+          hideZeroStock={inventoryView.filters.hideZeroStock === "true"}
+          onAreaFilterChange={(value) => inventoryView.updateFilter("area", value)}
+          onHideZeroStockChange={(checked) => inventoryView.updateFilter("hideZeroStock", checked ? "true" : "")}
+          rowSelection={inventoryRowSelection}
+          rows={rows}
+          selectedCount={inventorySelection.selectedIds.length}
+          sortDirection={sorting.direction}
+          sortKey={sorting.key}
+          onSortChange={(nextSortKey) => {
+            setSorting((currentSorting) =>
+              currentSorting.key === nextSortKey
+                ? {
+                    direction: currentSorting.direction === "asc" ? "desc" : "asc",
+                    key: nextSortKey,
+                  }
+                : {
+                    direction: "asc",
+                    key: nextSortKey,
+                  },
+            );
+            inventoryView.setPage(1);
+          }}
+          selectionBar={
+            inventorySelection.selectedIds.length > 0 ? (
+              <Stack alignItems="center" direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
+                <Button color="inherit" onClick={inventorySelection.clearSelection} size="small">
+                  {translateText("Clear selection")}
+                </Button>
+              </Stack>
+            ) : null
+          }
+          total={sortedRows.length}
+          warehouseOptions={warehouseOptions}
+        />
+      </Box>
       <InventoryInformationImportDialog
         errorMessages={importErrorMessages}
         isSubmitting={isImporting}

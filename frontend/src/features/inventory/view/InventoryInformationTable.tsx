@@ -1,17 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Inventory2RoundedIcon from "@mui/icons-material/Inventory2Rounded";
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import {
   Box,
   Checkbox,
   Chip,
   Dialog,
   DialogContent,
-  IconButton,
-  InputAdornment,
+  MenuItem,
   Stack,
   TextField,
   Tooltip,
@@ -36,18 +33,34 @@ import {
 } from "@/shared/components/data-table";
 import { FilterCard } from "@/shared/components/filter-card";
 import { MultiSelectFilter } from "@/shared/components/multi-select-filter";
+import { PageTabs } from "@/shared/components/page-tabs";
 import { RangePicker } from "@/shared/components/range-picker";
+import { StickyTableLayout } from "@/shared/components/sticky-table-layout";
+import { useCollapsibleTablePageChrome } from "@/shared/hooks/use-collapsible-table-page-chrome";
 import type { DataViewFilters, UseDataViewResult } from "@/shared/hooks/use-data-view";
 import { formatDateTime, formatNumber, formatStatusLabel } from "@/shared/utils/format";
 
+export type InventoryInformationAreaFilter = "all" | "storage" | "picking" | "defect";
+export type InventoryInformationProductSearchField = "merchantSku" | "merchantCode" | "productBarcode" | "productName";
+export type InventoryInformationMetricField =
+  | "inTransit"
+  | "pendingReceival"
+  | "toList"
+  | "orderAllocated"
+  | "availableStock"
+  | "defectiveProducts"
+  | "totalInventory";
+
 export interface InventoryInformationFilters extends DataViewFilters {
-  query: string;
+  area: InventoryInformationAreaFilter;
   warehouses: string;
-  tags: string;
   clients: string;
-  merchantSkus: string;
-  inventoryCountMin: string;
-  inventoryCountMax: string;
+  productSearchField: InventoryInformationProductSearchField;
+  productSearchValue: string;
+  shelfQuery: string;
+  metricField: InventoryInformationMetricField;
+  metricMin: string;
+  metricMax: string;
   hideZeroStock: string;
 }
 
@@ -55,6 +68,42 @@ export interface InventoryInformationFilterOption {
   value: string;
   label: string;
 }
+
+export interface InventoryInformationAreaTabItem {
+  count: number;
+  label: string;
+  value: InventoryInformationAreaFilter;
+}
+
+const inventoryInformationProductSearchFieldOptions: Array<{
+  label: string;
+  value: InventoryInformationProductSearchField;
+}> = [
+  { label: "SKU", value: "merchantSku" },
+  { label: "Merchant Code", value: "merchantCode" },
+  { label: "Barcode", value: "productBarcode" },
+  { label: "Product Name", value: "productName" },
+];
+
+const inventoryInformationProductSearchPlaceholders: Record<InventoryInformationProductSearchField, string> = {
+  merchantSku: "Search SKU",
+  merchantCode: "Search merchant code",
+  productBarcode: "Search barcode",
+  productName: "Search product name",
+};
+
+const inventoryInformationMetricFieldOptions: Array<{
+  label: string;
+  value: InventoryInformationMetricField;
+}> = [
+  { label: "In Transit", value: "inTransit" },
+  { label: "Pending Receival", value: "pendingReceival" },
+  { label: "To List", value: "toList" },
+  { label: "Order Allocated", value: "orderAllocated" },
+  { label: "Available Stock", value: "availableStock" },
+  { label: "Defective Products", value: "defectiveProducts" },
+  { label: "Total Inventory", value: "totalInventory" },
+];
 
 function renderValue(value: string) {
   return value || "--";
@@ -564,97 +613,90 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
 }
 
 interface InventoryInformationToolbarProps {
+  areaFilter: InventoryInformationAreaFilter;
+  areaTabs: InventoryInformationAreaTabItem[];
+  onAreaFilterChange: (value: InventoryInformationAreaFilter) => void;
   dataView: UseDataViewResult<InventoryInformationFilters>;
   warehouseOptions: InventoryInformationFilterOption[];
-  tagOptions: InventoryInformationFilterOption[];
   clientOptions: InventoryInformationFilterOption[];
-  skuOptions: InventoryInformationFilterOption[];
 }
 
 function InventoryInformationToolbar({
+  areaFilter,
+  areaTabs,
+  onAreaFilterChange,
   dataView,
   warehouseOptions,
-  tagOptions,
   clientOptions,
-  skuOptions,
 }: InventoryInformationToolbarProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { translateText } = useI18n();
+  const surfaceColor = alpha(theme.palette.background.paper, isDark ? 0.52 : 0.88);
+  const surfaceBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.52 : 0.8)}`;
+  const groupSx = {
+    alignItems: "center",
+    backgroundColor: surfaceColor,
+    border: surfaceBorder,
+    borderRadius: 2.5,
+    boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, isDark ? 0.05 : 0.72)}`,
+    minHeight: 42,
+    px: 0.625,
+    py: 0.375,
+  } as const;
+  const standaloneFieldSx = {
+    minWidth: 0,
+    width: "100%",
+    "& .MuiInputBase-input": {
+      fontSize: theme.typography.pxToRem(12),
+      py: 0.75,
+    },
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
+      borderRadius: 999,
+      height: 40,
+      minHeight: 40,
+    },
+  } as const;
+  const compoundFieldSx = {
+    "& .MuiInputBase-input": {
+      fontSize: theme.typography.pxToRem(12),
+      py: 0.625,
+    },
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
+      borderRadius: 999,
+      height: 34,
+      minHeight: 34,
+    },
+  } as const;
 
   return (
     <Stack spacing={0}>
-      <Stack
-        alignItems="center"
-        direction="row"
-        spacing={1}
-        sx={{
-          flexWrap: "nowrap",
-          minWidth: 0,
-          overflow: "hidden",
-          pb: 0.5,
-        }}
-      >
-        <Stack
-          alignItems="center"
-          direction="row"
-          spacing={1}
+      <Box sx={{ pb: 1.25 }}>
+        <PageTabs
+          ariaLabel={translateText("Inventory area pages")}
+          items={areaTabs}
+          onChange={onAreaFilterChange}
+          value={areaFilter}
+        />
+      </Box>
+      <Stack spacing={0.875} sx={{ minWidth: 0, pb: 0.125, pt: 0.125 }}>
+        <Box
           sx={{
-            flex: "1 1 auto",
+            alignItems: "stretch",
+            display: "grid",
+            gap: 0.875,
+            gridTemplateColumns: {
+              lg: "repeat(3, minmax(0, 1fr))",
+              sm: "repeat(2, minmax(0, 1fr))",
+              xs: "minmax(0, 1fr)",
+            },
             minWidth: 0,
-            overflow: "hidden",
           }}
         >
-          <TextField
-            hiddenLabel
-            onChange={(event) => dataView.updateFilter("query", event.target.value)}
-            placeholder={translateText("Search")}
-            size="small"
-            value={dataView.filters.query}
-            slotProps={{
-              htmlInput: {
-                "aria-label": translateText("Search inventory"),
-                autoCapitalize: "none",
-                autoCorrect: "off",
-                spellCheck: false,
-              },
-              input: {
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchRoundedIcon color="action" fontSize="small" />
-                  </InputAdornment>
-                ),
-                endAdornment: dataView.filters.query ? (
-                  <InputAdornment position="end">
-                    <IconButton
-                      aria-label={translateText("Clear inventory search")}
-                      edge="end"
-                      onClick={() => dataView.updateFilter("query", "")}
-                      size="small"
-                    >
-                      <CloseRoundedIcon fontSize="small" />
-                    </IconButton>
-                  </InputAdornment>
-                ) : undefined,
-              },
-            }}
-            sx={{
-              flex: "0 1 240px",
-              minWidth: 0,
-              width: 240,
-              "& .MuiInputBase-input": {
-                fontSize: theme.typography.body2.fontSize,
-                py: 0.875,
-              },
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                borderRadius: 2,
-                minHeight: 34,
-              },
-            }}
-          />
           <MultiSelectFilter
-            label={translateText("Warehouses")}
+            label={translateText("Warehouse filter")}
             onChange={(nextValues) =>
               dataView.updateFilter(
                 "warehouses",
@@ -664,26 +706,10 @@ function InventoryInformationToolbar({
             options={warehouseOptions}
             placeholder={translateText("Warehouse")}
             selectedValues={decodeInventoryInformationMultiValue(dataView.filters.warehouses)}
-            sx={{
-              minWidth: 148,
-              width: "auto",
-            }}
+            sx={standaloneFieldSx}
           />
           <MultiSelectFilter
-            label={translateText("Tags")}
-            onChange={(nextValues) =>
-              dataView.updateFilter("tags", nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "")
-            }
-            options={tagOptions}
-            placeholder={translateText("Tags")}
-            selectedValues={decodeInventoryInformationMultiValue(dataView.filters.tags)}
-            sx={{
-              minWidth: 148,
-              width: "auto",
-            }}
-          />
-          <MultiSelectFilter
-            label={translateText("Clients")}
+            label={translateText("Client filter")}
             onChange={(nextValues) =>
               dataView.updateFilter(
                 "clients",
@@ -691,136 +717,330 @@ function InventoryInformationToolbar({
               )
             }
             options={clientOptions}
-            placeholder={translateText("Clients")}
+            placeholder={translateText("Client")}
             selectedValues={decodeInventoryInformationMultiValue(dataView.filters.clients)}
+            sx={standaloneFieldSx}
+          />
+          <TextField
+            hiddenLabel
+            onChange={(event) => dataView.updateFilter("shelfQuery", event.target.value)}
+            placeholder={translateText("Shelf")}
+            size="small"
+            value={dataView.filters.shelfQuery}
+            slotProps={{
+              htmlInput: {
+                "aria-label": translateText("Shelf"),
+                autoCapitalize: "characters",
+                autoCorrect: "off",
+                spellCheck: false,
+              },
+            }}
             sx={{
-              minWidth: 148,
-              width: "auto",
+              ...standaloneFieldSx,
+              gridColumn: {
+                lg: "auto",
+                sm: "1 / -1",
+                xs: "auto",
+              },
             }}
           />
+        </Box>
+        <Box
+          sx={{
+            alignItems: "start",
+            display: "grid",
+            gap: 0.875,
+            gridTemplateColumns: {
+              md: "minmax(0, 1fr) auto",
+              xs: "minmax(0, 1fr)",
+            },
+            minWidth: 0,
+          }}
+        >
+          <Stack
+            alignItems="center"
+            direction="row"
+            spacing={1}
+            useFlexGap
+            sx={{
+              ...groupSx,
+              flexWrap: "wrap",
+              minWidth: 0,
+            }}
+          >
+            <TextField
+              hiddenLabel
+              onChange={(event) =>
+                dataView.updateFilter("productSearchField", event.target.value as InventoryInformationProductSearchField)
+              }
+              size="small"
+              select
+              value={dataView.filters.productSearchField}
+              slotProps={{
+                htmlInput: {
+                  "aria-label": translateText("Product info field"),
+                },
+              }}
+              sx={{
+                flex: "0 0 156px",
+                minWidth: 156,
+                width: 156,
+                ...compoundFieldSx,
+              }}
+            >
+              {inventoryInformationProductSearchFieldOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {translateText(option.label)}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              hiddenLabel
+              onChange={(event) => dataView.updateFilter("productSearchValue", event.target.value)}
+              placeholder={translateText(inventoryInformationProductSearchPlaceholders[dataView.filters.productSearchField])}
+              size="small"
+              value={dataView.filters.productSearchValue}
+              slotProps={{
+                htmlInput: {
+                  "aria-label": translateText("Product info"),
+                  autoCapitalize: "none",
+                  autoCorrect: "off",
+                  spellCheck: false,
+                },
+              }}
+              sx={{
+                flex: "1 1 220px",
+                minWidth: 180,
+                ...compoundFieldSx,
+              }}
+            />
+          </Stack>
           <RangePicker
-            endAriaLabel={translateText("Max inventory count")}
-            endInputProps={{ inputMode: "numeric", min: 0 }}
+            endAriaLabel={translateText("Maximum value")}
+            endInputProps={{ inputMode: "numeric" }}
             endPlaceholder={translateText("Max")}
-            endValue={dataView.filters.inventoryCountMax}
+            endValue={dataView.filters.metricMax}
             fieldSx={{
-              minWidth: { xs: "100%", md: 84 },
-              width: { md: 84 },
-              "& .MuiInputBase-input": {
-                fontSize: theme.typography.body2.fontSize,
-                py: 0.875,
-              },
-              "& .MuiOutlinedInput-root": {
-                minHeight: 34,
-              },
+              minWidth: { md: 112, xs: "100%" },
+              width: { md: 112 },
+              ...compoundFieldSx,
             }}
             inputType="number"
-            onEndChange={(value) => dataView.updateFilter("inventoryCountMax", value)}
-            onStartChange={(value) => dataView.updateFilter("inventoryCountMin", value)}
-            rootSx={{ flex: "0 0 auto" }}
-            startAriaLabel={translateText("Min inventory count")}
-            startInputProps={{ inputMode: "numeric", min: 0 }}
-            startPlaceholder={translateText("Min")}
-            startValue={dataView.filters.inventoryCountMin}
-          />
-          <MultiSelectFilter
-            label={translateText("SKU")}
-            onChange={(nextValues) =>
-              dataView.updateFilter(
-                "merchantSkus",
-                nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "",
-              )
+            leadingContent={
+              <TextField
+                hiddenLabel
+                onChange={(event) => dataView.updateFilter("metricField", event.target.value as InventoryInformationMetricField)}
+                select
+                size="small"
+                value={dataView.filters.metricField}
+                slotProps={{
+                  htmlInput: {
+                    "aria-label": translateText("Numeric column"),
+                  },
+                }}
+                sx={{
+                  minWidth: { md: 180, xs: "100%" },
+                  width: { md: 180, xs: "100%" },
+                  ...compoundFieldSx,
+                }}
+              >
+                {inventoryInformationMetricFieldOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {translateText(option.label)}
+                  </MenuItem>
+                ))}
+              </TextField>
             }
-            options={skuOptions}
-            placeholder={translateText("SKU")}
-            selectedValues={decodeInventoryInformationMultiValue(dataView.filters.merchantSkus)}
-            sx={{
-              minWidth: 148,
-              width: "auto",
+            onEndChange={(value) => dataView.updateFilter("metricMax", value)}
+            onStartChange={(value) => dataView.updateFilter("metricMin", value)}
+            rootSx={{
+              backgroundColor: surfaceColor,
+              border: surfaceBorder,
+              borderRadius: 2.5,
+              boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, isDark ? 0.05 : 0.72)}`,
+              height: "auto",
+              justifySelf: {
+                md: "start",
+                xs: "stretch",
+              },
+              maxWidth: "100%",
+              minHeight: 42,
+              px: 0.625,
+              py: 0.375,
+              width: {
+                md: "fit-content",
+                xs: "100%",
+              },
             }}
+            startAriaLabel={translateText("Minimum value")}
+            startInputProps={{ inputMode: "numeric" }}
+            startPlaceholder={translateText("Min")}
+            startValue={dataView.filters.metricMin}
           />
-        </Stack>
+        </Box>
       </Stack>
     </Stack>
   );
 }
 
-interface InventoryInformationFilterCardProps extends InventoryInformationToolbarProps {
-  activeFilterCount: number;
+interface InventoryInformationPageChromeProps extends InventoryInformationToolbarProps {
   hideZeroStock: boolean;
   onHideZeroStockChange: (checked: boolean) => void;
-  onResetFilters: () => void;
 }
 
-function InventoryInformationFilterCard({
-  activeFilterCount,
+function InventoryInformationPageChrome({
+  areaFilter,
+  areaTabs,
   clientOptions,
   dataView,
   hideZeroStock,
+  onAreaFilterChange,
   onHideZeroStockChange,
-  onResetFilters,
-  skuOptions,
-  tagOptions,
   warehouseOptions,
-}: InventoryInformationFilterCardProps) {
+}: InventoryInformationPageChromeProps) {
   const { translateText } = useI18n();
 
   return (
-    <FilterCard>
-      <Stack spacing={1}>
+    <FilterCard
+      contentSx={{
+        pb: "14px !important",
+        pt: 1.25,
+      }}
+    >
+      <Stack spacing={0.625}>
         <InventoryInformationToolbar
+          areaFilter={areaFilter}
+          areaTabs={areaTabs}
           clientOptions={clientOptions}
           dataView={dataView}
-          skuOptions={skuOptions}
-          tagOptions={tagOptions}
+          onAreaFilterChange={onAreaFilterChange}
           warehouseOptions={warehouseOptions}
         />
-        <Stack
-          alignItems={{ xs: "stretch", md: "center" }}
-          direction={{ xs: "column", md: "row" }}
-          justifyContent="space-between"
-          spacing={1}
-          sx={{ minWidth: 0 }}
+        <Box
+          component="label"
+          sx={(theme) => ({
+            alignItems: "center",
+            alignSelf: "flex-start",
+            backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.48 : 0.92),
+            border: `1px solid ${alpha(theme.palette.divider, 0.82)}`,
+            borderRadius: 999,
+            cursor: "pointer",
+            display: "inline-flex",
+            gap: 0.25,
+            pl: 0.35,
+            pr: 0.8,
+            py: 0.05,
+          })}
         >
-          <Box
-            component="label"
+          <Checkbox
+            checked={hideZeroStock}
+            onChange={(event) => onHideZeroStockChange(event.target.checked)}
+            size="small"
+            sx={{ p: 0.3 }}
+          />
+          <Typography
             sx={(theme) => ({
-              alignItems: "center",
-              alignSelf: { xs: "flex-start", md: "center" },
-              backgroundColor: alpha(theme.palette.background.paper, theme.palette.mode === "dark" ? 0.48 : 0.92),
-              border: `1px solid ${alpha(theme.palette.divider, 0.82)}`,
-              borderRadius: 999,
-              cursor: "pointer",
-              display: "inline-flex",
-              flex: "0 0 auto",
-              gap: 0.25,
-              pl: 0.5,
-              pr: 1.1,
-              py: 0.15,
+              fontSize: theme.typography.pxToRem(12),
+              fontWeight: 600,
+              whiteSpace: "nowrap",
             })}
+            variant="body2"
           >
-            <Checkbox
-              checked={hideZeroStock}
-              onChange={(event) => onHideZeroStockChange(event.target.checked)}
-              size="small"
-              sx={{ p: 0.5 }}
-            />
-            <Typography sx={{ fontWeight: 600, whiteSpace: "nowrap" }} variant="body2">
-              {translateText("In stock only")}
-            </Typography>
-          </Box>
-          <ActionIconButton
-            aria-label={translateText("Clear all filters")}
-            disabled={activeFilterCount === 0}
-            onClick={onResetFilters}
-            sx={{ flex: "0 0 auto" }}
-            title={translateText("Clear all filters")}
-          >
-            <RestartAltRoundedIcon fontSize="small" />
-          </ActionIconButton>
-        </Stack>
+            {translateText("In stock only")}
+          </Typography>
+        </Box>
       </Stack>
     </FilterCard>
+  );
+}
+
+interface InventoryInformationTableToolbarProps {
+  activeFilterCount: number;
+  actions?: ReactNode;
+  onResetFilters: () => void;
+  selectedCount: number;
+  selectionBar?: ReactNode;
+  total: number;
+}
+
+function InventoryInformationTableToolbar({
+  activeFilterCount,
+  actions,
+  onResetFilters,
+  selectedCount,
+  selectionBar,
+  total,
+}: InventoryInformationTableToolbarProps) {
+  const theme = useTheme();
+  const { t, translateText } = useI18n();
+
+  return (
+    <Stack
+      alignItems={{ xs: "stretch", md: "center" }}
+      direction={{ xs: "column", md: "row" }}
+      justifyContent="space-between"
+      spacing={0.5}
+      sx={{ minWidth: 0 }}
+    >
+      <Stack
+        alignItems={{ xs: "stretch", md: "center" }}
+        direction={{ xs: "column", md: "row" }}
+        spacing={0.5}
+        sx={{ flex: "1 1 auto", minWidth: 0 }}
+      >
+        <Chip
+          color={selectedCount > 0 ? "primary" : "default"}
+          label={t("bulk.selectedCount", { count: selectedCount })}
+          size="small"
+          sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
+        />
+        <Typography
+          color="text.secondary"
+          sx={{ fontSize: theme.typography.pxToRem(12), whiteSpace: "nowrap" }}
+          variant="body2"
+        >
+          {t("inventory.resultCount", { count: total })}
+        </Typography>
+        {selectionBar ? (
+          <Box
+            sx={(theme) => ({
+              flex: "0 1 auto",
+              minWidth: 0,
+              "& .MuiButton-root": {
+                fontSize: theme.typography.pxToRem(12),
+                minHeight: 28,
+                px: 1,
+              },
+              "& .MuiChip-label": {
+                fontSize: theme.typography.pxToRem(10.5),
+              },
+              "& .MuiTypography-body2": {
+                fontSize: theme.typography.pxToRem(12),
+              },
+            })}
+          >
+            {selectionBar}
+          </Box>
+        ) : null}
+      </Stack>
+      <Stack
+        alignItems="center"
+        direction="row"
+        spacing={0.5}
+        sx={{ flex: "0 0 auto", flexWrap: "wrap", justifyContent: { xs: "flex-start", md: "flex-end" } }}
+      >
+        {actions}
+        <ActionIconButton
+          aria-label={translateText("Clear all filters")}
+          disabled={activeFilterCount === 0}
+          onClick={onResetFilters}
+          sx={{ flex: "0 0 auto" }}
+          title={translateText("Clear all filters")}
+        >
+          <RestartAltRoundedIcon fontSize="small" />
+        </ActionIconButton>
+      </Stack>
+    </Stack>
   );
 }
 
@@ -830,16 +1050,18 @@ interface InventoryInformationTableProps {
   isLoading: boolean;
   error?: string | null;
   dataView: UseDataViewResult<InventoryInformationFilters>;
+  activeFilterCount: number;
+  areaFilter: InventoryInformationAreaFilter;
+  areaTabs: InventoryInformationAreaTabItem[];
   actions?: ReactNode;
   hideZeroStock: boolean;
+  onAreaFilterChange: (value: InventoryInformationAreaFilter) => void;
   onHideZeroStockChange: (checked: boolean) => void;
   rowSelection?: DataTableRowSelection<InventoryInformationRow>;
   selectedCount: number;
   selectionBar?: ReactNode;
   warehouseOptions: InventoryInformationFilterOption[];
-  tagOptions: InventoryInformationFilterOption[];
   clientOptions: InventoryInformationFilterOption[];
-  skuOptions: InventoryInformationFilterOption[];
   sortKey: InventoryInformationSortKey;
   sortDirection: "asc" | "desc";
   onSortChange: (nextSortKey: InventoryInformationSortKey) => void;
@@ -851,118 +1073,101 @@ export function InventoryInformationTable({
   isLoading,
   error,
   dataView,
+  activeFilterCount,
+  areaFilter,
+  areaTabs,
   actions,
   hideZeroStock,
+  onAreaFilterChange,
   onHideZeroStockChange,
   rowSelection,
   selectedCount,
   selectionBar,
   warehouseOptions,
-  tagOptions,
   clientOptions,
-  skuOptions,
   sortKey,
   sortDirection,
   onSortChange,
 }: InventoryInformationTableProps) {
-  const theme = useTheme();
-  const { t, translateText } = useI18n();
   const columns = useMemo(() => buildInventoryInformationColumns(), []);
+  const pageChrome = useCollapsibleTablePageChrome();
 
   return (
-    <Stack spacing={2}>
-      <InventoryInformationFilterCard
-        activeFilterCount={dataView.activeFilterCount}
-        clientOptions={clientOptions}
-        dataView={dataView}
-        hideZeroStock={hideZeroStock}
-        onHideZeroStockChange={onHideZeroStockChange}
-        onResetFilters={dataView.resetFilters}
-        skuOptions={skuOptions}
-        tagOptions={tagOptions}
-        warehouseOptions={warehouseOptions}
-      />
-
-      <DataTable
-        columns={columns}
-        emptyMessage="No inventory information matches the current filters."
-        error={error}
-        getRowId={(row) => row.id}
-        isLoading={isLoading}
-        pagination={{
-          page: dataView.page,
-          pageSize: dataView.pageSize,
-          total,
-          onPageChange: dataView.setPage,
-        }}
-        renderMetaRow={(row) => (
-          <Stack
-            alignItems={{ md: "center", xs: "flex-start" }}
-            direction={{ md: "row", xs: "column" }}
-            justifyContent="space-between"
-            spacing={1}
-          >
-            <Stack direction="row" flexWrap="wrap" spacing={3} useFlexGap>
-              <InventoryInformationMetaField label="Warehouse" value={row.warehouseName || "--"} />
-              <InventoryInformationMetaField label="Client" value={buildInventoryInformationClientLabel(row)} />
-              <InventoryInformationMetaField label="Area" value={row.areaLabel || "--"} />
-              <InventoryInformationMetaField label="Status" value={buildInventoryInformationStatusLabel(row)} />
-            </Stack>
-            <InventoryInformationMetaField label="Listed" value={buildInventoryInformationListedLabel(row.listingTime)} />
-          </Stack>
-        )}
-        rowSelection={rowSelection}
-        rows={rows}
-        sorting={{
-          direction: sortDirection,
-          onSortChange: onSortChange,
-          sortKey,
-        }}
-        toolbar={
-          <Stack
-            alignItems={{ xs: "stretch", md: "flex-start" }}
-            direction={{ xs: "column", md: "row" }}
-            justifyContent="space-between"
-            spacing={1}
-            sx={{ minWidth: 0 }}
-          >
+    <StickyTableLayout
+      pageChrome={
+        <Box
+          aria-hidden={pageChrome.isCollapsed}
+          data-collapse-progress="0.00"
+          data-testid="inventory-information-page-chrome"
+          ref={pageChrome.wrapperRef}
+          sx={pageChrome.wrapperSx}
+        >
+          <Box ref={pageChrome.contentRef}>
+            <InventoryInformationPageChrome
+              areaFilter={areaFilter}
+              areaTabs={areaTabs}
+              clientOptions={clientOptions}
+              dataView={dataView}
+              hideZeroStock={hideZeroStock}
+              onAreaFilterChange={onAreaFilterChange}
+              onHideZeroStockChange={onHideZeroStockChange}
+              warehouseOptions={warehouseOptions}
+            />
+          </Box>
+        </Box>
+      }
+      table={
+        <DataTable
+          columns={columns}
+          emptyMessage="No inventory information matches the current filters."
+          error={error}
+          fillHeight
+          getRowId={(row) => row.id}
+          isLoading={isLoading}
+          pagination={{
+            page: dataView.page,
+            pageSize: dataView.pageSize,
+            total,
+            onPageChange: dataView.setPage,
+          }}
+          renderMetaRow={(row) => (
             <Stack
-              alignItems={{ xs: "stretch", md: "center" }}
-              direction={{ xs: "column", md: "row" }}
+              alignItems={{ md: "center", xs: "flex-start" }}
+              direction={{ md: "row", xs: "column" }}
+              justifyContent="space-between"
               spacing={1}
-              sx={{
-                flex: "1 1 auto",
-                minWidth: 0,
-              }}
             >
-              <Chip
-                color={selectedCount > 0 ? "primary" : "default"}
-                label={t("bulk.selectedCount", { count: selectedCount })}
-                size="small"
-                sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
-              />
-              <Box
-                sx={(theme) => ({
-                  flex: "1 1 auto",
-                  minWidth: 0,
-                  "& .MuiButton-root": {
-                    fontSize: theme.typography.body2.fontSize,
-                  },
-                  "& .MuiChip-label": {
-                    fontSize: theme.typography.caption.fontSize,
-                  },
-                  "& .MuiTypography-body2": {
-                    fontSize: theme.typography.body2.fontSize,
-                  },
-                })}
-              >
-                {selectionBar}
-              </Box>
+              <Stack direction="row" flexWrap="wrap" spacing={3} useFlexGap>
+                <InventoryInformationMetaField label="Warehouse" value={row.warehouseName || "--"} />
+                <InventoryInformationMetaField label="Client" value={buildInventoryInformationClientLabel(row)} />
+                <InventoryInformationMetaField label="Area" value={row.areaLabel || "--"} />
+                <InventoryInformationMetaField label="Status" value={buildInventoryInformationStatusLabel(row)} />
+              </Stack>
+              <InventoryInformationMetaField label="Listed" value={buildInventoryInformationListedLabel(row.listingTime)} />
             </Stack>
-            {actions ? <Box sx={{ alignItems: "center", display: "inline-flex", flex: "0 0 auto" }}>{actions}</Box> : null}
-          </Stack>
-        }
-      />
-    </Stack>
+          )}
+          rowSelection={rowSelection}
+          rows={rows}
+          sorting={{
+            direction: sortDirection,
+            onSortChange: onSortChange,
+            sortKey,
+          }}
+          stickyHeader
+          toolbar={
+            <InventoryInformationTableToolbar
+              activeFilterCount={activeFilterCount}
+              actions={actions}
+              onResetFilters={dataView.resetFilters}
+              selectedCount={selectedCount}
+              selectionBar={selectionBar}
+              total={total}
+            />
+          }
+          onScrollStateChange={pageChrome.handleTableScrollStateChange}
+          toolbarPlacement="inner"
+        />
+      }
+    />
   );
 }

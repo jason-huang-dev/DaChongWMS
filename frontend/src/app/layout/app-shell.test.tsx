@@ -197,6 +197,17 @@ test("renders accessible module tabs with workspace and warehouse controls in th
     height: "32px",
     minHeight: "32px",
   });
+  expect(screen.getByTestId("app-shell")).toHaveStyle({
+    height: "100dvh",
+    overflow: "hidden",
+  });
+  expect(screen.getByTestId("app-shell-main")).toHaveStyle({
+    overflow: "hidden",
+  });
+  expect(screen.getByTestId("app-shell-scroll-region")).toHaveStyle({
+    height: "100%",
+    overflowY: "auto",
+  });
   expect(screen.getByRole("heading", { name: "Dashboard content" })).toBeInTheDocument();
 });
 

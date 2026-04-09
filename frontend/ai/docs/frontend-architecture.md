@@ -75,6 +75,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Feature-local `view/` files own JSX, MUI layout, and presentational composition.
 - Feature-local `test/` files mirror the feature tree so the package reads as MVC+T rather than interleaving tests with `view/` or `controller/`.
 - Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, `ResourceTable`, the inventory-style `DataTable`, and dense queue chrome (`FilterCard`, `PageTabs`, and `ActionIconButton`) keep the first set of screens consistent while the product surface grows.
+- Shared components now live in folder modules under `src/shared/components/<component>/`, with `<component>.tsx`, colocated `<component>.test.tsx` when applicable, and `index.ts` re-exports so reusable UI stays organized as the shared layer grows.
 - Exception-first surfaces use shared `ExceptionLane` tables so overdue, blocked, and failed workflow queues keep the same visual contract across domains.
 - Shared bulk queue actions use `useBulkSelection`, `BulkActionBar`, and `executeBulkAction` so selection state, batch orchestration, and operator feedback stay consistent across features.
 - Repeated selector-driven create flows use shared `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, JSON helpers, and reference-option hooks under `src/shared/` instead of rebuilding those primitives per feature.
@@ -92,7 +93,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - `MfaEnrollmentPage`: authenticated TOTP setup, verification, and recovery-code display.
 - `SecurityPage`: tenant staff access management, role assignment, lock-state control, and MFA posture summary.
 - `SecurityPage`: company membership provisioning, browser-account management, staff directory controls, role assignment, lock-state control, and MFA posture summary.
-- `ClientsPage`: client-account queue pages under `/clients/*` with route-backed lifecycle subpages, dense filters, bulk export/activation controls, and a dialog-based editor for portal and warehouse readiness.
+- `ClientsPage`: client-account queue pages under `/clients/*` with route-backed lifecycle subpages, dense filters, bulk export/activation controls, a dense table grouped by customer code/name, customer information, contact person, finance, setup, and time, plus a sticky icon-style operations rail and a dialog-based editor for portal and warehouse readiness.
 - `ProductsPage`: product master data plus selected-product subworkflows for distribution products, serial settings, packaging, and product marks.
 - `DashboardPage`: workbench-style operational summary with persisted time window and right-rail widgets.
 - `InventoryBalancesPage`: inventory workbench covering tenant-scoped stock positions, count escalation, internal moves, stock-age reporting, manual adjustments, and cross-warehouse planning.
@@ -137,7 +138,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 
 ## Immediate Next Frontend Work
 
-- Group shared/components in to modules where we have the view and hooks under the the component directory
+- Continue extracting repeated UI into `shared/components/<component>/` modules instead of leaving reusable JSX inside feature `view/` trees.
 - Add richer finance workflows beyond invoice review, such as settlement/remittance and dispute handling screens.
 - Hook the new backend queue-view preference APIs into `useDataView(...)` so saved views become cross-device instead of browser-local.
 - Extend status-bucket navigation beyond outbound into inbound, returns, and finance.
