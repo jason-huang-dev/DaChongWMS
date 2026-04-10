@@ -299,7 +299,7 @@ describe("ClientsPage", () => {
     expect(screen.getByText("-W-")).toBeInTheDocument();
   });
 
-  test("collapses the client tabs and filters while the data region is scrolled", async () => {
+  test("keeps the table toolbar visible while the client tabs and filters collapse on scroll", async () => {
     renderWithProviders(
       <MemoryRouter initialEntries={["/clients/approved"]}>
         <Routes>
@@ -312,6 +312,8 @@ describe("ClientsPage", () => {
     expect(await screen.findByText("Acme Retail")).toBeInTheDocument();
     expect(screen.getByTestId("client-page-chrome")).toHaveAttribute("aria-hidden", "false");
     expect(screen.getByTestId("client-page-chrome")).toHaveAttribute("data-collapse-progress", "0.00");
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open account" })).toBeInTheDocument();
 
     const tableScrollRegion = screen.getByRole("table").parentElement;
     expect(tableScrollRegion).not.toBeNull();
@@ -323,6 +325,7 @@ describe("ClientsPage", () => {
     });
 
     expect(screen.getByTestId("client-page-chrome")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open account" })).toBeInTheDocument();
 
     fireEvent.scroll(tableScrollRegion!, { target: { scrollTop: 220 } });
@@ -331,7 +334,8 @@ describe("ClientsPage", () => {
       expect(screen.getByTestId("client-page-chrome")).toHaveAttribute("aria-hidden", "true");
     });
 
-    expect(screen.queryByRole("button", { name: "Open account" })).not.toBeInTheDocument();
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open account" })).toBeInTheDocument();
 
     fireEvent.scroll(tableScrollRegion!, { target: { scrollTop: 0 } });
 

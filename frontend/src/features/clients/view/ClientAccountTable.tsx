@@ -232,6 +232,137 @@ export function ClientAccountTable({
   );
   const { t } = useI18n();
   const pageChrome = useCollapsibleTablePageChrome();
+  const tableToolbar = (
+    <Stack
+      alignItems={{ xs: "stretch", lg: "center" }}
+      direction={{ xs: "column", lg: "row" }}
+      justifyContent="space-between"
+      spacing={1}
+      sx={{ minWidth: 0 }}
+    >
+      <Stack
+        alignItems={{ xs: "stretch", md: "center" }}
+        direction={{ xs: "column", md: "row" }}
+        spacing={0.5}
+        sx={{ flex: "1 1 auto", minWidth: 0 }}
+      >
+        <Chip
+          color={selectedCount > 0 ? "primary" : "default"}
+          label={t("bulk.selectedCount", { count: selectedCount })}
+          size="small"
+          sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
+        />
+        {selectedCount > 0 ? (
+          <Stack
+            sx={(theme) => ({
+              flex: "0 1 auto",
+              minWidth: 0,
+              "& .MuiButton-root": {
+                fontSize: theme.typography.pxToRem(12),
+                minHeight: 28,
+                px: 1,
+              },
+              "& .MuiChip-label": {
+                fontSize: theme.typography.pxToRem(10.5),
+              },
+              "& .MuiTypography-body2": {
+                fontSize: theme.typography.pxToRem(12),
+              },
+            })}
+          >
+            <Stack
+              alignItems={{ xs: "stretch", md: "center" }}
+              direction={{ xs: "column", md: "row" }}
+              spacing={0.5}
+            >
+              <Button color="inherit" onClick={onClearSelection} size="small">
+                Clear selection
+              </Button>
+              <Button
+                color="inherit"
+                disabled={!hasActiveSelection}
+                onClick={onBulkDeactivate}
+                size="small"
+                variant="outlined"
+              >
+                Deactivate selected
+              </Button>
+              <Button
+                disabled={!hasInactiveSelection}
+                onClick={onBulkReactivate}
+                size="small"
+                variant="outlined"
+              >
+                Reactivate selected
+              </Button>
+              <Button
+                onClick={() => downloadClientAccountsCsv(selectedClients, "client-accounts-selected")}
+                size="small"
+                variant="contained"
+              >
+                Export selected
+              </Button>
+            </Stack>
+          </Stack>
+        ) : null}
+      </Stack>
+      <Stack
+        alignItems="center"
+        direction="row"
+        spacing={0.5}
+        sx={(theme) => ({
+          flex: "0 0 auto",
+          flexWrap: "wrap",
+          justifyContent: { xs: "flex-start", lg: "flex-end" },
+          "& .MuiButton-root": {
+            fontSize: theme.typography.pxToRem(12),
+            minHeight: 30,
+            px: 1.5,
+          },
+        })}
+      >
+        <Button disabled={!isWorkspaceReady} onClick={onOpenCreate} size="small" variant="contained">
+          Open account
+        </Button>
+        <Button color="inherit" disabled onClick={onOpenBatchAssign} size="small" variant="outlined">
+          Batch Assign Charging Templates
+        </Button>
+        <Button
+          color="inherit"
+          disabled={!isWorkspaceReady || selectedCount === 0}
+          onClick={onOpenDistributionPermissions}
+          size="small"
+          variant="outlined"
+        >
+          Set Distribution Permission
+        </Button>
+        <Button
+          color="inherit"
+          endIcon={<KeyboardArrowDownOutlinedIcon />}
+          disabled={!isWorkspaceReady || (selectedCount === 0 && exportRows.length === 0)}
+          onClick={() =>
+            downloadClientAccountsCsv(
+              selectedCount > 0 ? selectedClients : exportRows,
+              selectedCount > 0 ? "client-accounts-selected" : "client-accounts-query",
+            )
+          }
+          size="small"
+          variant="outlined"
+        >
+          Export
+        </Button>
+        <ActionIconButton
+          aria-label="Clear all filters"
+          disabled={!hasFilterOverrides}
+          onClick={onResetFilters}
+          sx={{ flex: "0 0 auto" }}
+          title="Clear all filters"
+        >
+          <RestartAltRoundedIcon fontSize="small" />
+        </ActionIconButton>
+      </Stack>
+    </Stack>
+  );
 
   return (
     <StickyTableLayout
@@ -263,138 +394,7 @@ export function ClientAccountTable({
                 />
               }
             >
-              <Stack spacing={0.625}>
-                <ClientAccountFilters filters={dataView.filters} onChange={dataView.updateFilter} />
-                <Stack
-                  alignItems={{ xs: "stretch", md: "center" }}
-                  direction={{ xs: "column", md: "row" }}
-                  justifyContent="space-between"
-                  spacing={0.5}
-                  sx={{ minWidth: 0 }}
-                >
-                  <Stack
-                    alignItems={{ xs: "stretch", md: "center" }}
-                    direction={{ xs: "column", md: "row" }}
-                    spacing={0.5}
-                    sx={{ flex: "1 1 auto", minWidth: 0 }}
-                  >
-                    <Chip
-                      color={selectedCount > 0 ? "primary" : "default"}
-                      label={t("bulk.selectedCount", { count: selectedCount })}
-                      size="small"
-                      sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
-                    />
-                    {selectedCount > 0 ? (
-                      <Stack
-                        sx={(theme) => ({
-                          flex: "0 1 auto",
-                          minWidth: 0,
-                          "& .MuiButton-root": {
-                            fontSize: theme.typography.pxToRem(12),
-                            minHeight: 28,
-                            px: 1,
-                          },
-                          "& .MuiChip-label": {
-                            fontSize: theme.typography.pxToRem(10.5),
-                          },
-                          "& .MuiTypography-body2": {
-                            fontSize: theme.typography.pxToRem(12),
-                          },
-                        })}
-                      >
-                        <Stack
-                          alignItems={{ xs: "stretch", md: "center" }}
-                          direction={{ xs: "column", md: "row" }}
-                          spacing={0.5}
-                        >
-                          <Button color="inherit" onClick={onClearSelection} size="small">
-                            Clear selection
-                          </Button>
-                          <Button
-                            color="inherit"
-                            disabled={!hasActiveSelection}
-                            onClick={onBulkDeactivate}
-                            size="small"
-                            variant="outlined"
-                          >
-                            Deactivate selected
-                          </Button>
-                          <Button
-                            disabled={!hasInactiveSelection}
-                            onClick={onBulkReactivate}
-                            size="small"
-                            variant="outlined"
-                          >
-                            Reactivate selected
-                          </Button>
-                          <Button
-                            onClick={() => downloadClientAccountsCsv(selectedClients, "client-accounts-selected")}
-                            size="small"
-                            variant="contained"
-                          >
-                            Export selected
-                          </Button>
-                        </Stack>
-                      </Stack>
-                    ) : null}
-                  </Stack>
-                  <Stack
-                    alignItems="center"
-                    direction="row"
-                    spacing={0.5}
-                    sx={(theme) => ({
-                      flex: "0 0 auto",
-                      flexWrap: "wrap",
-                      justifyContent: { xs: "flex-start", md: "flex-end" },
-                      "& .MuiButton-root": {
-                        fontSize: theme.typography.pxToRem(12),
-                        minHeight: 30,
-                        px: 1.5,
-                      },
-                    })}
-                  >
-                    <Button disabled={!isWorkspaceReady} onClick={onOpenCreate} size="small" variant="contained">
-                      Open account
-                    </Button>
-                    <Button color="inherit" disabled onClick={onOpenBatchAssign} size="small" variant="outlined">
-                      Batch Assign Charging Templates
-                    </Button>
-                    <Button
-                      color="inherit"
-                      disabled={!isWorkspaceReady || selectedCount === 0}
-                      onClick={onOpenDistributionPermissions}
-                      size="small"
-                      variant="outlined"
-                    >
-                      Set Distribution Permission
-                    </Button>
-                    <Button
-                      color="inherit"
-                      endIcon={<KeyboardArrowDownOutlinedIcon />}
-                      disabled={!isWorkspaceReady || (selectedCount === 0 && exportRows.length === 0)}
-                      onClick={() =>
-                        downloadClientAccountsCsv(
-                          selectedCount > 0 ? selectedClients : exportRows,
-                          selectedCount > 0 ? "client-accounts-selected" : "client-accounts-query",
-                        )
-                      }
-                      size="small"
-                      variant="outlined"
-                    >
-                      Export
-                    </Button>
-                    <ActionIconButton
-                      aria-label="Clear all filters"
-                      disabled={!hasFilterOverrides}
-                      onClick={onResetFilters}
-                      sx={{ flex: "0 0 auto" }}
-                      title="Clear all filters"
-                    >
-                      <RestartAltRoundedIcon fontSize="small" />
-                    </ActionIconButton>
-                  </Stack>
-                </Stack>
-              </Stack>
+              <ClientAccountFilters filters={dataView.filters} onChange={dataView.updateFilter} />
             </FilterCard>
           </Box>
         </Box>
@@ -477,6 +477,8 @@ export function ClientAccountTable({
           rowSelection={rowSelection}
           rows={clients}
           stickyHeader
+          toolbar={tableToolbar}
+          toolbarPlacement="inner"
         />
       }
     />
