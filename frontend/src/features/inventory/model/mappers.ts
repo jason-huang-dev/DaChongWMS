@@ -1,7 +1,10 @@
 import type {
   CrossWarehouseTransferCandidate,
+  InventoryAdjustmentGroupItem,
+  InventoryAdjustmentGroupRow,
   InventoryAdjustmentValues,
   InventoryBalanceRecord,
+  InventoryMovementHistoryRow,
   InventoryMovementRecord,
   StockAgeBucket,
   StockAgeRow,
@@ -81,6 +84,156 @@ export function buildRecentAdjustments(
   return [...adjustmentInRows, ...adjustmentOutRows]
     .sort((left, right) => new Date(right.occurred_at).getTime() - new Date(left.occurred_at).getTime())
     .slice(0, 12);
+}
+
+function resolveInventoryAdjustmentTypeLabel(row: InventoryMovementHistoryRow) {
+  if (row.entryTypeLabel?.trim()) {
+    return row.entryTypeLabel.trim();
+  }
+
+  if (row.movementTypeLabel?.trim()) {
+    return row.movementTypeLabel.trim();
+  }
+
+  return row.movementType === "ADJUSTMENT_IN"
+    ? "Adjustment In"
+    : row.movementType === "ADJUSTMENT_OUT"
+      ? "Adjustment Out"
+      : row.movementType;
+}
+
+function resolveInventoryAdjustmentGroupId(row: InventoryMovementHistoryRow) {
+  const adjustmentNumber = row.referenceCode?.trim();
+  if (adjustmentNumber) {
+    return `${row.warehouseName || "warehouse"}:${adjustmentNumber}`;
+  }
+
+  return `movement:${row.id}`;
+}
+
+function buildInventoryAdjustmentGroupItem(row: InventoryMovementHistoryRow): InventoryAdjustmentGroupItem {
+  const rawQuantity = Number(row.quantity) || 0;
+  const signedQuantity = row.movementType === "ADJUSTMENT_OUT" ? -Math.abs(rawQuantity) : Math.abs(rawQuantity);
+
+  return {
+    id: row.id,
+    goodsCode: row.merchantSku || row.productBarcode || "--",
+    productName: row.productName || row.productBarcode || "",
+    lotNumber: row.batchNumber || "",
+    serialNumber: row.serialNumber || "",
+    adjustmentTypeLabel: resolveInventoryAdjustmentTypeLabel(row),
+    shelfCode: row.shelfCode || row.toLocationCode || row.fromLocationCode || "--",
+    quantity: rawQuantity,
+    signedQuantity,
+    performedBy: row.performedBy || "--",
+    occurredAt: row.occurredAt,
+  };
+}
+
+export function buildInventoryAdjustmentGroups(rows: InventoryMovementHistoryRow[]): InventoryAdjustmentGroupRow[] {
+  const groups = new Map<string, InventoryAdjustmentGroupRow>();
+
+  rows.forEach((row) => {
+    const groupId = resolveInventoryAdjustmentGroupId(row);
+    const currentGroup = groups.get(groupId);
+    const nextItem = buildInventoryAdjustmentGroupItem(row);
+    const adjustmentNumber = row.referenceCode?.trim() || `ADJ-${row.id}`;
+    const note = row.reason?.trim() || "--";
+
+    if (!currentGroup) {
+      groups.set(groupId, {
+        id: groupId,
+        adjustmentNumber,
+        warehouseName: row.warehouseName || "--",
+        note,
+        latestOccurredAt: row.occurredAt,
+        items: [nextItem],
+      });
+      return;
+    }
+
+    currentGroup.items.push(nextItem);
+    if (new Date(row.occurredAt).getTime() > new Date(currentGroup.latestOccurredAt).getTime()) {
+      currentGroup.latestOccurredAt = row.occurredAt;
+    }
+    if ((currentGroup.note === "--" || !currentGroup.note.trim()) && note !== "--") {
+      currentGroup.note = note;
+    }
+  });
+
+  return Array.from(groups.values())
+    .map((group) => ({
+      ...group,
+      items: [...group.items].sort(
+        (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime(),
+      ),
+    }))
+    .sort((left, right) => new Date(right.latestOccurredAt).getTime() - new Date(left.latestOccurredAt).getTime());
+}
+
+function escapeCsvValue(value: string | number) {
+  const normalizedValue = String(value ?? "");
+  if (!/[",\n]/.test(normalizedValue)) {
+    return normalizedValue;
+  }
+
+  return `"${normalizedValue.replace(/"/g, '""')}"`;
+}
+
+export function buildInventoryAdjustmentCsvContent(groups: InventoryAdjustmentGroupRow[]) {
+  const header = [
+    "Adjustment No.",
+    "Warehouse",
+    "Note",
+    "SKU",
+    "Product Name",
+    "Lot Number",
+    "Serial Number",
+    "Adjustment Type",
+    "Shelf",
+    "Adjustment Qty",
+    "Operator",
+    "Time",
+  ];
+
+  const lines = groups.flatMap((group) =>
+    group.items.map((item) =>
+      [
+        group.adjustmentNumber,
+        group.warehouseName,
+        group.note,
+        item.goodsCode,
+        item.productName,
+        item.lotNumber,
+        item.serialNumber,
+        item.adjustmentTypeLabel,
+        item.shelfCode,
+        item.signedQuantity,
+        item.performedBy,
+        item.occurredAt,
+      ]
+        .map((value) => escapeCsvValue(value))
+        .join(","),
+    ),
+  );
+
+  return [header.join(","), ...lines].join("\n");
+}
+
+export function downloadInventoryAdjustmentGroupsCsv(groups: InventoryAdjustmentGroupRow[], filenamePrefix: string) {
+  if (groups.length === 0 || typeof document === "undefined" || typeof URL.createObjectURL !== "function") {
+    return;
+  }
+
+  const blob = new Blob([buildInventoryAdjustmentCsvContent(groups)], {
+    type: "text/csv;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filenamePrefix}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export function buildCrossWarehouseTransferCandidates(

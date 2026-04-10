@@ -196,6 +196,29 @@ export interface InventoryMovementHistoryListResponse extends PaginatedResponse<
   };
 }
 
+export interface InventoryAdjustmentGroupItem {
+  id: number;
+  goodsCode: string;
+  productName: string;
+  lotNumber: string;
+  serialNumber: string;
+  adjustmentTypeLabel: string;
+  shelfCode: string;
+  quantity: number;
+  signedQuantity: number;
+  performedBy: string;
+  occurredAt: string;
+}
+
+export interface InventoryAdjustmentGroupRow {
+  id: string;
+  adjustmentNumber: string;
+  warehouseName: string;
+  note: string;
+  latestOccurredAt: string;
+  items: InventoryAdjustmentGroupItem[];
+}
+
 export interface InventoryInformationImportApiRow {
   merchant_sku: string;
   product_name: string;
