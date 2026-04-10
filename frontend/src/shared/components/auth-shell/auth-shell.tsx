@@ -31,7 +31,7 @@ export function AuthShell({
   title,
 }: AuthShellProps) {
   const theme = useTheme();
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const isDark = theme.palette.mode === "dark";
 
   return (
@@ -66,13 +66,13 @@ export function AuthShell({
                 <Stack spacing={2}>
                   <Stack spacing={1}>
                     <Typography color="secondary.main" sx={{ fontWeight: 700, letterSpacing: "0.12em" }} variant="overline">
-                      {translateText(eyebrow)}
+                      {t(eyebrow)}
                     </Typography>
                     <Typography sx={{ color: "text.primary", maxWidth: 420 }} variant="h4">
-                      {translateText(title)}
+                      {t(title)}
                     </Typography>
                     <Typography color="text.secondary" sx={{ maxWidth: 420 }} variant="body1">
-                      {translateText(description)}
+                      {t(description)}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -113,13 +113,13 @@ export function AuthShell({
                       sx={{ color: isDark ? brandColors.accentSoft : brandColors.accentStrong, maxWidth: 520 }}
                       variant="h3"
                     >
-                      {translateText(heroTitle)}
+                      {t(heroTitle)}
                     </Typography>
                     <Typography
                       sx={{ color: alpha(isDark ? brandColors.textPrimaryDark : brandColors.textPrimaryLight, 0.78), maxWidth: 540 }}
                       variant="body1"
                     >
-                      {translateText(heroSummary)}
+                      {t(heroSummary)}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -127,7 +127,7 @@ export function AuthShell({
                   {heroPoints.map((point) => (
                     <Chip
                       key={point}
-                      label={translateText(point)}
+                      label={t(point)}
                       sx={{
                         backgroundColor: alpha(brandColors.accent, isDark ? 0.14 : 0.12),
                         border: `1px solid ${alpha(brandColors.accentStrong, isDark ? 0.22 : 0.16)}`,

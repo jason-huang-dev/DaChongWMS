@@ -10,7 +10,7 @@ The external reference model for the next implementation phase lives in `fronten
 
 - **Tooling**: Vite 6, TypeScript, npm.
 - **UI**: MUI 7 with a shared theme in `src/app/theme.ts`.
-- **Localization**: root UI preferences and translation helpers in `src/app/ui-preferences.tsx` + `src/app/i18n.ts` with `en` and `zh-CN`.
+- **Localization**: strict catalog-driven translations in `src/app/i18n.ts` and `src/app/ui-preferences.tsx` with `en` and `zh-CN`. The authoring contract is documented in `frontend/ai/docs/localization-and-translations.md`.
 - **Branding**: shared DaChong logo assets under `src/assets/logo/` plus reusable brand tokens in `src/app/brand.ts`.
 - **Routing**: React Router with route-level auth and role guards.
 - **Server state**: TanStack Query.
@@ -125,7 +125,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Shared modules such as `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Shared modules such as `WorkspaceContextSwitcher`, `DataViewToolbar`, `DataTable`, `useDataView(...)`, `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Brand palette, gradients, and shadows come from `src/app/brand.ts`, so auth screens, page headers, and the shell all stay aligned with the gold/copper/charcoal logo theme.
-- Shared UI primitives translate known shell/auth/common copy through `src/app/i18n.ts` so locale coverage can expand incrementally without rewriting every feature page at once.
+- Shared UI primitives now resolve translatable values through the strict catalog contract in `src/app/i18n.ts`; arbitrary raw-English fallback is no longer part of the runtime.
 - The authenticated shell is now JF-inspired: horizontal module nav first, workspace-tab strip second, content canvas third. Mobile keeps a drawer fallback.
 - Search-heavy lookup fields now use debounced, paginated reference hooks instead of assuming the first page of options is sufficient.
 - Queue-heavy screens now use the same filter/saved-view pattern across inventory, inbound, outbound, transfers, returns, counting, finance, automation, integrations, and security.

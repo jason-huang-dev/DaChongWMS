@@ -2,6 +2,7 @@ import Grid from "@mui/material/Grid";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useInboundController } from "@/features/inbound/controller/useInboundController";
 import { ScanPutawayPanel } from "@/features/inbound/view/components/ScanPutawayPanel";
 import { ScanReceivePanel } from "@/features/inbound/view/components/ScanReceivePanel";
@@ -158,6 +159,7 @@ const salesOrderFields: DataViewFieldConfig<{
 ];
 
 export function B2BPage() {
+  const { t, translate, msg } = useI18n();
   const [searchParams] = useSearchParams();
   useScrollToHash();
 
@@ -212,18 +214,18 @@ export function B2BPage() {
       <Stack direction="row" flexWrap="wrap" gap={1}>
         {sectionLinks.map((sectionLink) => (
           <Button component="a" href={sectionLink.href} key={sectionLink.href} size="small" variant="outlined">
-            {sectionLink.label}
+            {t(sectionLink.label)}
           </Button>
         ))}
       </Stack>
 
       <Box id="b2b-stock-in">
         <Stack spacing={2}>
-          <Typography variant="h5">B2B Stock-in</Typography>
+          <Typography variant="h5">{t("B2B Stock-in")}</Typography>
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 3 }}>
               <MetricCard
-                helper={inbound.activeWarehouse ? `Warehouse: ${inbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                helper={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 label="Open purchase orders"
                 value={inbound.purchaseOrdersQuery.data?.count ?? "--"}
               />
@@ -243,7 +245,7 @@ export function B2BPage() {
 
       <Box id="stock-in-list-management">
         <Stack spacing={2}>
-          <Typography variant="h5">Stock-in List Management</Typography>
+          <Typography variant="h5">{t("Stock-in List Management")}</Typography>
           <ResourceTable
             columns={[
               { header: "PO", key: "po", render: (row) => <RecordLink to={`/inbound/purchase-orders/${row.id}`}>{row.po_number}</RecordLink> },
@@ -267,7 +269,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.purchaseOrdersView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? `Warehouse: ${inbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={purchaseOrderFields}
                 filters={inbound.purchaseOrdersView.filters}
                 onChange={inbound.purchaseOrdersView.updateFilter}
@@ -288,25 +290,25 @@ export function B2BPage() {
 
       <Box id="scan-to-receive">
         <Stack spacing={2}>
-          <Typography variant="h5">Scan to Receive</Typography>
+          <Typography variant="h5">{t("Scan to Receive")}</Typography>
           <ScanReceivePanel orderType={b2bOrderType} />
         </Stack>
       </Box>
 
       <Box id="scan-to-list">
         <Stack spacing={2}>
-          <Typography variant="h5">Scan to List</Typography>
+          <Typography variant="h5">{t("Scan to List")}</Typography>
           <ScanPutawayPanel orderType={b2bOrderType} />
         </Stack>
       </Box>
 
       <Box id="b2b-stock-out">
         <Stack spacing={2}>
-          <Typography variant="h5">B2B Stock-out</Typography>
+          <Typography variant="h5">{t("B2B Stock-out")}</Typography>
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 3 }}>
               <MetricCard
-                helper={outbound.activeWarehouse ? `Warehouse: ${outbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                helper={outbound.activeWarehouse ? t("shell.warehouseChip", { label: outbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 label="Sales orders"
                 value={outbound.salesOrdersQuery.data?.count ?? "--"}
               />
@@ -326,7 +328,7 @@ export function B2BPage() {
 
       <Box id="stock-out-list-manage">
         <Stack spacing={2}>
-          <Typography variant="h5">Stock-Out List Manage</Typography>
+          <Typography variant="h5">{t("Stock-Out List Manage")}</Typography>
           <ResourceTable
             columns={[
               { header: "Order", key: "order", render: (row) => <RecordLink to={`/outbound/sales-orders/${row.id}`}>{row.order_number}</RecordLink> },
@@ -369,7 +371,7 @@ export function B2BPage() {
                 />
                 <DataViewToolbar
                   activeFilterCount={outbound.salesOrdersView.activeFilterCount}
-                  contextLabel={outbound.activeWarehouse ? `Warehouse: ${outbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                  contextLabel={outbound.activeWarehouse ? t("shell.warehouseChip", { label: outbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={salesOrderFields}
                   filters={outbound.salesOrdersView.filters}
                   onChange={outbound.salesOrdersView.updateFilter}
@@ -416,7 +418,7 @@ export function B2BPage() {
 
       <Box id="stock-in-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Stock-in Record</Typography>
+          <Typography variant="h5">{t("Stock-in Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "ASN", key: "asn", render: (row) => row.asn_number },
@@ -441,7 +443,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.advanceShipmentNoticesView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? `Warehouse: ${inbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={asnFields}
                 filters={inbound.advanceShipmentNoticesView.filters}
                 onChange={inbound.advanceShipmentNoticesView.updateFilter}
@@ -462,7 +464,7 @@ export function B2BPage() {
 
       <Box id="signing-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Signing Record</Typography>
+          <Typography variant="h5">{t("Signing Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "Signing", key: "signing", render: (row) => row.signing_number },
@@ -488,7 +490,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.signingRecordsView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? `Warehouse: ${inbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={signingFields}
                 filters={inbound.signingRecordsView.filters}
                 onChange={inbound.signingRecordsView.updateFilter}
@@ -509,7 +511,7 @@ export function B2BPage() {
 
       <Box id="receiving-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Receiving Record</Typography>
+          <Typography variant="h5">{t("Receiving Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "Receipt", key: "receipt", render: (row) => row.receipt_number },
@@ -534,7 +536,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.receiptsView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? `Warehouse: ${inbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={receiptFields}
                 filters={inbound.receiptsView.filters}
                 onChange={inbound.receiptsView.updateFilter}
@@ -555,7 +557,7 @@ export function B2BPage() {
 
       <Box id="listing-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Listing Record</Typography>
+          <Typography variant="h5">{t("Listing Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "Task", key: "task", render: (row) => row.task_number },
@@ -581,7 +583,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.putawayTasksView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? `Warehouse: ${inbound.activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={putawayFields}
                 filters={inbound.putawayTasksView.filters}
                 onChange={inbound.putawayTasksView.updateFilter}

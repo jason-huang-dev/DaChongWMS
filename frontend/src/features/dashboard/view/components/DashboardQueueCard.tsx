@@ -46,7 +46,7 @@ export function DashboardQueueCard({
   sections,
 }: DashboardQueueCardProps) {
   const theme = useTheme();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const isDark = theme.palette.mode === "dark";
 
   function getToneColor(tone: DashboardQueueMetricTone | undefined) {
@@ -99,7 +99,7 @@ export function DashboardQueueCard({
                 lineHeight: 1.45,
               }}
             >
-              {translateText(subtitle)}
+              {t(subtitle)}
             </Typography>
           ) : null}
           <Stack spacing={1.75} sx={{ flexGrow: 1 }}>
@@ -144,7 +144,7 @@ export function DashboardQueueCard({
                         minWidth: 0,
                       }}
                     >
-                      {translateText(section.title)}
+                      {t(section.title)}
                     </Typography>
                   </Stack>
                   <Box
@@ -156,7 +156,7 @@ export function DashboardQueueCard({
                     }}
                   >
                     {section.metrics.map((metric, metricIndex) => {
-                      const translatedLabel = translateText(metric.label);
+                      const translatedLabel = t(metric.label);
                       const valueColor = getMetricValueColor(metric);
                       const metricToneColor =
                         metric.tone && metric.tone !== "neutral"

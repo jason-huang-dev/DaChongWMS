@@ -1,6 +1,7 @@
 import Grid from "@mui/material/Grid";
 import { Alert, Stack } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useWorkOrdersController } from "@/features/work-orders/controller/useWorkOrdersController";
 import { WorkOrderForm } from "@/features/work-orders/view/WorkOrderForm";
 import { WorkOrderTable } from "@/features/work-orders/view/WorkOrderTable";
@@ -11,6 +12,7 @@ import { SummaryCard } from "@/shared/components/summary-card";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function WorkOrdersPage() {
+  const { t, translate, msg } = useI18n();
   const {
     company,
     activeWarehouse,
@@ -55,9 +57,9 @@ export function WorkOrdersPage() {
           <SummaryCard
             description="Current workspace and warehouse scope for work-order scheduling."
             items={[
-              { label: "Workspace", value: company?.label ?? "No workspace selected" },
-              { label: "Warehouse context", value: activeWarehouse?.warehouse_name ?? "All warehouses" },
-              { label: "Selected work order", value: selectedWorkOrder?.display_code ?? "None" },
+              { label: "Workspace", value: company?.label ?? t("No workspace selected") },
+              { label: "Warehouse context", value: activeWarehouse?.warehouse_name ?? t("All warehouses") },
+              { label: "Selected work order", value: selectedWorkOrder?.display_code ?? t("None") },
             ]}
             title="Scope"
           />
@@ -80,7 +82,7 @@ export function WorkOrdersPage() {
             items={[
               { label: "Pending review", value: String(summary.pendingReviewWorkOrders) },
               { label: "In progress", value: String(summary.inProgressWorkOrders) },
-              { label: "Top ranked work order", value: summary.topRankedWorkOrder?.display_code ?? "None" },
+              { label: "Top ranked work order", value: summary.topRankedWorkOrder?.display_code ?? t("None") },
               { label: "Top ranked title", value: summary.topRankedWorkOrder?.title ?? "--" },
             ]}
             title="Fulfillment order"
@@ -100,7 +102,7 @@ export function WorkOrdersPage() {
         </Grid>
         {!company ? (
           <Grid size={{ xs: 12 }}>
-            <Alert severity="info">Select an active workspace membership before managing work orders.</Alert>
+            <Alert severity="info">{t("Select an active workspace membership before managing work orders.")}</Alert>
           </Grid>
         ) : null}
         <Grid size={{ xs: 12, xl: 4 }}>
@@ -160,4 +162,3 @@ export function WorkOrdersPage() {
     </Stack>
   );
 }
-

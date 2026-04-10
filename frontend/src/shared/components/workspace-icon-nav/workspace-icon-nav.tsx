@@ -32,7 +32,7 @@ export function WorkspaceIconNav({ ariaLabel = "Workspace navigation", items }: 
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const location = useLocation();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Box
@@ -60,7 +60,7 @@ export function WorkspaceIconNav({ ariaLabel = "Workspace navigation", items }: 
       >
         {items.map((item) => {
           const Icon = item.icon;
-          const label = translateText(item.label);
+          const label = t(item.label);
           const active = isItemActive(item, location.pathname);
 
           return (

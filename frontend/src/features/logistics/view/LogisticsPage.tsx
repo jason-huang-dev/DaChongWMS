@@ -92,11 +92,11 @@ const costStatusOptions: LogisticsEditorOption[] = [
 
 export function LogisticsPage() {
   const controller = useLogisticsController();
-  const { translateText } = useI18n();
-  const editActionLabel = translateText("Edit");
-  const yesLabel = translateText("Yes");
-  const noLabel = translateText("No");
-  const anyLabel = translateText("Any");
+  const { t, translate, msg } = useI18n();
+  const editActionLabel = t("Edit");
+  const yesLabel = t("Yes");
+  const noLabel = t("No");
+  const anyLabel = t("Any");
 
   const renderEditAction = <TRecord,>(onSelect: (record: TRecord) => void) => (record: TRecord) => (
     <Typography component="button" onClick={() => onSelect(record)}>
@@ -322,7 +322,7 @@ export function LogisticsPage() {
         title="Logistics"
       />
       {!controller.company ? (
-        <Alert severity="info">{translateText("Select an active workspace membership before managing logistics.")}</Alert>
+        <Alert severity="info">{t("Select an active workspace membership before managing logistics.")}</Alert>
       ) : null}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 6, xl: 2 }}>

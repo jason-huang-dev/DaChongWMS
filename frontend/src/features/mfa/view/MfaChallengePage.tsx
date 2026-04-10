@@ -16,7 +16,7 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function MfaChallengePage() {
   const navigate = useNavigate();
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const { completeMfaChallenge, pendingChallenge, clearPendingChallenge } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const form = useForm<MfaChallengeFormValues>({
@@ -65,7 +65,7 @@ export function MfaChallengePage() {
             <FormTextField autoComplete="one-time-code" label="Verification code" name="code" />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button disabled={form.formState.isSubmitting} type="submit" variant="contained">
-                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : translateText("Verify")}
+                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : t("Verify")}
               </Button>
               <Button
                 onClick={() => {
@@ -74,7 +74,7 @@ export function MfaChallengePage() {
                 }}
                 variant="outlined"
               >
-                {translateText("Back to login")}
+                {t("Back to login")}
               </Button>
             </Stack>
           </Stack>

@@ -9,7 +9,7 @@ interface FormTextFieldProps extends Omit<TextFieldProps, "name"> {
 
 export function FormTextField({ name, helperText, ...props }: FormTextFieldProps) {
   const { control } = useFormContext();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Controller
@@ -20,9 +20,10 @@ export function FormTextField({ name, helperText, ...props }: FormTextFieldProps
           {...field}
           {...props}
           error={fieldState.invalid}
-          helperText={fieldState.error?.message ?? (typeof helperText === "string" ? translateText(helperText) : helperText)}
+          helperText={fieldState.error?.message ?? (typeof helperText === "string" ? t(helperText) : helperText)}
           fullWidth={props.fullWidth ?? true}
-          label={typeof props.label === "string" ? translateText(props.label) : props.label}
+          label={typeof props.label === "string" ? t(props.label) : props.label}
+          placeholder={typeof props.placeholder === "string" ? t(props.placeholder) : props.placeholder}
         />
       )}
     />

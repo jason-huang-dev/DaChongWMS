@@ -27,7 +27,7 @@ export function WorkspaceContextSwitcher({
   onWarehouseChange,
   compact = false,
 }: WorkspaceContextSwitcherProps) {
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const workspaceFieldWidth = compact ? { md: 124, lg: 136, xl: 152 } : 240;
   const warehouseFieldWidth = compact ? { md: 112, lg: 124, xl: 140 } : 220;
   const [workspaceMenuAnchor, setWorkspaceMenuAnchor] = useState<HTMLElement | null>(null);
@@ -97,7 +97,7 @@ export function WorkspaceContextSwitcher({
               <Stack>
                 <Typography variant="body2">{membership.company_name}</Typography>
                 <Typography color="text.secondary" variant="caption">
-                  {membership.staff_name} · {translateText(membership.staff_type)}
+                  {membership.staff_name} · {t(membership.staff_type)}
                 </Typography>
               </Stack>
             </MenuItem>
@@ -146,7 +146,7 @@ export function WorkspaceContextSwitcher({
               <Stack>
                 <Typography variant="body2">{membership.company_name}</Typography>
                 <Typography color="text.secondary" variant="caption">
-                  {membership.staff_name} · {translateText(membership.staff_type)}
+                  {membership.staff_name} · {t(membership.staff_type)}
                 </Typography>
               </Stack>
             </MenuItem>

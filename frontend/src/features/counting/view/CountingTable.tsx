@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { Stack } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
 import { ResourceTable, type ResourceTableRowSelection } from "@/shared/components/resource-table";
@@ -50,6 +51,8 @@ export function CountingTable({
   rowSelection,
   toolbarContent,
 }: CountingTableProps) {
+  const { t } = useI18n();
+
   return (
     <ResourceTable
       columns={[
@@ -84,7 +87,7 @@ export function CountingTable({
           {toolbarContent}
           <DataViewToolbar
             activeFilterCount={dataView.activeFilterCount}
-            contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : undefined}
+            contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : undefined}
             fields={approvalFields}
             filters={dataView.filters}
             onChange={dataView.updateFilter}

@@ -257,14 +257,14 @@ async function copyTextToClipboard(text: string) {
 
 function InventoryProductInfoCell({ row }: { row: InventoryInformationRow }) {
   const theme = useTheme();
-  const { locale, translateText } = useI18n();
+  const { locale, t, translate, msg } = useI18n();
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const copyResetTimeoutRef = useRef<number | null>(null);
   const primaryMerchantCode = row.merchantCode;
   const thumbnailLabel = buildProductThumbnailLabel(row);
   const detailSeparator = locale === "zh-CN" ? "：" : ":";
-  const defaultCopyTooltipLabel = translateText("Click to copy");
+  const defaultCopyTooltipLabel = t("Click to copy");
 
   useEffect(() => {
     return () => {
@@ -314,7 +314,7 @@ function InventoryProductInfoCell({ row }: { row: InventoryInformationRow }) {
         })}
       >
         <Box
-          aria-label={translateText("Open product image preview")}
+          aria-label={t("Open product image preview")}
           component="button"
           onClick={() => setIsPreviewOpen(true)}
           sx={{
@@ -361,50 +361,50 @@ function InventoryProductInfoCell({ row }: { row: InventoryInformationRow }) {
       >
         {renderProductDetail({
           copied: copiedField === "merchantCode",
-          label: translateText("Code"),
+          label: t("Code"),
           onCopy: primaryMerchantCode
             ? () => {
                 void handleCopyProductField("merchantCode", primaryMerchantCode);
               }
             : undefined,
           separator: detailSeparator,
-          tooltipLabel: copiedField === "merchantCode" ? translateText("Copied") : defaultCopyTooltipLabel,
+          tooltipLabel: copiedField === "merchantCode" ? t("Copied") : defaultCopyTooltipLabel,
           value: primaryMerchantCode,
         })}
         {renderProductDetail({
           copied: copiedField === "merchantSku",
-          label: translateText("SKU"),
+          label: t("SKU"),
           onCopy: row.merchantSku
             ? () => {
                 void handleCopyProductField("merchantSku", row.merchantSku);
               }
             : undefined,
           separator: detailSeparator,
-          tooltipLabel: copiedField === "merchantSku" ? translateText("Copied") : defaultCopyTooltipLabel,
+          tooltipLabel: copiedField === "merchantSku" ? t("Copied") : defaultCopyTooltipLabel,
           value: row.merchantSku,
         })}
         {renderProductDetail({
           copied: copiedField === "productBarcode",
-          label: translateText("Barcode"),
+          label: t("Barcode"),
           onCopy: row.productBarcode
             ? () => {
                 void handleCopyProductField("productBarcode", row.productBarcode);
               }
             : undefined,
           separator: detailSeparator,
-          tooltipLabel: copiedField === "productBarcode" ? translateText("Copied") : defaultCopyTooltipLabel,
+          tooltipLabel: copiedField === "productBarcode" ? t("Copied") : defaultCopyTooltipLabel,
           value: row.productBarcode,
         })}
         {renderProductDetail({
           copied: copiedField === "productName",
-          label: translateText("Name"),
+          label: t("Name"),
           onCopy: row.productName || row.merchantSku
             ? () => {
                 void handleCopyProductField("productName", row.productName || row.merchantSku);
               }
             : undefined,
           separator: detailSeparator,
-          tooltipLabel: copiedField === "productName" ? translateText("Copied") : defaultCopyTooltipLabel,
+          tooltipLabel: copiedField === "productName" ? t("Copied") : defaultCopyTooltipLabel,
           value: row.productName || row.merchantSku,
         })}
       </Box>
@@ -516,12 +516,12 @@ function InventoryInformationMetaField({
   label: string;
   value: string;
 }) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Typography sx={{ lineHeight: 1.35 }} variant="body2">
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
-        {translateText(label)}:
+        {t(label)}:
       </Box>{" "}
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
         {value || "--"}
@@ -632,7 +632,7 @@ function InventoryInformationToolbar({
 }: InventoryInformationToolbarProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const standaloneFieldSx = {
     minWidth: 0,
     width: "100%",
@@ -664,7 +664,7 @@ function InventoryInformationToolbar({
     <Stack spacing={0}>
       <Box sx={{ pb: 1.25 }}>
         <PageTabs
-          ariaLabel={translateText("Inventory area pages")}
+          ariaLabel={t("Inventory area pages")}
           items={areaTabs}
           onChange={onAreaFilterChange}
           value={areaFilter}
@@ -685,7 +685,7 @@ function InventoryInformationToolbar({
           }}
         >
           <MultiSelectFilter
-            label={translateText("Warehouse filter")}
+            label={t("Warehouse filter")}
             onChange={(nextValues) =>
               dataView.updateFilter(
                 "warehouses",
@@ -693,12 +693,12 @@ function InventoryInformationToolbar({
               )
             }
             options={warehouseOptions}
-            placeholder={translateText("Warehouse")}
+            placeholder={t("Warehouse")}
             selectedValues={decodeInventoryInformationMultiValue(dataView.filters.warehouses)}
             sx={standaloneFieldSx}
           />
           <MultiSelectFilter
-            label={translateText("Client filter")}
+            label={t("Client filter")}
             onChange={(nextValues) =>
               dataView.updateFilter(
                 "clients",
@@ -706,19 +706,19 @@ function InventoryInformationToolbar({
               )
             }
             options={clientOptions}
-            placeholder={translateText("Client")}
+            placeholder={t("Client")}
             selectedValues={decodeInventoryInformationMultiValue(dataView.filters.clients)}
             sx={standaloneFieldSx}
           />
           <TextField
             hiddenLabel
             onChange={(event) => dataView.updateFilter("shelfQuery", event.target.value)}
-            placeholder={translateText("Shelf")}
+            placeholder={t("Shelf")}
             size="small"
             value={dataView.filters.shelfQuery}
             slotProps={{
               htmlInput: {
-                "aria-label": translateText("Shelf"),
+                "aria-label": t("Shelf"),
                 autoCapitalize: "characters",
                 autoCorrect: "off",
                 spellCheck: false,
@@ -757,7 +757,7 @@ function InventoryInformationToolbar({
               value={dataView.filters.productSearchField}
               slotProps={{
                 htmlInput: {
-                  "aria-label": translateText("Product info field"),
+                  "aria-label": t("Product info field"),
                 },
               }}
               sx={{
@@ -769,19 +769,19 @@ function InventoryInformationToolbar({
             >
               {inventoryInformationProductSearchFieldOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {translateText(option.label)}
+                  {t(option.label)}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
               hiddenLabel
               onChange={(event) => dataView.updateFilter("productSearchValue", event.target.value)}
-              placeholder={translateText(inventoryInformationProductSearchPlaceholders[dataView.filters.productSearchField])}
+              placeholder={t(inventoryInformationProductSearchPlaceholders[dataView.filters.productSearchField])}
               size="small"
               value={dataView.filters.productSearchValue}
               slotProps={{
                 htmlInput: {
-                  "aria-label": translateText("Product info"),
+                  "aria-label": t("Product info"),
                   autoCapitalize: "none",
                   autoCorrect: "off",
                   spellCheck: false,
@@ -795,9 +795,9 @@ function InventoryInformationToolbar({
             />
           </FieldSelectorFilter>
           <RangePicker
-            endAriaLabel={translateText("Maximum value")}
+            endAriaLabel={t("Maximum value")}
             endInputProps={{ inputMode: "numeric" }}
-            endPlaceholder={translateText("Max")}
+            endPlaceholder={t("Max")}
             endValue={dataView.filters.metricMax}
             fieldSx={{
               minWidth: { md: 112, xs: "100%" },
@@ -814,7 +814,7 @@ function InventoryInformationToolbar({
                 value={dataView.filters.metricField}
                 slotProps={{
                   htmlInput: {
-                    "aria-label": translateText("Numeric column"),
+                    "aria-label": t("Numeric column"),
                   },
                 }}
                 sx={{
@@ -825,7 +825,7 @@ function InventoryInformationToolbar({
               >
                 {inventoryInformationMetricFieldOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
-                    {translateText(option.label)}
+                    {t(option.label)}
                   </MenuItem>
                 ))}
               </TextField>
@@ -847,9 +847,9 @@ function InventoryInformationToolbar({
                 xs: "100%",
               },
             }}
-            startAriaLabel={translateText("Minimum value")}
+            startAriaLabel={t("Minimum value")}
             startInputProps={{ inputMode: "numeric" }}
-            startPlaceholder={translateText("Min")}
+            startPlaceholder={t("Min")}
             startValue={dataView.filters.metricMin}
           />
         </Box>
@@ -873,7 +873,7 @@ function InventoryInformationPageChrome({
   onHideZeroStockChange,
   warehouseOptions,
 }: InventoryInformationPageChromeProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <FilterCard
@@ -921,7 +921,7 @@ function InventoryInformationPageChrome({
             })}
             variant="body2"
           >
-            {translateText("In stock only")}
+            {t("In stock only")}
           </Typography>
         </Box>
       </Stack>
@@ -947,7 +947,7 @@ function InventoryInformationTableToolbar({
   total,
 }: InventoryInformationTableToolbarProps) {
   const theme = useTheme();
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Stack
@@ -1006,11 +1006,11 @@ function InventoryInformationTableToolbar({
       >
         {actions}
         <ActionIconButton
-          aria-label={translateText("Clear all filters")}
+          aria-label={t("Clear all filters")}
           disabled={activeFilterCount === 0}
           onClick={onResetFilters}
           sx={{ flex: "0 0 auto" }}
-          title={translateText("Clear all filters")}
+          title={t("Clear all filters")}
         >
           <RestartAltRoundedIcon fontSize="small" />
         </ActionIconButton>
@@ -1064,6 +1064,7 @@ export function InventoryInformationTable({
   sortDirection,
   onSortChange,
 }: InventoryInformationTableProps) {
+  const { t, translate, msg } = useI18n();
   const columns = useMemo(() => buildInventoryInformationColumns(), []);
   const pageChrome = useCollapsibleTablePageChrome();
 
@@ -1116,7 +1117,7 @@ export function InventoryInformationTable({
                 <InventoryInformationMetaField label="Warehouse" value={row.warehouseName || "--"} />
                 <InventoryInformationMetaField label="Client" value={buildInventoryInformationClientLabel(row)} />
                 <InventoryInformationMetaField label="Area" value={row.areaLabel || "--"} />
-                <InventoryInformationMetaField label="Status" value={buildInventoryInformationStatusLabel(row)} />
+                <InventoryInformationMetaField label="Status" value={t(buildInventoryInformationStatusLabel(row))} />
               </Stack>
               <InventoryInformationMetaField label="Listed" value={buildInventoryInformationListedLabel(row.listingTime)} />
             </Stack>

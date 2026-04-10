@@ -98,7 +98,7 @@ export function ResourceTable<TRow>({
   const defaultCompactCellPaddingX = compact ? 1.25 : undefined;
   const fitContentCompactCellPaddingX = compact ? 0.875 : undefined;
   const theme = useTheme();
-  const { locale, t, translateText } = useI18n();
+  const { locale, t, translate, msg } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const isChineseLocale = locale === "zh-CN";
   const compactHeaderFontSize = compact ? theme.typography.overline.fontSize : 12;
@@ -117,10 +117,10 @@ export function ResourceTable<TRow>({
         <Stack spacing={2}>
           {title || subtitle ? (
             <Box>
-              {title ? <Typography variant="h6">{translateText(title)}</Typography> : null}
+              {title ? <Typography variant="h6">{t(title)}</Typography> : null}
               {subtitle ? (
                 <Typography color="text.secondary" variant="body2">
-                  {translateText(subtitle)}
+                  {t(subtitle)}
                 </Typography>
               ) : null}
             </Box>
@@ -210,7 +210,7 @@ export function ResourceTable<TRow>({
                       }}
                     >
                       {column.headerTooltip ? (
-                        <Tooltip enterDelay={200} title={translateText(column.headerTooltip)}>
+                        <Tooltip enterDelay={200} title={t(column.headerTooltip)}>
                           <Box component="span" sx={{ display: "block", width: "100%" }}>
                             {sorting && column.sortKey ? (
                               <TableSortLabel
@@ -238,10 +238,10 @@ export function ResourceTable<TRow>({
                                   },
                                 }}
                               >
-                                {translateText(column.header)}
+                                {t(column.header)}
                               </TableSortLabel>
                             ) : (
-                              translateText(column.header)
+                              t(column.header)
                             )}
                           </Box>
                         </Tooltip>
@@ -271,10 +271,10 @@ export function ResourceTable<TRow>({
                             },
                           }}
                         >
-                          {translateText(column.header)}
+                          {t(column.header)}
                         </TableSortLabel>
                       ) : (
-                        translateText(column.header)
+                        t(column.header)
                       )}
                     </TableCell>
                   ))}
@@ -286,7 +286,7 @@ export function ResourceTable<TRow>({
                     <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                       <Stack alignItems="center" direction="row" justifyContent="center" spacing={1.5} sx={{ py: 4 }}>
                         <CircularProgress size={20} />
-                        <Typography variant="body2">{translateText("Loading data...")}</Typography>
+                        <Typography variant="body2">{t("Loading data...")}</Typography>
                       </Stack>
                     </TableCell>
                   </TableRow>
@@ -294,7 +294,7 @@ export function ResourceTable<TRow>({
                   <TableRow>
                     <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                       <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
-                        {translateText(emptyMessage)}
+                        {t(emptyMessage)}
                       </Typography>
                     </TableCell>
                   </TableRow>

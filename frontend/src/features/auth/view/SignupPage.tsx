@@ -20,7 +20,7 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function SignupPage() {
   const navigate = useNavigate();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const { signup } = useAuth();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const form = useForm<SignupFormValues>({
@@ -61,10 +61,10 @@ export function SignupPage() {
             <FormTextField autoComplete="new-password" label="Confirm password" name="password2" type="password" />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button disabled={form.formState.isSubmitting} size="large" type="submit" variant="contained">
-                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : translateText("Create account")}
+                {form.formState.isSubmitting ? <CircularProgress color="inherit" size={20} /> : t("Create account")}
               </Button>
               <Button component={RouterLink} size="large" to="/login" variant="outlined">
-                {translateText("Back to login")}
+                {t("Back to login")}
               </Button>
             </Stack>
           </Stack>

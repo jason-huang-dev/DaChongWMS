@@ -262,7 +262,7 @@ async function fetchAllInventoryInformationRows({
 
 export function InventoryBalancesPage() {
   const queryClient = useQueryClient();
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const { company, activeWarehouseId } = useTenantScope();
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isPrintDialogOpen, setIsPrintDialogOpen] = useState(false);
@@ -415,11 +415,11 @@ export function InventoryBalancesPage() {
 
   const handleImportSubmit = async () => {
     if (!selectedImportFile) {
-      setImportErrorMessages([translateText("Select an .xlsx file before importing.")]);
+      setImportErrorMessages([t("Select an .xlsx file before importing.")]);
       return;
     }
     if (!companyId) {
-      setImportErrorMessages([translateText("Select an active workspace membership before importing inventory information.")]);
+      setImportErrorMessages([t("Select an active workspace membership before importing inventory information.")]);
       return;
     }
 
@@ -450,7 +450,7 @@ export function InventoryBalancesPage() {
   return (
     <Stack spacing={3} sx={{ height: "100%", minHeight: 0 }}>
       {!company ? (
-        <Alert severity="info">{translateText("Select an active workspace membership before managing inventory information.")}</Alert>
+        <Alert severity="info">{t("Select an active workspace membership before managing inventory information.")}</Alert>
       ) : null}
       {importSuccessMessage ? <Alert severity="success">{importSuccessMessage}</Alert> : null}
       {importWarningMessages.length > 0 ? (
@@ -468,41 +468,41 @@ export function InventoryBalancesPage() {
           actions={
             <Stack direction="row" spacing={0.75}>
               <ActionIconButton
-                aria-label={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+                aria-label={t(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
                 disabled={!companyId || isExporting || (selectedRows.length === 0 && sortedRows.length === 0)}
                 onClick={() => {
                   void handleExportRows();
                 }}
-                title={translateText(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+                title={t(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
                 tone="success"
               >
                 <FileDownloadOutlinedIcon fontSize="small" />
               </ActionIconButton>
               <ActionIconButton
-                aria-label={translateText("Print selected labels")}
+                aria-label={t("Print selected labels")}
                 disabled={selectedRows.length === 0}
                 onClick={() => setIsPrintDialogOpen(true)}
-                title={translateText("Print selected labels")}
+                title={t("Print selected labels")}
                 tone="warning"
               >
                 <LocalPrintshopOutlinedIcon fontSize="small" />
               </ActionIconButton>
               <ActionIconButton
-                aria-label={translateText("Download template")}
+                aria-label={t("Download template")}
                 disabled={!companyId}
                 onClick={() => {
                   if (companyId) {
                     void runInventoryInformationTemplateDownload(companyId);
                   }
                 }}
-                title={translateText("Download template")}
+                title={t("Download template")}
               >
                 <DownloadOutlinedIcon fontSize="small" />
               </ActionIconButton>
               <ActionIconButton
-                aria-label={translateText("Import XLSX")}
+                aria-label={t("Import XLSX")}
                 onClick={handleOpenImportDialog}
-                title={translateText("Import XLSX")}
+                title={t("Import XLSX")}
                 tone="primary"
               >
                 <UploadFileOutlinedIcon fontSize="small" />
@@ -541,7 +541,7 @@ export function InventoryBalancesPage() {
             inventorySelection.selectedIds.length > 0 ? (
               <Stack alignItems="center" direction="row" spacing={1} sx={{ flexWrap: "wrap" }}>
                 <Button color="inherit" onClick={inventorySelection.clearSelection} size="small">
-                  {translateText("Clear selection")}
+                  {t("Clear selection")}
                 </Button>
               </Stack>
             ) : null

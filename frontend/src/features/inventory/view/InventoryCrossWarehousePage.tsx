@@ -12,7 +12,7 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function InventoryCrossWarehousePage() {
   const navigate = useNavigate();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const { activeWarehouse, activeWarehouseId, crossWarehouseBalancesQuery, warehouses } = useInventoryController({
     page: "crossWarehouse",
   });
@@ -30,26 +30,26 @@ export function InventoryCrossWarehousePage() {
         justifyContent="space-between"
         spacing={1.5}
       >
-        <Typography variant="h5">{translateText("Inter-warehouse Transfer")}</Typography>
+        <Typography variant="h5">{t("Inter-warehouse Transfer")}</Typography>
         <Button onClick={() => navigate("/transfers")} variant="contained">
-          {translateText("Open internal move workbench")}
+          {t("Open internal move workbench")}
         </Button>
       </Stack>
       <Alert severity="info">
-        {translateText(
+        {t(
           "Planning view only. The backend still supports same-warehouse transfer orders and replenishment tasks; dedicated warehouse-to-warehouse transfer requests are not yet implemented.",
         )}
       </Alert>
       {warehouses.length < 2 ? (
         <Alert severity="warning">
-          {translateText("Add at least one more warehouse to compare stock and plan inter-warehouse moves.")}
+          {t("Add at least one more warehouse to compare stock and plan inter-warehouse moves.")}
         </Alert>
       ) : (
         <>
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 4 }}>
               <MetricCard
-                helper={activeWarehouse ? `Current warehouse: ${activeWarehouse.warehouse_name}` : "No warehouse selected"}
+                helper={activeWarehouse ? t("shell.warehouseContextChip", { label: activeWarehouse.warehouse_name }) : t("No warehouse selected")}
                 label="Warehouse comparisons"
                 tone="info"
                 value={warehouses.length}

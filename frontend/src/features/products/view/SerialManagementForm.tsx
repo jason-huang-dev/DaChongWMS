@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, MenuItem, Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { ProductSerialManagementFormValues } from "@/features/products/model/types";
 import { productSerialManagementFormSchema } from "@/features/products/model/validators";
 import { FormSwitchField } from "@/shared/components/form-switch-field";
@@ -23,6 +24,7 @@ export function SerialManagementForm({
   errorMessage,
   onSubmit,
 }: SerialManagementFormProps) {
+  const { t, translate, msg } = useI18n();
   const form = useForm<ProductSerialManagementFormValues>({
     defaultValues,
     resolver: zodResolver(productSerialManagementFormSchema),
@@ -39,9 +41,9 @@ export function SerialManagementForm({
       <FormProvider {...form}>
         <Stack component="form" noValidate onSubmit={form.handleSubmit((values) => onSubmit(values))} spacing={2}>
           <FormTextField label="Tracking mode" name="tracking_mode" select>
-            <MenuItem value="NONE">None</MenuItem>
-            <MenuItem value="OPTIONAL">Optional</MenuItem>
-            <MenuItem value="REQUIRED">Required</MenuItem>
+            <MenuItem value="NONE">{t("None")}</MenuItem>
+            <MenuItem value="OPTIONAL">{t("Optional")}</MenuItem>
+            <MenuItem value="REQUIRED">{t("Required")}</MenuItem>
           </FormTextField>
           <FormTextField label="Serial pattern" name="serial_pattern" />
           <FormSwitchField label="Serials must be unique" name="requires_uniqueness" />
@@ -49,10 +51,12 @@ export function SerialManagementForm({
           <FormSwitchField label="Capture serials on outbound" name="capture_on_outbound" />
           <FormSwitchField label="Capture serials on returns" name="capture_on_returns" />
           <Alert severity="info">
-            Use required tracking for serialized electronics and other controlled inventory. Leave tracking off for bulk goods.
+            {t(
+              "Use required tracking for serialized electronics and other controlled inventory. Leave tracking off for bulk goods.",
+            )}
           </Alert>
           <Button disabled={isSubmitting} type="submit" variant="contained">
-            {isSubmitting ? "Saving..." : "Save serial settings"}
+            {isSubmitting ? t("Saving...") : t("Save serial settings")}
           </Button>
         </Stack>
       </FormProvider>

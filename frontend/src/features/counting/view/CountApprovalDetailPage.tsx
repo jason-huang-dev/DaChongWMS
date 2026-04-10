@@ -5,6 +5,7 @@ import { Alert, Button, Stack } from "@mui/material";
 import { useForm } from "react-hook-form";
 import { Link as RouterLink, Navigate, useParams } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useCountApprovalDetailController } from "@/features/counting/controller/useCountingController";
 import type { ApprovalDecisionValues } from "@/features/counting/model/types";
 import { approvalDecisionSchema } from "@/features/counting/model/validators";
@@ -19,6 +20,7 @@ import { formatDateTime, formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function CountApprovalDetailPage() {
+  const { t, translate, msg } = useI18n();
   const { approvalId } = useParams<{ approvalId: string }>();
   const { approvalQuery, lineQuery, decisionMutation, successMessage, errorMessage, defaultValues } =
     useCountApprovalDetailController(approvalId);
@@ -87,7 +89,7 @@ export function CountApprovalDetailPage() {
       <PageHeader
         actions={
           <Button component={RouterLink} to="/counting" variant="outlined">
-            Back to counting
+            {t("Back to counting")}
           </Button>
         }
         description="Review the variance context, inspect the underlying count line, and approve or reject the adjustment request."
@@ -102,7 +104,7 @@ export function CountApprovalDetailPage() {
             <DetailGrid items={approvalItems} />
           </DetailCard>
           <DetailCard description="Current count-line state. Blind-count redaction still applies if the backend withholds system quantity." title="Count line context">
-            {lineQuery.isLoading ? <Alert severity="info">Loading count line context...</Alert> : <DetailGrid items={lineItems} />}
+            {lineQuery.isLoading ? <Alert severity="info">{t("Loading count line context...")}</Alert> : <DetailGrid items={lineItems} />}
           </DetailCard>
           <DetailCard description="Decision notes are sent directly to the backend approval endpoints." title="Approve or reject">
             <CountingForm

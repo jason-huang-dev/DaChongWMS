@@ -128,10 +128,10 @@ export function WorkOrderTable({
   dataView,
   onEdit,
 }: WorkOrderTableProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const contextParts = [
-    companyLabel ? `Workspace: ${companyLabel}` : null,
-    activeWarehouseName ? `Warehouse context: ${activeWarehouseName}` : null,
+    companyLabel ? t("shell.workspaceChip", { label: companyLabel }) : null,
+    activeWarehouseName ? t("shell.warehouseContextChip", { label: activeWarehouseName }) : null,
   ].filter(Boolean);
 
   return (
@@ -156,18 +156,18 @@ export function WorkOrderTable({
           ),
         },
         { header: "Type", key: "type", render: (row) => row.work_order_type_name },
-        { header: "Workstream", key: "workstream", render: (row) => translateText(row.workstream) },
+        { header: "Workstream", key: "workstream", render: (row) => t(row.workstream) },
         {
           header: "Urgency",
           key: "urgency",
-          render: (row) => <Chip color={urgencyChipColor(row.urgency)} label={translateText(row.urgency)} size="small" />,
+          render: (row) => <Chip color={urgencyChipColor(row.urgency)} label={t(row.urgency)} size="small" />,
         },
         { header: "Priority score", key: "priority", render: (row) => String(row.priority_score) },
-        { header: "Status", key: "status", render: (row) => translateText(row.status) },
+        { header: "Status", key: "status", render: (row) => t(row.status) },
         {
           header: "SLA",
           key: "sla",
-          render: (row) => <Chip color={slaChipColor(row.sla_status)} label={translateText(row.sla_status)} size="small" />,
+          render: (row) => <Chip color={slaChipColor(row.sla_status)} label={t(row.sla_status)} size="small" />,
         },
         { header: "Due", key: "due", render: (row) => formatDateTime(row.due_at) },
         { header: "Assignee", key: "assignee", render: (row) => row.assignee_name || "--" },
@@ -177,7 +177,7 @@ export function WorkOrderTable({
           key: "action",
           render: (row) => (
             <Button onClick={() => onEdit(row)} size="small" variant="outlined">
-              {translateText("Edit")}
+              {t("Edit")}
             </Button>
           ),
         },
@@ -215,4 +215,3 @@ export function WorkOrderTable({
     />
   );
 }
-

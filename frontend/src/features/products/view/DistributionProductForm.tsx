@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, MenuItem, Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { ClientAccountRecord } from "@/features/clients/model/types";
 import type { DistributionProductFormValues } from "@/features/products/model/types";
 import { distributionProductFormSchema } from "@/features/products/model/validators";
@@ -30,6 +31,7 @@ export function DistributionProductForm({
   onSubmit,
   onCancelEdit,
 }: DistributionProductFormProps) {
+  const { t, translate, msg } = useI18n();
   const form = useForm<DistributionProductFormValues>({
     defaultValues,
     resolver: zodResolver(distributionProductFormSchema),
@@ -46,7 +48,7 @@ export function DistributionProductForm({
       <FormProvider {...form}>
         <Stack component="form" noValidate onSubmit={form.handleSubmit((values) => onSubmit(values))} spacing={2}>
           <FormTextField label="Client account" name="customer_account_id" select>
-            <MenuItem value="">Select client account</MenuItem>
+            <MenuItem value="">{t("Select client account")}</MenuItem>
             {customerAccounts.map((customerAccount) => (
               <MenuItem key={customerAccount.id} value={String(customerAccount.id)}>
                 {customerAccount.name} ({customerAccount.code})
@@ -61,16 +63,18 @@ export function DistributionProductForm({
           <FormSwitchField label="Distribution product active" name="is_active" />
           {customerAccounts.length === 0 ? (
             <Alert severity="info">
-              Create a client account before adding a distribution product mapping.
+              {t("Create a client account before adding a distribution product mapping.")}
             </Alert>
           ) : null}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting || customerAccounts.length === 0} type="submit" variant="contained">
-              {isSubmitting ? "Saving..." : isEditing ? "Save distribution product" : "Add distribution product"}
+              {isSubmitting
+                ? t("Saving...")
+                : t(isEditing ? "Save distribution product" : "Add distribution product")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">
-                Cancel edit
+                {t("Cancel edit")}
               </Button>
             ) : null}
           </Stack>

@@ -2,6 +2,7 @@ import Grid from "@mui/material/Grid";
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useInboundController } from "@/features/inbound/controller/useInboundController";
 import { CreateReceiptPanel } from "@/features/inbound/view/components/CreateReceiptPanel";
 import { ScanPutawayPanel } from "@/features/inbound/view/components/ScanPutawayPanel";
@@ -131,6 +132,7 @@ const returnOrderFields: DataViewFieldConfig<{ return_number__icontains: string;
 ];
 
 export function InboundPage() {
+  const { t, translate, msg } = useI18n();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -207,18 +209,18 @@ export function InboundPage() {
       <Stack direction="row" flexWrap="wrap" gap={1}>
         {sectionLinks.map((sectionLink) => (
           <Button component="a" href={sectionLink.href} key={sectionLink.href} size="small" variant="outlined">
-            {sectionLink.label}
+            {t(sectionLink.label)}
           </Button>
         ))}
       </Stack>
 
       <Box id="standard-stock-in">
         <Stack spacing={2}>
-          <Typography variant="h5">Standard Stock-in</Typography>
+          <Typography variant="h5">{t("Standard Stock-in")}</Typography>
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 3 }}>
               <MetricCard
-                helper={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                helper={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 label="Open purchase orders"
                 to="#stock-in-list-management"
                 tone="warning"
@@ -270,7 +272,7 @@ export function InboundPage() {
 
       <Box id="stock-in-list-management">
         <Stack spacing={2}>
-          <Typography variant="h5">Stock-in List Management</Typography>
+          <Typography variant="h5">{t("Stock-in List Management")}</Typography>
           <ResourceTable
             columns={[
               { header: "PO", key: "po", render: (row) => <RecordLink to={`/inbound/purchase-orders/${row.id}`}>{row.po_number}</RecordLink> },
@@ -294,7 +296,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={purchaseOrdersView.activeFilterCount}
-                contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={purchaseOrderFields}
                 filters={purchaseOrdersView.filters}
                 onChange={purchaseOrdersView.updateFilter}
@@ -315,28 +317,28 @@ export function InboundPage() {
 
       <Box id="scan-to-sign">
         <Stack spacing={2}>
-          <Typography variant="h5">Scan to Sign</Typography>
+          <Typography variant="h5">{t("Scan to Sign")}</Typography>
           <ScanSignPanel />
         </Stack>
       </Box>
 
       <Box id="scan-to-receive">
         <Stack spacing={2}>
-          <Typography variant="h5">Scan to Receive</Typography>
+          <Typography variant="h5">{t("Scan to Receive")}</Typography>
           <ScanReceivePanel />
         </Stack>
       </Box>
 
       <Box id="scan-to-list">
         <Stack spacing={2}>
-          <Typography variant="h5">Scan to List</Typography>
+          <Typography variant="h5">{t("Scan to List")}</Typography>
           <ScanPutawayPanel />
         </Stack>
       </Box>
 
       <Box id="import-to-stock-in">
         <Stack spacing={2}>
-          <Typography variant="h5">Import to Stock-in</Typography>
+          <Typography variant="h5">{t("Import to Stock-in")}</Typography>
           <StockInImportPanel
             errorMessage={importBatchErrorMessage}
             isPending={importBatchMutation.isPending}
@@ -348,7 +350,7 @@ export function InboundPage() {
 
       <Box id="import-management">
         <Stack spacing={2}>
-          <Typography variant="h5">Import Management</Typography>
+          <Typography variant="h5">{t("Import Management")}</Typography>
           <ResourceTable
             columns={[
               { header: "Batch", key: "batch", render: (row) => row.batch_number },
@@ -396,9 +398,9 @@ export function InboundPage() {
       <Box id="returns-to-stock-in">
         <Stack spacing={2}>
           <Stack alignItems={{ md: "center" }} direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
-            <Typography variant="h5">Returns to Stock In</Typography>
+            <Typography variant="h5">{t("Returns to Stock In")}</Typography>
             <Button onClick={() => navigate("/returns#return-receipts")} variant="contained">
-              Open returns workspace
+              {t("Open returns workspace")}
             </Button>
           </Stack>
           <Grid container spacing={2.5}>
@@ -417,7 +419,7 @@ export function InboundPage() {
 
       <Box id="return-order-management">
         <Stack spacing={2}>
-          <Typography variant="h5">Return order management</Typography>
+          <Typography variant="h5">{t("Return order management")}</Typography>
           <ResourceTable
             columns={[
               {
@@ -445,7 +447,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={returnOrdersView.activeFilterCount}
-                contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={returnOrderFields}
                 filters={returnOrdersView.filters}
                 onChange={returnOrdersView.updateFilter}
@@ -466,7 +468,7 @@ export function InboundPage() {
 
       <Box id="stock-in-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Stock-in Record</Typography>
+          <Typography variant="h5">{t("Stock-in Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "ASN", key: "asn", render: (row) => row.asn_number },
@@ -491,7 +493,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={advanceShipmentNoticesView.activeFilterCount}
-                contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={asnFields}
                 filters={advanceShipmentNoticesView.filters}
                 onChange={advanceShipmentNoticesView.updateFilter}
@@ -512,7 +514,7 @@ export function InboundPage() {
 
       <Box id="signing-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Signing Record</Typography>
+          <Typography variant="h5">{t("Signing Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "Signing", key: "signing", render: (row) => row.signing_number },
@@ -538,7 +540,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={signingRecordsView.activeFilterCount}
-                contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={signingFields}
                 filters={signingRecordsView.filters}
                 onChange={signingRecordsView.updateFilter}
@@ -559,7 +561,7 @@ export function InboundPage() {
 
       <Box id="receiving-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Receiving Record</Typography>
+          <Typography variant="h5">{t("Receiving Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "Receipt", key: "receipt", render: (row) => row.receipt_number },
@@ -584,7 +586,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={receiptsView.activeFilterCount}
-                contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={receiptFields}
                 filters={receiptsView.filters}
                 onChange={receiptsView.updateFilter}
@@ -605,7 +607,7 @@ export function InboundPage() {
 
       <Box id="listing-record">
         <Stack spacing={2}>
-          <Typography variant="h5">Listing Record</Typography>
+          <Typography variant="h5">{t("Listing Record")}</Typography>
           <ResourceTable
             columns={[
               { header: "Task", key: "task", render: (row) => row.task_number },
@@ -631,7 +633,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={putawayTasksView.activeFilterCount}
-                contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={putawayFields}
                 filters={putawayTasksView.filters}
                 onChange={putawayTasksView.updateFilter}

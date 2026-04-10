@@ -2,6 +2,7 @@ import Grid from "@mui/material/Grid";
 import { Box, Button, Stack } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import {
   useCreateShipmentController,
   useOutboundController,
@@ -136,6 +137,7 @@ function formatExceptionState(exceptionState?: string) {
 
 export function OutboundPage() {
   const [searchParams] = useSearchParams();
+  const { t } = useI18n();
   useScrollToHash();
 
   const createShipment = useCreateShipmentController();
@@ -195,7 +197,7 @@ export function OutboundPage() {
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            helper={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+            helper={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
             label="Package queue"
             to="#package-management"
             tone="warning"
@@ -204,7 +206,7 @@ export function OutboundPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            helper="Open pick work before packing and ship confirmation."
+            helper={t("Open pick work before packing and ship confirmation.")}
             label="Secondary picking tasks"
             to="#secondary-picking"
             tone="warning"
@@ -213,7 +215,7 @@ export function OutboundPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            helper="Held or abnormal outbound orders that need operator follow-up."
+            helper={t("Held or abnormal outbound orders that need operator follow-up.")}
             label="Outbound exceptions"
             to="#abnormal-package"
             tone="danger"
@@ -222,7 +224,7 @@ export function OutboundPage() {
         </Grid>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            helper="Posted shipment records ready for handover and tracking."
+            helper={t("Posted shipment records ready for handover and tracking.")}
             label="Shipping records"
             to="#shipping-manage"
             tone="success"
@@ -427,7 +429,7 @@ export function OutboundPage() {
                   />
                   <DataViewToolbar
                     activeFilterCount={salesOrdersView.activeFilterCount}
-                    contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                    contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                     fields={salesOrderFields}
                     filters={salesOrdersView.filters}
                     onChange={salesOrdersView.updateFilter}
@@ -516,7 +518,7 @@ export function OutboundPage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={pickTasksView.activeFilterCount}
-                  contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={pickTaskFields}
                   filters={pickTasksView.filters}
                   onChange={pickTasksView.updateFilter}
@@ -561,7 +563,7 @@ export function OutboundPage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={shipmentsView.activeFilterCount}
-                  contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={shipmentFields}
                   filters={shipmentsView.filters}
                   onChange={shipmentsView.updateFilter}
@@ -691,7 +693,7 @@ export function OutboundPage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={dockLoadView.activeFilterCount}
-                  contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={dockLoadFields}
                   filters={dockLoadView.filters}
                   onChange={dockLoadView.updateFilter}

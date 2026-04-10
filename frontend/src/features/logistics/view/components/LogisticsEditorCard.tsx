@@ -45,7 +45,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
   successMessage,
   errorMessage,
 }: LogisticsEditorCardProps<TValues>) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Card>
@@ -59,9 +59,9 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
           spacing={2}
         >
           <Stack spacing={0.5}>
-            <Typography variant="h6">{translateText(title)}</Typography>
+            <Typography variant="h6">{t(title)}</Typography>
             <Typography color="text.secondary" variant="body2">
-              {translateText(description)}
+              {t(description)}
             </Typography>
           </Stack>
           {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
@@ -78,7 +78,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
                           onChange={(_event, checked) => onChange(field.key, checked as TValues[typeof field.key])}
                         />
                       }
-                      label={translateText(field.label)}
+                      label={t(field.label)}
                     />
                   </Grid>
                 );
@@ -88,7 +88,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
                 <Grid key={field.key} size={{ xs: 12, md: field.type === "textarea" ? 12 : 6 }}>
                   <TextField
                     fullWidth
-                    label={translateText(field.label)}
+                    label={t(field.label)}
                     multiline={field.type === "textarea"}
                     minRows={field.type === "textarea" ? 3 : undefined}
                     onChange={(event) => onChange(field.key, event.target.value as TValues[typeof field.key])}
@@ -100,7 +100,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
                     {field.type === "select"
                       ? field.options?.map((option) => (
                           <MenuItem key={option.value} value={option.value}>
-                            {translateText(option.label)}
+                            {t(option.label)}
                           </MenuItem>
                         ))
                       : null}
@@ -112,15 +112,15 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
           <Stack direction="row" justifyContent="flex-end" spacing={1}>
             {isEditing ? (
               <Button disabled={isSubmitting} onClick={onCancel} variant="text">
-                {translateText("Cancel edit")}
+                {t("Cancel edit")}
               </Button>
             ) : null}
             <Button disabled={isSubmitting} type="submit" variant="contained">
               {isSubmitting
-                ? translateText("Saving...")
+                ? t("Saving...")
                 : isEditing
-                  ? translateText("Update record")
-                  : translateText("Create record")}
+                  ? t("Update record")
+                  : t("Create record")}
             </Button>
           </Stack>
         </Stack>

@@ -15,7 +15,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, actions, compact = true }: PageHeaderProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
@@ -30,11 +30,11 @@ export function PageHeader({ title, description, actions, compact = true }: Page
           }}
         />
         <Typography sx={{ fontSize: compact ? 18 : undefined, lineHeight: compact ? 1.15 : undefined }} variant="h4">
-          {translateText(title)}
+          {t(title)}
         </Typography>
         {description ? (
           <Typography color="text.secondary" sx={{ fontSize: compact ? 12 : undefined }} variant="body1">
-            {translateText(description)}
+            {t(description)}
           </Typography>
         ) : null}
       </Stack>

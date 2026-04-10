@@ -16,6 +16,7 @@ import {
   Typography,
 } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { DataViewFilters } from "@/shared/hooks/use-data-view";
 import type { SavedDataView } from "@/shared/storage/data-view-storage";
 
@@ -40,7 +41,7 @@ interface DataViewToolbarProps<TFilters extends DataViewFilters> {
   onReset: () => void;
   activeFilterCount: number;
   resultCount?: number;
-  contextLabel?: string;
+  contextLabel?: ReactNode;
   actions?: ReactNode;
   savedViews?: {
     items: SavedDataView<TFilters>[];
@@ -64,6 +65,7 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
 }: DataViewToolbarProps<TFilters>) {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [viewName, setViewName] = useState("");
+  const { t } = useI18n();
 
   return (
     <>
@@ -73,14 +75,16 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
             <Stack alignItems={{ md: "center" }} direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
               <Stack direction="row" flexWrap="wrap" spacing={1}>
                 {contextLabel ? <Chip color="primary" label={contextLabel} variant="outlined" /> : null}
-                <Chip label={`${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}`} size="small" />
-                {typeof resultCount === "number" ? <Chip label={`${resultCount} result${resultCount === 1 ? "" : "s"}`} size="small" variant="outlined" /> : null}
+                <Chip label={t("filters.activeCount", { count: activeFilterCount })} size="small" />
+                {typeof resultCount === "number" ? (
+                  <Chip label={t("filters.resultCount", { count: resultCount })} size="small" variant="outlined" />
+                ) : null}
               </Stack>
               <Stack direction="row" flexWrap="wrap" spacing={1}>
                 {savedViews ? (
                   <>
                     <TextField
-                      label="Saved view"
+                      label={t("filters.savedView")}
                       onChange={(event) => {
                         const nextValue = event.target.value;
                         if (nextValue) {
@@ -92,7 +96,7 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                       sx={{ minWidth: 180 }}
                       value={savedViews.selectedId ?? ""}
                     >
-                      <MenuItem value="">Current filters</MenuItem>
+                      <MenuItem value="">{t("filters.currentFilters")}</MenuItem>
                       {savedViews.items.map((view) => (
                         <MenuItem key={view.id} value={view.id}>
                           {view.name}
@@ -100,7 +104,7 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                       ))}
                     </TextField>
                     <Button onClick={() => setIsSaveDialogOpen(true)} size="small" variant="outlined">
-                      Save view
+                      {t("filters.saveView")}
                     </Button>
                     <Button
                       color="inherit"
@@ -112,12 +116,12 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                       }}
                       size="small"
                     >
-                      Delete
+                      {t("ui.delete")}
                     </Button>
                   </>
                 ) : null}
                 <Button color="inherit" onClick={onReset} size="small">
-                  Clear filters
+                  {t("filters.clearFilters")}
                 </Button>
                 {actions}
               </Stack>
@@ -127,9 +131,9 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                 <Box key={field.key} sx={{ minWidth: field.width ?? 180 }}>
                   <TextField
                     fullWidth
-                    label={field.label}
+                    label={t(field.label)}
                     onChange={(event) => onChange(field.key, event.target.value as TFilters[typeof field.key])}
-                    placeholder={field.placeholder}
+                    placeholder={field.placeholder ? t(field.placeholder) : undefined}
                     select={field.type === "select"}
                     size="small"
                     type={field.type === "date" ? "date" : undefined}
@@ -137,9 +141,9 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                     slotProps={field.type === "date" ? { inputLabel: { shrink: true } } : undefined}
                   >
                     {field.type === "select"
-                      ? [<MenuItem key="all" value="">All</MenuItem>, ...(field.options ?? []).map((option) => (
+                      ? [<MenuItem key="all" value="">{t("ui.all")}</MenuItem>, ...(field.options ?? []).map((option) => (
                           <MenuItem key={option.value} value={option.value}>
-                            {option.label}
+                            {t(option.label)}
                           </MenuItem>
                         ))]
                       : null}
@@ -152,15 +156,15 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
       </Card>
       {savedViews ? (
         <Dialog fullWidth maxWidth="xs" onClose={() => setIsSaveDialogOpen(false)} open={isSaveDialogOpen}>
-          <DialogTitle>Save current view</DialogTitle>
+          <DialogTitle>{t("filters.saveCurrentView")}</DialogTitle>
           <DialogContent>
             <Stack spacing={1.5} sx={{ pt: 1 }}>
               <Typography color="text.secondary" variant="body2">
-                Save the current filter set so operators can get back to the same queue state quickly.
+                {t("filters.saveCurrentViewDescription")}
               </Typography>
               <TextField
                 autoFocus
-                label="View name"
+                label={t("filters.viewName")}
                 onChange={(event) => setViewName(event.target.value)}
                 value={viewName}
               />
@@ -174,7 +178,7 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                 setViewName("");
               }}
             >
-              Cancel
+              {t("ui.cancel")}
             </Button>
             <Button
               onClick={() => {
@@ -184,7 +188,7 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
               }}
               variant="contained"
             >
-              Save
+              {t("ui.save")}
             </Button>
           </DialogActions>
         </Dialog>

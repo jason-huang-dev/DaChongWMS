@@ -138,7 +138,7 @@ function InventoryMovementDocumentCell({
   entries: InventoryMovementHistoryDocumentNumber[];
   fallback?: string;
 }) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Stack spacing={0.6} sx={{ minWidth: 0 }}>
@@ -150,7 +150,7 @@ function InventoryMovementDocumentCell({
             variant="body2"
           >
             <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
-              {translateText(entry.label)}:
+              {t(entry.label)}:
             </Box>{" "}
             <Box component="span" sx={{ fontWeight: 700 }}>
               {entry.value}
@@ -169,7 +169,7 @@ function InventoryMovementDocumentCell({
 function InventoryMovementSourceDocumentCell({ row }: { row: InventoryMovementHistoryRow }) {
   const primaryValue = row.sourceDocumentNumber || row.purchaseOrderNumber || row.referenceCode || "--";
   const secondaryEntries = row.sourceDocumentNumbers.filter((entry) => entry.value && entry.value !== primaryValue);
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Stack spacing={0.5} sx={{ minWidth: 0 }}>
@@ -183,7 +183,7 @@ function InventoryMovementSourceDocumentCell({ row }: { row: InventoryMovementHi
           sx={{ lineHeight: 1.35, overflowWrap: "anywhere" }}
           variant="caption"
         >
-          {translateText(entry.label)}: {entry.value}
+          {t(entry.label)}: {entry.value}
         </Typography>
       ))}
     </Stack>
@@ -244,12 +244,12 @@ function InventoryMovementMetaField({
   label: string;
   value: string;
 }) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Typography sx={{ lineHeight: 1.35 }} variant="body2">
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
-        {translateText(label)}:
+        {t(label)}:
       </Box>{" "}
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
         {value || "--"}
@@ -260,7 +260,7 @@ function InventoryMovementMetaField({
 
 export function InventoryMovementsPage() {
   const theme = useTheme();
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const { company, activeWarehouseId } = useTenantScope();
   const companyId = company?.id !== undefined && company?.id !== null ? Number(company.id) : null;
   const [sorting, setSorting] = useState<{ key: InventoryMovementHistorySortKey; direction: "asc" | "desc" }>({
@@ -459,7 +459,7 @@ export function InventoryMovementsPage() {
                   sx={{ minWidth: 0 }}
                 >
                   <MultiSelectFilter
-                    label={translateText("Warehouses")}
+                    label={t("Warehouses")}
                     onChange={(nextValues) =>
                       movementView.updateFilter(
                         "warehouses",
@@ -467,12 +467,12 @@ export function InventoryMovementsPage() {
                       )
                     }
                     options={filterOptions?.warehouses ?? []}
-                    placeholder={translateText("Warehouses")}
+                    placeholder={t("Warehouses")}
                     selectedValues={decodeInventoryInformationMultiValue(movementView.filters.warehouses)}
                     sx={filterControlSx}
                   />
                   <MultiSelectFilter
-                    label={translateText("Movement Types")}
+                    label={t("Movement Types")}
                     onChange={(nextValues) =>
                       movementView.updateFilter(
                         "movementTypes",
@@ -480,12 +480,12 @@ export function InventoryMovementsPage() {
                       )
                     }
                     options={filterOptions?.movementTypes ?? []}
-                    placeholder={translateText("Movement Types")}
+                    placeholder={t("Movement Types")}
                     selectedValues={decodeInventoryInformationMultiValue(movementView.filters.movementTypes)}
                     sx={filterControlSx}
                   />
                   <RangePicker
-                    endAriaLabel={translateText("To date")}
+                    endAriaLabel={t("To date")}
                     endValue={movementView.filters.dateTo}
                     fieldSx={{
                       ...filterControlSx,
@@ -496,7 +496,7 @@ export function InventoryMovementsPage() {
                     onEndChange={(value) => movementView.updateFilter("dateTo", value)}
                     onStartChange={(value) => movementView.updateFilter("dateFrom", value)}
                     rootSx={{ flex: "0 0 auto" }}
-                    startAriaLabel={translateText("From date")}
+                    startAriaLabel={t("From date")}
                     startValue={movementView.filters.dateFrom}
                   />
                   <FieldSelectorFilter sx={{ flex: "1 1 440px" }}>
@@ -507,25 +507,25 @@ export function InventoryMovementsPage() {
                       size="small"
                       SelectProps={{
                         displayEmpty: true,
-                        SelectDisplayProps: { "aria-label": translateText("Movement search field") },
+                        SelectDisplayProps: { "aria-label": t("Movement search field") },
                       }}
                       sx={{ ...filterControlSx, flex: "0 0 164px", minWidth: 164 }}
                       value={movementView.filters.searchField}
                     >
                       {movementSearchFieldOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          {translateText(option.label)}
+                          {t(option.label)}
                         </MenuItem>
                       ))}
                     </TextField>
                     <TextField
                       hiddenLabel
                       onChange={(event) => movementView.updateFilter("searchText", event.target.value)}
-                      placeholder={translateText("Search content")}
+                      placeholder={t("Search content")}
                       size="small"
                       slotProps={{
                         htmlInput: {
-                          "aria-label": translateText("Movement search text"),
+                          "aria-label": t("Movement search text"),
                           autoCapitalize: "none",
                           autoCorrect: "off",
                           spellCheck: false,
@@ -551,13 +551,13 @@ export function InventoryMovementsPage() {
                     size="small"
                     SelectProps={{
                       displayEmpty: true,
-                      SelectDisplayProps: { "aria-label": translateText("Movement match mode") },
+                      SelectDisplayProps: { "aria-label": t("Movement match mode") },
                     }}
                     sx={{ ...filterControlSx, flex: "0 0 156px", minWidth: 156 }}
                     value={matchModeValue}
                   >
-                    <MenuItem value="contains">{translateText("Contains")}</MenuItem>
-                    <MenuItem value="exact">{translateText("Exact")}</MenuItem>
+                    <MenuItem value="contains">{t("Contains")}</MenuItem>
+                    <MenuItem value="exact">{t("Exact")}</MenuItem>
                   </TextField>
                 </Stack>
                 <Stack
@@ -585,7 +585,7 @@ export function InventoryMovementsPage() {
                         size="small"
                         sx={{ alignSelf: { xs: "flex-start", md: "center" }, minHeight: 28, px: 1 }}
                       >
-                        {translateText("Clear selection")}
+                        {t("Clear selection")}
                       </Button>
                     ) : null}
                   </Stack>
@@ -603,11 +603,11 @@ export function InventoryMovementsPage() {
                       {t("inventory.resultCount", { count: movementHistoryQuery.data?.count ?? 0 })}
                     </Typography>
                     <ActionIconButton
-                      aria-label={translateText("Clear all filters")}
+                      aria-label={t("Clear all filters")}
                       disabled={movementView.activeFilterCount === 0}
                       onClick={movementView.resetFilters}
                       sx={{ flex: "0 0 auto" }}
-                      title={translateText("Clear all filters")}
+                      title={t("Clear all filters")}
                     >
                       <RestartAltRoundedIcon fontSize="small" />
                     </ActionIconButton>
@@ -637,7 +637,9 @@ export function InventoryMovementsPage() {
             const clientLabel = row.clientName
               ? `${row.clientName}${row.clientCode ? ` [${row.clientCode}]` : ""}`
               : "--";
-            const entryTypeLabel = row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType);
+            const entryTypeLabel = t(
+              row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType),
+            );
 
             return (
               <Stack

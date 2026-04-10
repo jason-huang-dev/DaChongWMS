@@ -59,24 +59,24 @@ export function WorkOrderTypeTable({
   dataView,
   onEdit,
 }: WorkOrderTypeTableProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <ResourceTable
       columns={[
         { header: "Type", key: "name", render: (row) => row.name },
         { header: "Code", key: "code", render: (row) => row.code },
-        { header: "Workstream", key: "workstream", render: (row) => translateText(row.workstream) },
-        { header: "Default urgency", key: "urgency", render: (row) => translateText(row.default_urgency) },
+        { header: "Workstream", key: "workstream", render: (row) => t(row.workstream) },
+        { header: "Default urgency", key: "urgency", render: (row) => t(row.default_urgency) },
         { header: "Default priority", key: "priority", render: (row) => String(row.default_priority_score) },
         { header: "SLA hours", key: "sla", render: (row) => String(row.target_sla_hours) },
-        { header: "Status", key: "status", render: (row) => translateText(row.is_active ? "Active" : "Inactive") },
+        { header: "Status", key: "status", render: (row) => t(row.is_active ? "Active" : "Inactive") },
         {
           header: "Action",
           key: "action",
           render: (row) => (
             <Button onClick={() => onEdit(row)} size="small" variant="outlined">
-              {translateText("Edit")}
+              {t("Edit")}
             </Button>
           ),
         },

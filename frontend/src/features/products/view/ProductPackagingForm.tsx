@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, MenuItem, Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { ProductPackagingFormValues } from "@/features/products/model/types";
 import { productPackagingFormSchema } from "@/features/products/model/validators";
 import { FormSwitchField } from "@/shared/components/form-switch-field";
@@ -27,6 +28,7 @@ export function ProductPackagingForm({
   onSubmit,
   onCancelEdit,
 }: ProductPackagingFormProps) {
+  const { t, translate, msg } = useI18n();
   const form = useForm<ProductPackagingFormValues>({
     defaultValues,
     resolver: zodResolver(productPackagingFormSchema),
@@ -43,11 +45,11 @@ export function ProductPackagingForm({
       <FormProvider {...form}>
         <Stack component="form" noValidate onSubmit={form.handleSubmit((values) => onSubmit(values))} spacing={2}>
           <FormTextField label="Package type" name="package_type" select>
-            <MenuItem value="UNIT">Unit</MenuItem>
-            <MenuItem value="INNER">Inner pack</MenuItem>
-            <MenuItem value="CARTON">Carton</MenuItem>
-            <MenuItem value="PALLET">Pallet</MenuItem>
-            <MenuItem value="CUSTOM">Custom</MenuItem>
+            <MenuItem value="UNIT">{t("Unit")}</MenuItem>
+            <MenuItem value="INNER">{t("Inner pack")}</MenuItem>
+            <MenuItem value="CARTON">{t("Carton")}</MenuItem>
+            <MenuItem value="PALLET">{t("Pallet")}</MenuItem>
+            <MenuItem value="CUSTOM">{t("Custom")}</MenuItem>
           </FormTextField>
           <FormTextField label="Package code" name="package_code" />
           <FormTextField label="Units per package" name="units_per_package" />
@@ -59,11 +61,11 @@ export function ProductPackagingForm({
           <FormSwitchField label="Packaging active" name="is_active" />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting} type="submit" variant="contained">
-              {isSubmitting ? "Saving..." : isEditing ? "Save packaging" : "Add packaging"}
+              {isSubmitting ? t("Saving...") : t(isEditing ? "Save packaging" : "Add packaging")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">
-                Cancel edit
+                {t("Cancel edit")}
               </Button>
             ) : null}
           </Stack>

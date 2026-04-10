@@ -2,6 +2,7 @@ import Grid from "@mui/material/Grid";
 import { Alert, Box, Stack, TextField } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useCountingController } from "@/features/counting/controller/useCountingController";
 import { CountingTable } from "@/features/counting/view/CountingTable";
 import { ScannerTaskPanel } from "@/features/counting/view/components/ScannerTaskPanel";
@@ -42,6 +43,7 @@ const assignmentFields: DataViewFieldConfig<{ scanner_task_type: string; scanner
 
 export function CountingPage() {
   const [searchParams] = useSearchParams();
+  const { t } = useI18n();
 
   useScrollToHash();
 
@@ -88,7 +90,7 @@ export function CountingPage() {
         </Grid>
         <Grid size={{ xs: 12, md: 6, lg: 3 }}>
           <MetricCard
-            helper={nextTaskQuery.data ? `${nextTaskQuery.data.location_code} | ${nextTaskQuery.data.goods_code}` : "No scanner task currently assigned."}
+            helper={nextTaskQuery.data ? `${nextTaskQuery.data.location_code} | ${nextTaskQuery.data.goods_code}` : t("No scanner task currently assigned.")}
             label="Next handheld task"
             value={nextTaskQuery.data?.task_type ?? "--"}
           />

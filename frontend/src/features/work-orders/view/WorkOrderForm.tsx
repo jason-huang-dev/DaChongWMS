@@ -36,7 +36,7 @@ export function WorkOrderForm({
   onSubmit,
   onCancelEdit,
 }: WorkOrderFormProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const form = useForm<WorkOrderFormValues>({
     defaultValues,
     resolver: zodResolver(workOrderFormSchema),
@@ -62,7 +62,7 @@ export function WorkOrderForm({
           <FormTextField label="Work order title" name="title" />
           <FormTextField label="Source reference" name="source_reference" />
           <FormTextField label="Warehouse" name="warehouse_id" select>
-            <MenuItem value="">All / none</MenuItem>
+            <MenuItem value="">{t("All / none")}</MenuItem>
             {warehouses.map((warehouse) => (
               <MenuItem key={warehouse.id} value={String(warehouse.id)}>
                 {warehouse.warehouse_name}
@@ -70,7 +70,7 @@ export function WorkOrderForm({
             ))}
           </FormTextField>
           <FormTextField label="Client account" name="customer_account_id" select>
-            <MenuItem value="">None</MenuItem>
+            <MenuItem value="">{t("None")}</MenuItem>
             {customerAccounts.map((customerAccount) => (
               <MenuItem key={customerAccount.id} value={String(customerAccount.id)}>
                 {customerAccount.name}
@@ -78,20 +78,20 @@ export function WorkOrderForm({
             ))}
           </FormTextField>
           <FormTextField label="Status" name="status" select>
-            <MenuItem value="PENDING_REVIEW">Pending review</MenuItem>
-            <MenuItem value="READY">Ready</MenuItem>
-            <MenuItem value="SCHEDULED">Scheduled</MenuItem>
-            <MenuItem value="IN_PROGRESS">In progress</MenuItem>
-            <MenuItem value="BLOCKED">Blocked</MenuItem>
-            <MenuItem value="COMPLETED">Completed</MenuItem>
-            <MenuItem value="CANCELLED">Cancelled</MenuItem>
+            <MenuItem value="PENDING_REVIEW">{t("Pending review")}</MenuItem>
+            <MenuItem value="READY">{t("Ready")}</MenuItem>
+            <MenuItem value="SCHEDULED">{t("Scheduled")}</MenuItem>
+            <MenuItem value="IN_PROGRESS">{t("In progress")}</MenuItem>
+            <MenuItem value="BLOCKED">{t("Blocked")}</MenuItem>
+            <MenuItem value="COMPLETED">{t("Completed")}</MenuItem>
+            <MenuItem value="CANCELLED">{t("Cancelled")}</MenuItem>
           </FormTextField>
           <FormTextField helperText="Leave blank to use the selected type default." label="Urgency override" name="urgency" select>
-            <MenuItem value="">Use type default</MenuItem>
-            <MenuItem value="LOW">Low</MenuItem>
-            <MenuItem value="MEDIUM">Medium</MenuItem>
-            <MenuItem value="HIGH">High</MenuItem>
-            <MenuItem value="CRITICAL">Critical</MenuItem>
+            <MenuItem value="">{t("Use type default")}</MenuItem>
+            <MenuItem value="LOW">{t("Low")}</MenuItem>
+            <MenuItem value="MEDIUM">{t("Medium")}</MenuItem>
+            <MenuItem value="HIGH">{t("High")}</MenuItem>
+            <MenuItem value="CRITICAL">{t("Critical")}</MenuItem>
           </FormTextField>
           <FormTextField
             helperText="Leave blank to use the selected type default."
@@ -105,18 +105,18 @@ export function WorkOrderForm({
           <FormTextField label="Notes" minRows={3} multiline name="notes" />
           {!workOrderTypes.length ? (
             <Alert severity="info">
-              {translateText("Create at least one work order type before scheduling work orders.")}
+              {t("Create at least one work order type before scheduling work orders.")}
             </Alert>
           ) : null}
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting || !workOrderTypes.length} type="submit" variant="contained">
               {isSubmitting
-                ? translateText("Saving...")
-                : translateText(isEditing ? "Save work order" : "Create work order")}
+                ? t("Saving...")
+                : t(isEditing ? "Save work order" : "Create work order")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">
-                {translateText("Cancel edit")}
+                {t("Cancel edit")}
               </Button>
             ) : null}
           </Stack>
@@ -125,4 +125,3 @@ export function WorkOrderForm({
     </MutationCard>
   );
 }
-

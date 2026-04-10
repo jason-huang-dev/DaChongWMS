@@ -36,15 +36,15 @@ export function InventoryInformationImportDialog({
   onFileChange,
   onSubmit,
 }: InventoryInformationImportDialogProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Dialog fullWidth maxWidth="md" onClose={onClose} open={open}>
-      <DialogTitle>{translateText("Import inventory information")}</DialogTitle>
+      <DialogTitle>{t("Import inventory information")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2}>
           <Alert severity="info">
-            {translateText(
+            {t(
               "Upload the JiFengWMS-style inventory initialization template. The backend parses, validates, and saves the normalized rows for this inventory workspace.",
             )}
           </Alert>
@@ -59,10 +59,10 @@ export function InventoryInformationImportDialog({
           ) : null}
           <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
             <Button onClick={onDownloadTemplate} type="button" variant="outlined">
-              {translateText("Download template")}
+              {t("Download template")}
             </Button>
             <Button component="label" variant="outlined">
-              {translateText("Add File")}
+              {t("Add File")}
               <input
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 hidden
@@ -71,7 +71,7 @@ export function InventoryInformationImportDialog({
               />
             </Button>
             <Button disabled={!selectedFileName || isSubmitting} onClick={onSubmit} type="button" variant="contained">
-              {isSubmitting ? translateText("Importing...") : translateText("Import XLSX")}
+              {isSubmitting ? t("Importing...") : t("Import XLSX")}
             </Button>
           </Stack>
           <Box
@@ -83,20 +83,20 @@ export function InventoryInformationImportDialog({
             }}
           >
             <Typography fontWeight={600} variant="body2">
-              {selectedFileName ? selectedFileName : translateText("No file selected")}
+              {selectedFileName ? selectedFileName : t("No file selected")}
             </Typography>
             <Typography color="text.secondary" variant="caption">
-              {translateText("Required fields: Merchant SKU, Shelf, Available Stock, and Unit of measurement.")}
+              {t("Required fields: Merchant SKU, Shelf, Available Stock, and Unit of measurement.")}
             </Typography>
           </Box>
           <Divider />
           <Stack spacing={1}>
-            <Typography variant="subtitle2">{translateText("Import constraints")}</Typography>
+            <Typography variant="subtitle2">{t("Import constraints")}</Typography>
             <List dense disablePadding>
               {inventoryImportInstructions.map((instruction) => (
                 <ListItem key={instruction} disableGutters sx={{ alignItems: "flex-start", py: 0.25 }}>
                   <Typography color="text.secondary" variant="body2">
-                    {translateText(instruction)}
+                    {t(instruction)}
                   </Typography>
                 </ListItem>
               ))}
@@ -106,7 +106,7 @@ export function InventoryInformationImportDialog({
       </DialogContent>
       <DialogActions>
         <Button color="inherit" onClick={onClose}>
-          {translateText("Close")}
+          {t("Close")}
         </Button>
       </DialogActions>
     </Dialog>

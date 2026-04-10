@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DownloadOutlinedIcon from "@mui/icons-material/DownloadOutlined";
@@ -10,7 +10,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { useI18n } from "@/app/ui-preferences";
 import type { InventoryAdjustmentGroupItem, InventoryAdjustmentGroupRow } from "@/features/inventory/model/types";
 import { ActionIconButton } from "@/shared/components/action-icon-button";
-import { DataTable, type DataTableRowSelection } from "@/shared/components/data-table";
+import { DataTable, type DataTableColumnDefinition, type DataTableRowSelection } from "@/shared/components/data-table";
 import { formatDateTime, formatNumber } from "@/shared/utils/format";
 
 interface InventoryAdjustmentsTableProps {
@@ -32,6 +32,58 @@ interface InventoryAdjustmentsTableProps {
   onScrollStateChange?: (state: { isScrolled: boolean; isScrolling: boolean; scrollTop: number }) => void;
 }
 
+const INVENTORY_ADJUSTMENT_DETAIL_COLUMNS: Array<
+  Pick<DataTableColumnDefinition<InventoryAdjustmentGroupRow>, "align" | "header" | "key" | "minWidth" | "width">
+> = [
+  {
+    header: "Product Information/Box Information",
+    key: "product",
+    minWidth: 280,
+    width: "28%",
+  },
+  {
+    header: "Adjustment Type",
+    key: "type",
+    minWidth: 220,
+    width: "20%",
+  },
+  {
+    header: "Shelf",
+    key: "shelf",
+    minWidth: 100,
+    width: "8%",
+  },
+  {
+    align: "right",
+    header: "Adjustment Qty",
+    key: "quantity",
+    minWidth: 140,
+    width: "12%",
+  },
+  {
+    header: "Operator",
+    key: "operator",
+    minWidth: 200,
+    width: "16%",
+  },
+  {
+    header: "Time",
+    key: "time",
+    minWidth: 180,
+    width: "16%",
+  },
+];
+
+const INVENTORY_ADJUSTMENT_TABLE_COLUMNS: DataTableColumnDefinition<InventoryAdjustmentGroupRow>[] =
+  INVENTORY_ADJUSTMENT_DETAIL_COLUMNS.map((column) => ({
+    ...column,
+    render: () => null,
+  }));
+
+const INVENTORY_ADJUSTMENT_GRID_TEMPLATE_COLUMNS = INVENTORY_ADJUSTMENT_DETAIL_COLUMNS.map(({ width }) =>
+  typeof width === "number" ? `${width}px` : width ?? "minmax(0, 1fr)",
+).join(" ");
+
 function InventoryAdjustmentMetaField({
   label,
   value,
@@ -39,12 +91,12 @@ function InventoryAdjustmentMetaField({
   label: string;
   value: string;
 }) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Typography sx={{ lineHeight: 1.35 }} variant="body2">
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
-        {translateText(label)}:
+        {t(label)}:
       </Box>{" "}
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
         {value || "--"}
@@ -53,126 +105,177 @@ function InventoryAdjustmentMetaField({
   );
 }
 
-function InventoryAdjustmentLineList<TItem>({
+function InventoryAdjustmentGroupGridCell({
   align = "left",
-  items,
-  renderItem,
+  children,
+  column,
+  isLastRow,
+  rowIndex,
 }: {
   align?: "left" | "right";
-  items: TItem[];
-  renderItem: (item: TItem) => ReactNode;
+  children: ReactNode;
+  column: string;
+  isLastRow: boolean;
+  rowIndex: number;
 }) {
   const theme = useTheme();
 
   return (
-    <Stack
-      divider={<Box sx={{ borderBottom: `1px solid ${alpha(theme.palette.divider, 0.5)}` }} />}
-      spacing={1}
-      sx={{ minWidth: 0 }}
+    <Box
+      data-adjustment-grid-column={column}
+      data-adjustment-grid-row={rowIndex}
+      sx={{
+        alignItems: align === "right" ? "flex-end" : "flex-start",
+        borderBottom: isLastRow ? "none" : `1px solid ${alpha(theme.palette.divider, 0.5)}`,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "flex-start",
+        minWidth: 0,
+        px: 1.25,
+        py: 1,
+        textAlign: align,
+      }}
     >
-      {items.map((item, index) => (
-        <Box key={index} sx={{ minWidth: 0, textAlign: align }}>
-          {renderItem(item)}
-        </Box>
-      ))}
+      {children}
+    </Box>
+  );
+}
+
+function InventoryAdjustmentProductBlock({ item }: { item: InventoryAdjustmentGroupItem }) {
+  const secondaryLine = [item.lotNumber, item.serialNumber].filter(Boolean).join(" / ");
+
+  return (
+    <Stack spacing={0.25} sx={{ minWidth: 0, width: "100%" }}>
+      <Typography sx={{ fontWeight: 800, lineHeight: 1.25, overflowWrap: "anywhere" }} variant="body2">
+        {item.goodsCode}
+      </Typography>
+      <Typography
+        color="text.secondary"
+        sx={{
+          WebkitBoxOrient: "vertical",
+          WebkitLineClamp: 2,
+          display: "-webkit-box",
+          lineHeight: 1.25,
+          overflow: "hidden",
+          overflowWrap: "anywhere",
+        }}
+        title={item.productName || "--"}
+        variant="body2"
+      >
+        {item.productName || "--"}
+      </Typography>
+      {secondaryLine ? (
+        <Typography color="text.secondary" sx={{ lineHeight: 1.2, overflowWrap: "anywhere" }} title={secondaryLine} variant="caption">
+          {secondaryLine}
+        </Typography>
+      ) : null}
     </Stack>
   );
 }
 
-function InventoryAdjustmentProductCell({ group }: { group: InventoryAdjustmentGroupRow }) {
+function InventoryAdjustmentTypeText({ item }: { item: InventoryAdjustmentGroupItem }) {
   return (
-    <InventoryAdjustmentLineList
-      items={group.items}
-      renderItem={(item) => (
-        <Stack spacing={0.35} sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontWeight: 800, overflowWrap: "anywhere" }} variant="body2">
-            {item.goodsCode}
-          </Typography>
-          <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="body2">
-            {item.productName || "--"}
-          </Typography>
-          {item.lotNumber || item.serialNumber ? (
-            <Typography color="text.secondary" sx={{ overflowWrap: "anywhere" }} variant="caption">
-              {[item.lotNumber, item.serialNumber].filter(Boolean).join(" / ")}
-            </Typography>
-          ) : null}
-        </Stack>
-      )}
-    />
+    <Typography
+      sx={{
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: 2,
+        display: "-webkit-box",
+        fontWeight: 700,
+        lineHeight: 1.25,
+        overflow: "hidden",
+        overflowWrap: "anywhere",
+        width: "100%",
+      }}
+      title={item.adjustmentTypeLabel}
+      variant="body2"
+    >
+      {item.adjustmentTypeLabel}
+    </Typography>
   );
 }
 
-function InventoryAdjustmentTypeCell({ group }: { group: InventoryAdjustmentGroupRow }) {
-  return (
-    <InventoryAdjustmentLineList
-      items={group.items}
-      renderItem={(item) => (
-        <Typography sx={{ fontWeight: 700, overflowWrap: "anywhere" }} variant="body2">
-          {item.adjustmentTypeLabel}
-        </Typography>
-      )}
-    />
-  );
-}
-
-function InventoryAdjustmentShelfCell({ group }: { group: InventoryAdjustmentGroupRow }) {
-  return (
-    <InventoryAdjustmentLineList
-      items={group.items}
-      renderItem={(item) => (
-        <Typography sx={{ fontWeight: 700 }} variant="body2">
-          {item.shelfCode}
-        </Typography>
-      )}
-    />
-  );
-}
-
-function InventoryAdjustmentQuantityCell({ group }: { group: InventoryAdjustmentGroupRow }) {
+function InventoryAdjustmentQuantityText({ item }: { item: InventoryAdjustmentGroupItem }) {
   const theme = useTheme();
 
   return (
-    <InventoryAdjustmentLineList
-      align="right"
-      items={group.items}
-      renderItem={(item) => (
-        <Typography
-          sx={{
-            color: item.signedQuantity >= 0 ? theme.palette.success.main : theme.palette.error.main,
-            fontWeight: 800,
-          }}
-          variant="body2"
-        >
-          {item.signedQuantity > 0 ? `+${formatNumber(item.quantity)}` : formatNumber(item.signedQuantity)}
-        </Typography>
-      )}
-    />
+    <Typography
+      noWrap
+      sx={{
+        color: item.signedQuantity >= 0 ? theme.palette.success.main : theme.palette.error.main,
+        fontWeight: 800,
+        lineHeight: 1.25,
+        width: "100%",
+      }}
+      variant="body2"
+    >
+      {item.signedQuantity > 0 ? `+${formatNumber(item.quantity)}` : formatNumber(item.signedQuantity)}
+    </Typography>
   );
 }
 
-function InventoryAdjustmentOperatorCell({ group }: { group: InventoryAdjustmentGroupRow }) {
+function InventoryAdjustmentOperatorText({ item }: { item: InventoryAdjustmentGroupItem }) {
   return (
-    <InventoryAdjustmentLineList
-      items={group.items}
-      renderItem={(item) => (
-        <Typography sx={{ fontWeight: 700, overflowWrap: "anywhere" }} variant="body2">
-          {item.performedBy}
-        </Typography>
-      )}
-    />
+    <Typography
+      sx={{
+        WebkitBoxOrient: "vertical",
+        WebkitLineClamp: 2,
+        display: "-webkit-box",
+        fontWeight: 700,
+        lineHeight: 1.25,
+        overflow: "hidden",
+        overflowWrap: "anywhere",
+        width: "100%",
+      }}
+      title={item.performedBy}
+      variant="body2"
+    >
+      {item.performedBy}
+    </Typography>
   );
 }
 
-function InventoryAdjustmentTimeCell({ group }: { group: InventoryAdjustmentGroupRow }) {
+function InventoryAdjustmentGroupDetailGrid({ group }: { group: InventoryAdjustmentGroupRow }) {
   return (
-    <InventoryAdjustmentLineList
-      items={group.items}
-      renderItem={(item) => (
-        <Typography sx={{ fontWeight: 700, whiteSpace: "nowrap" }} variant="body2">
-          {item.occurredAt ? formatDateTime(item.occurredAt) : "--"}
-        </Typography>
-      )}
-    />
+    <Box
+      data-adjustment-grid="true"
+      sx={{
+        display: "grid",
+        gridTemplateColumns: INVENTORY_ADJUSTMENT_GRID_TEMPLATE_COLUMNS,
+        minWidth: 0,
+      }}
+    >
+      {group.items.map((item, index) => {
+        const isLastRow = index === group.items.length - 1;
+
+        return (
+          <Fragment key={item.id}>
+            <InventoryAdjustmentGroupGridCell column="product" isLastRow={isLastRow} rowIndex={index}>
+              <InventoryAdjustmentProductBlock item={item} />
+            </InventoryAdjustmentGroupGridCell>
+            <InventoryAdjustmentGroupGridCell column="type" isLastRow={isLastRow} rowIndex={index}>
+              <InventoryAdjustmentTypeText item={item} />
+            </InventoryAdjustmentGroupGridCell>
+            <InventoryAdjustmentGroupGridCell column="shelf" isLastRow={isLastRow} rowIndex={index}>
+              <Typography noWrap sx={{ fontWeight: 700, lineHeight: 1.25, width: "100%" }} title={item.shelfCode} variant="body2">
+                {item.shelfCode}
+              </Typography>
+            </InventoryAdjustmentGroupGridCell>
+            <InventoryAdjustmentGroupGridCell align="right" column="quantity" isLastRow={isLastRow} rowIndex={index}>
+              <InventoryAdjustmentQuantityText item={item} />
+            </InventoryAdjustmentGroupGridCell>
+            <InventoryAdjustmentGroupGridCell column="operator" isLastRow={isLastRow} rowIndex={index}>
+              <InventoryAdjustmentOperatorText item={item} />
+            </InventoryAdjustmentGroupGridCell>
+            <InventoryAdjustmentGroupGridCell column="time" isLastRow={isLastRow} rowIndex={index}>
+              <Typography noWrap sx={{ fontWeight: 700, lineHeight: 1.25, width: "100%" }} variant="body2">
+                {item.occurredAt ? formatDateTime(item.occurredAt) : "--"}
+              </Typography>
+            </InventoryAdjustmentGroupGridCell>
+          </Fragment>
+        );
+      })}
+    </Box>
   );
 }
 
@@ -195,55 +298,11 @@ export function InventoryAdjustmentsTable({
   onScrollStateChange,
 }: InventoryAdjustmentsTableProps) {
   const theme = useTheme();
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <DataTable
-      columns={[
-        {
-          header: "Product Information/Box Information",
-          key: "product",
-          minWidth: 280,
-          render: (group) => <InventoryAdjustmentProductCell group={group} />,
-          width: "28%",
-        },
-        {
-          header: "Adjustment Type",
-          key: "type",
-          minWidth: 220,
-          render: (group) => <InventoryAdjustmentTypeCell group={group} />,
-          width: "20%",
-        },
-        {
-          header: "Shelf",
-          key: "shelf",
-          minWidth: 100,
-          render: (group) => <InventoryAdjustmentShelfCell group={group} />,
-          width: "8%",
-        },
-        {
-          align: "right",
-          header: "Adjustment Qty",
-          key: "quantity",
-          minWidth: 140,
-          render: (group) => <InventoryAdjustmentQuantityCell group={group} />,
-          width: "12%",
-        },
-        {
-          header: "Operator",
-          key: "operator",
-          minWidth: 200,
-          render: (group) => <InventoryAdjustmentOperatorCell group={group} />,
-          width: "16%",
-        },
-        {
-          header: "Time",
-          key: "time",
-          minWidth: 180,
-          render: (group) => <InventoryAdjustmentTimeCell group={group} />,
-          width: "16%",
-        },
-      ]}
+      columns={INVENTORY_ADJUSTMENT_TABLE_COLUMNS}
       emptyMessage="No inventory adjustments match the current filters."
       error={error}
       fillHeight
@@ -274,6 +333,7 @@ export function InventoryAdjustmentsTable({
           />
         </Stack>
       )}
+      renderDetailContent={(group) => <InventoryAdjustmentGroupDetailGrid group={group} />}
       rowSelection={rowSelection}
       rows={groups}
       stickyHeader
@@ -287,7 +347,7 @@ export function InventoryAdjustmentsTable({
         >
           <Stack alignItems={{ md: "center", xs: "stretch" }} direction={{ md: "row", xs: "column" }} spacing={1}>
             <Button onClick={onOpenCreate} startIcon={<AddRoundedIcon />} variant="contained">
-              {translateText("Create Adjustment List")}
+              {t("Create Adjustment List")}
             </Button>
             <Button
               color="inherit"
@@ -296,13 +356,13 @@ export function InventoryAdjustmentsTable({
               startIcon={<DownloadOutlinedIcon />}
               variant="outlined"
             >
-              {translateText(selectedCount > 0 ? "Export selected" : "Export")}
+              {t(selectedCount > 0 ? "Export selected" : "Export")}
             </Button>
             {selectedCount > 0 ? (
               <>
                 <Chip color="primary" label={t("bulk.selectedCount", { count: selectedCount })} size="small" />
                 <Button color="inherit" onClick={onClearSelection} size="small">
-                  {translateText("Clear selection")}
+                  {t("Clear selection")}
                 </Button>
               </>
             ) : null}

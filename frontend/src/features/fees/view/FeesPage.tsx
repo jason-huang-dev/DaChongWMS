@@ -120,8 +120,8 @@ const profitStatusOptions: FeesEditorOption[] = [
 
 export function FeesPage() {
   const controller = useFeesController();
-  const { translateText } = useI18n();
-  const editActionLabel = translateText("Edit");
+  const { t, translate, msg } = useI18n();
+  const editActionLabel = t("Edit");
 
   useScrollToHash();
 
@@ -297,7 +297,7 @@ export function FeesPage() {
         title="Fees management"
       />
       {!controller.company ? (
-        <Alert severity="info">{translateText("Select an active workspace membership before managing fees.")}</Alert>
+        <Alert severity="info">{t("Select an active workspace membership before managing fees.")}</Alert>
       ) : null}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 6, xl: 3 }}>

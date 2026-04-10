@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Grid from "@mui/material/Grid";
 import { Button, Stack } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type {
   CarrierBookingRecord,
   IntegrationJobRecord,
@@ -173,6 +174,7 @@ export function IntegrationTable({
   webhooksQuery,
   webhooksView,
 }: IntegrationTableProps) {
+  const { t } = useI18n();
   const jobRowSelection: ResourceTableRowSelection<IntegrationJobRecord> = {
     selectedRowIds: jobsBulkSelection.selectedIds,
     onToggleAll: (rows) => jobsBulkSelection.toggleMany(rows.map((row) => row.id)),
@@ -290,7 +292,7 @@ export function IntegrationTable({
               {jobsToolbar}
               <DataViewToolbar
                 activeFilterCount={jobsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={jobFields}
                 filters={jobsView.filters}
                 onChange={jobsView.updateFilter}
@@ -352,7 +354,7 @@ export function IntegrationTable({
               {webhooksToolbar}
               <DataViewToolbar
                 activeFilterCount={webhooksView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={webhookFields}
                 filters={webhooksView.filters}
                 onChange={webhooksView.updateFilter}
@@ -429,7 +431,7 @@ export function IntegrationTable({
               {carrierToolbar}
               <DataViewToolbar
                 activeFilterCount={carrierBookingsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={carrierBookingFields}
                 filters={carrierBookingsView.filters}
                 onChange={carrierBookingsView.updateFilter}

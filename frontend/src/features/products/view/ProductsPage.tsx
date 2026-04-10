@@ -1,6 +1,7 @@
 import Grid from "@mui/material/Grid";
 import { Alert, Stack } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useProductsController } from "@/features/products/controller/useProductsController";
 import { DistributionProductForm } from "@/features/products/view/DistributionProductForm";
 import { DistributionProductTable } from "@/features/products/view/DistributionProductTable";
@@ -16,6 +17,7 @@ import { SummaryCard } from "@/shared/components/summary-card";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function ProductsPage() {
+  const { t, translate, msg } = useI18n();
   const {
     company,
     clearDistributionSelection,
@@ -76,8 +78,8 @@ export function ProductsPage() {
           <SummaryCard
             description="Current workspace scope for product operations."
             items={[
-              { label: "Workspace", value: company?.label ?? "No workspace selected" },
-              { label: "Selected product", value: selectedProduct?.sku ?? "None" },
+              { label: "Workspace", value: company?.label ?? t("No workspace selected") },
+              { label: "Selected product", value: selectedProduct?.sku ?? t("None") },
             ]}
             title="Scope"
           />
@@ -114,7 +116,7 @@ export function ProductsPage() {
         </Grid>
         {!company ? (
           <Grid size={{ xs: 12 }}>
-            <Alert severity="info">Select an active workspace membership before managing products.</Alert>
+            <Alert severity="info">{t("Select an active workspace membership before managing products.")}</Alert>
           </Grid>
         ) : null}
         <Grid size={{ xs: 12, xl: 4 }}>
@@ -182,10 +184,10 @@ export function ProductsPage() {
                 items={[
                   { label: "Tracking mode", value: serialManagement?.tracking_mode ?? "NONE" },
                   { label: "Pattern", value: serialManagement?.serial_pattern || "--" },
-                  { label: "Inbound capture", value: serialManagement?.capture_on_inbound ? "Enabled" : "Disabled" },
-                  { label: "Outbound capture", value: serialManagement?.capture_on_outbound ? "Enabled" : "Disabled" },
-                  { label: "Returns capture", value: serialManagement?.capture_on_returns ? "Enabled" : "Disabled" },
-                  { label: "Unique serials", value: serialManagement?.requires_uniqueness ? "Required" : "Not required" },
+                  { label: "Inbound capture", value: t(serialManagement?.capture_on_inbound ? "Enabled" : "Disabled") },
+                  { label: "Outbound capture", value: t(serialManagement?.capture_on_outbound ? "Enabled" : "Disabled") },
+                  { label: "Returns capture", value: t(serialManagement?.capture_on_returns ? "Enabled" : "Disabled") },
+                  { label: "Unique serials", value: t(serialManagement?.requires_uniqueness ? "Required" : "Not required") },
                 ]}
                 title="Serial summary"
               />
@@ -245,7 +247,9 @@ export function ProductsPage() {
         ) : (
           <Grid size={{ xs: 12 }}>
             <Alert severity="info">
-              Select a product from the table to manage distribution products, serial number handling, packaging, and product marks.
+              {t(
+                "Select a product from the table to manage distribution products, serial number handling, packaging, and product marks.",
+              )}
             </Alert>
           </Grid>
         )}

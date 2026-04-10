@@ -1,6 +1,7 @@
 import Grid from "@mui/material/Grid";
 import { Box } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type {
   ReturnDispositionRecord,
   ReturnOrderRecord,
@@ -79,6 +80,8 @@ export function ReturnsTable({
   dispositionsQuery,
   dispositionsView,
 }: ReturnsTableProps) {
+  const { t } = useI18n();
+
   return (
     <Grid container spacing={2.5}>
       <Grid size={{ xs: 12 }}>
@@ -118,7 +121,7 @@ export function ReturnsTable({
             toolbar={
               <DataViewToolbar
                 activeFilterCount={returnOrdersView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={returnOrderFields}
                 filters={returnOrdersView.filters}
                 onChange={returnOrdersView.updateFilter}
@@ -162,7 +165,7 @@ export function ReturnsTable({
             toolbar={
               <DataViewToolbar
                 activeFilterCount={receiptsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={receiptFields}
                 filters={receiptsView.filters}
                 onChange={receiptsView.updateFilter}
@@ -206,7 +209,7 @@ export function ReturnsTable({
             toolbar={
               <DataViewToolbar
                 activeFilterCount={dispositionsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={dispositionFields}
                 filters={dispositionsView.filters}
                 onChange={dispositionsView.updateFilter}

@@ -296,11 +296,14 @@ async function buildLabelPdfBlob({
   return doc.output("blob") as Blob;
 }
 
-function parsePdfError(error: unknown, translateText: (value: string) => string) {
+function parsePdfError(
+  error: unknown,
+  t: (key: string, params?: Record<string, string | number | null | undefined>) => string,
+) {
   if (error instanceof Error && error.message.trim()) {
     return error.message;
   }
-  return translateText("Unable to generate the label PDF.");
+  return t("Unable to generate the label PDF.");
 }
 
 function openPdfPreviewTab(pdfUrl: string, previewWindow: Window | null) {
@@ -389,7 +392,7 @@ function PreviewLabel({
 
 export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabelPrintDialogProps) {
   const theme = useTheme();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const [paperType, setPaperType] = useState<InventoryLabelPaperType>("roll");
   const [templateId, setTemplateId] = useState(labelTemplates[0].id);
   const [bulkQuantity, setBulkQuantity] = useState("1");
@@ -450,7 +453,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
 
   const handlePrint = async () => {
     if (expandedRows.length === 0) {
-      setPrintError(translateText("Add at least one label before printing."));
+      setPrintError(t("Add at least one label before printing."));
       return;
     }
 
@@ -473,7 +476,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
       const openedPreview = openPdfPreviewTab(pdfUrl, previewWindow);
 
       if (!openedPreview) {
-        setPrintError(translateText("Allow pop-ups to preview the label PDF in a new tab."));
+        setPrintError(t("Allow pop-ups to preview the label PDF in a new tab."));
         window.setTimeout(() => {
           URL.revokeObjectURL(pdfUrl);
         }, 1_000);
@@ -488,7 +491,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
       if (previewWindow && !previewWindow.closed) {
         previewWindow.close();
       }
-      setPrintError(parsePdfError(error, translateText));
+      setPrintError(parsePdfError(error, t));
     } finally {
       setIsGeneratingPdf(false);
     }
@@ -496,7 +499,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
 
   return (
     <Dialog fullWidth maxWidth="xl" onClose={onClose} open={open}>
-      <DialogTitle>{translateText("Print labels")}</DialogTitle>
+      <DialogTitle>{t("Print labels")}</DialogTitle>
       <DialogContent dividers>
         <Stack spacing={2.5}>
           {printError ? <Alert severity="error">{printError}</Alert> : null}
@@ -519,7 +522,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
                 <Stack spacing={1.75}>
                   <TextField
                     fullWidth
-                    label={translateText("Template")}
+                    label={t("Template")}
                     onChange={(event) => setTemplateId(event.target.value)}
                     select
                     size="small"
@@ -533,37 +536,37 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
                   </TextField>
                   <TextField
                     fullWidth
-                    label={translateText("Print surface")}
+                    label={t("Print surface")}
                     onChange={(event) => setPaperType(event.target.value as InventoryLabelPaperType)}
                     select
                     size="small"
                     value={paperType}
                   >
-                    <MenuItem value="roll">{translateText("Roll labels")}</MenuItem>
-                    <MenuItem value="sheet">{translateText("Sheet labels")}</MenuItem>
+                    <MenuItem value="roll">{t("Roll labels")}</MenuItem>
+                    <MenuItem value="sheet">{t("Sheet labels")}</MenuItem>
                   </TextField>
                   <Stack direction="row" spacing={1}>
                     <TextField
                       fullWidth
-                      label={translateText("Bulk quantity")}
+                      label={t("Bulk quantity")}
                       onChange={(event) => setBulkQuantity(event.target.value)}
                       size="small"
                       type="number"
                       value={bulkQuantity}
                     />
                     <Button onClick={handleApplyBulkQuantity} sx={{ flexShrink: 0 }} variant="outlined">
-                      {translateText("Apply")}
+                      {t("Apply")}
                     </Button>
                   </Stack>
                   <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
                     <Chip
                       color="primary"
                       icon={<SellOutlinedIcon />}
-                      label={translateText(`${visibleRows.length} items`)}
+                      label={t("ui.itemsCount", { count: visibleRows.length })}
                       size="small"
                     />
                     <Chip
-                      label={translateText(`${totalLabels} labels`)}
+                      label={t("ui.labelsCount", { count: totalLabels })}
                       size="small"
                       sx={{ backgroundColor: alpha(theme.palette.primary.main, 0.12), color: theme.palette.primary.main }}
                     />
@@ -578,13 +581,13 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
                 }}
               >
                 <Typography sx={{ fontWeight: 800, mb: 1.5 }} variant="subtitle2">
-                  {translateText("Preview")}
+                  {t("Preview")}
                 </Typography>
                 {previewRow ? (
                   <PreviewLabel paperType={paperType} row={previewRow} template={template} />
                 ) : (
                   <Typography color="text.secondary" variant="body2">
-                    {translateText("Select rows before opening the label printer.")}
+                    {t("Select rows before opening the label printer.")}
                   </Typography>
                 )}
               </Box>
@@ -607,10 +610,10 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
                 }}
               >
                 <Typography sx={{ fontWeight: 800 }} variant="subtitle2">
-                  {translateText("Selected products")}
+                  {t("Selected products")}
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  {translateText("Fine-tune the quantity for each SKU before printing.")}
+                  {t("Fine-tune the quantity for each SKU before printing.")}
                 </Typography>
               </Stack>
               <Stack divider={<Divider flexItem />} sx={{ maxHeight: 540, overflowY: "auto" }}>
@@ -653,14 +656,14 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
                       </Stack>
                       <TextField
                         fullWidth
-                        label={translateText("Qty")}
+                        label={t("Qty")}
                         onChange={(event) => handleQuantityChange(row.id, event.target.value)}
                         size="small"
                         type="number"
                         value={quantities[row.id] ?? 0}
                       />
                       <IconButton
-                        aria-label={translateText("Remove")}
+                        aria-label={t("Remove")}
                         color="inherit"
                         onClick={() => handleRemoveRow(row.id)}
                         size="small"
@@ -686,7 +689,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
                 {visibleRows.length === 0 ? (
                   <Box sx={{ px: 2, py: 3 }}>
                     <Typography color="text.secondary" variant="body2">
-                      {translateText("Every selected row has been removed from this print batch.")}
+                      {t("Every selected row has been removed from this print batch.")}
                     </Typography>
                   </Box>
                 ) : null}
@@ -697,7 +700,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
       </DialogContent>
       <DialogActions>
         <Button color="inherit" onClick={onClose}>
-          {translateText("Cancel")}
+          {t("Cancel")}
         </Button>
         <Button
           disabled={isGeneratingPdf}
@@ -707,7 +710,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
           startIcon={<LocalPrintshopOutlinedIcon />}
           variant="contained"
         >
-          {translateText(isGeneratingPdf ? "Generating Print..." : "Print")}
+          {t(isGeneratingPdf ? "Generating Print..." : "Print")}
         </Button>
       </DialogActions>
     </Dialog>

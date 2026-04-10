@@ -31,6 +31,7 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { brandShadows } from "@/app/brand";
+import { useI18n } from "@/app/ui-preferences";
 import { useDashboardController } from "@/features/dashboard/controller/useDashboardController";
 import { DashboardOrderStatisticsCard } from "@/features/dashboard/view/components/DashboardOrderStatisticsCard";
 import { DashboardQueueCard } from "@/features/dashboard/view/components/DashboardQueueCard";
@@ -91,6 +92,7 @@ function isQueueSectionKey(value: string): value is DashboardQueueSectionKey {
 
 export function DashboardPage() {
   const theme = useTheme();
+  const { t, translate, msg } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
   const [customizationDraft, setCustomizationDraft] = useState<DashboardCustomizationDraft>({
@@ -528,12 +530,12 @@ export function DashboardPage() {
       ) : null}
 
       <Dialog fullWidth maxWidth="md" onClose={() => setIsCustomizeOpen(false)} open={isCustomizeOpen}>
-        <DialogTitle>Customize dashboard</DialogTitle>
+        <DialogTitle>{t("Customize dashboard")}</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={3}>
             <Stack spacing={1.5}>
               <Typography sx={{ fontWeight: 700 }} variant="subtitle2">
-                Panels
+                {t("Panels")}
               </Typography>
               <FormGroup>
                 {panelOptions.map((option) => {

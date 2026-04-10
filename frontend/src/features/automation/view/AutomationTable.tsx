@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Grid from "@mui/material/Grid";
 import { Button, Stack } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type {
   AutomationAlertRecord,
   BackgroundTaskRecord,
@@ -118,6 +119,7 @@ export function AutomationTable({
   workerHeartbeatsQuery,
   workerHeartbeatsView,
 }: AutomationTableProps) {
+  const { t } = useI18n();
   const scheduledTaskRowSelection: ResourceTableRowSelection<ScheduledTaskRecord> = {
     selectedRowIds: scheduledTaskSelection.selectedIds,
     onToggleAll: (rows) => scheduledTaskSelection.toggleMany(rows.map((row) => row.id)),
@@ -182,7 +184,7 @@ export function AutomationTable({
               {scheduledTaskToolbar}
               <DataViewToolbar
                 activeFilterCount={scheduledTasksView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={scheduledTaskFields}
                 filters={scheduledTasksView.filters}
                 onChange={scheduledTasksView.updateFilter}
@@ -245,7 +247,7 @@ export function AutomationTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={backgroundTasksView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={backgroundTaskFields}
               filters={backgroundTasksView.filters}
               onChange={backgroundTasksView.updateFilter}
@@ -326,7 +328,7 @@ export function AutomationTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={alertsView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={alertFields}
               filters={alertsView.filters}
               onChange={alertsView.updateFilter}

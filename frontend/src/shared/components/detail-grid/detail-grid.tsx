@@ -15,7 +15,7 @@ interface DetailGridProps {
 }
 
 export function DetailGrid({ items }: DetailGridProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Grid container spacing={2}>
@@ -23,7 +23,7 @@ export function DetailGrid({ items }: DetailGridProps) {
         <Grid key={item.label} size={{ xs: 12, md: 6, xl: 4 }}>
           <Stack spacing={0.5}>
             <Typography color="text.secondary" variant="body2">
-              {translateText(item.label)}
+              {t(item.label)}
             </Typography>
             <Typography variant="subtitle2">{item.value}</Typography>
           </Stack>

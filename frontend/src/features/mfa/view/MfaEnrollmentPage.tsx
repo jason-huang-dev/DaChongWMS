@@ -14,6 +14,7 @@ import {
 import { FormProvider, useForm } from "react-hook-form";
 import { useNavigate } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useMfaController } from "@/features/mfa/controller/useMfaController";
 import type { TotpEnrollmentFormValues, TotpVerificationFormValues } from "@/features/mfa/model/types";
 import { totpEnrollmentSchema, totpVerificationSchema } from "@/features/mfa/model/validators";
@@ -24,6 +25,7 @@ import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function MfaEnrollmentPage() {
   const navigate = useNavigate();
+  const { t, translate, msg } = useI18n();
   const { createEnrollmentMutation, statusQuery, verifyEnrollmentMutation } = useMfaController();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
@@ -45,11 +47,11 @@ export function MfaEnrollmentPage() {
       return null;
     }
     return [
-      `1. Add a TOTP account in your authenticator app with the secret ${currentSetup.secret}.`,
-      "2. If your app accepts otpauth URIs directly, use the provisioning URI below.",
-      "3. Enter the generated 6-digit code to finish enrollment.",
+      t("mfa.setupStep1", { secret: currentSetup.secret }),
+      t("mfa.setupStep2"),
+      t("mfa.setupStep3"),
     ];
-  }, [currentSetup]);
+  }, [currentSetup, t]);
 
   const handleCreateSetup = enrollmentForm.handleSubmit(async (values) => {
     setErrorMessage(null);
@@ -63,7 +65,7 @@ export function MfaEnrollmentPage() {
 
   const handleVerify = verificationForm.handleSubmit(async (values) => {
     if (!currentSetup) {
-      setErrorMessage("Create an enrollment setup before submitting a verification code.");
+      setErrorMessage(t("Create an enrollment setup before submitting a verification code."));
       return;
     }
     setErrorMessage(null);
@@ -87,25 +89,30 @@ export function MfaEnrollmentPage() {
       {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
       {hasVerifiedEnrollment && primaryEnrollment ? (
         <Alert severity="success">
-          MFA is already enabled with {primaryEnrollment.label}. Recovery codes remaining: {statusQuery.data?.recovery_codes_remaining ?? 0}.
+          {t("mfa.statusEnabled", {
+            count: statusQuery.data?.recovery_codes_remaining ?? 0,
+            label: primaryEnrollment.label,
+          })}
         </Alert>
       ) : (
-        <Alert severity="warning">MFA is not enabled yet. Password login will remain single-factor until you verify an authenticator app.</Alert>
+        <Alert severity="warning">
+          {t("MFA is not enabled yet. Password login will remain single-factor until you verify an authenticator app.")}
+        </Alert>
       )}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, xl: 5 }}>
           <Card>
             <CardContent>
               <Stack spacing={2.5}>
-                <Typography variant="h6">Create authenticator setup</Typography>
+                <Typography variant="h6">{t("Create authenticator setup")}</Typography>
                 <Typography color="text.secondary" variant="body2">
-                  Use a label that makes sense for the device or authenticator app you are registering.
+                  {t("Use a label that makes sense for the device or authenticator app you are registering.")}
                 </Typography>
                 <FormProvider {...enrollmentForm}>
                   <Stack component="form" onSubmit={handleCreateSetup} spacing={2}>
                     <FormTextField label="Label" name="label" />
                     <Button disabled={createEnrollmentMutation.isPending} type="submit" variant="contained">
-                      {createEnrollmentMutation.isPending ? <CircularProgress color="inherit" size={20} /> : "Create setup"}
+                      {createEnrollmentMutation.isPending ? <CircularProgress color="inherit" size={20} /> : t("Create setup")}
                     </Button>
                   </Stack>
                 </FormProvider>
@@ -117,12 +124,12 @@ export function MfaEnrollmentPage() {
           <Card>
             <CardContent>
               <Stack spacing={2.5}>
-                <Typography variant="h6">Verify authenticator app</Typography>
+                <Typography variant="h6">{t("Verify authenticator app")}</Typography>
                 {currentSetup ? (
                   <Stack spacing={1.5}>
-                    <Typography variant="body2">Secret: {currentSetup.secret}</Typography>
+                    <Typography variant="body2">{`${t("Secret")}: ${currentSetup.secret}`}</Typography>
                     <Typography sx={{ wordBreak: "break-all" }} variant="body2">
-                      Provisioning URI: {currentSetup.provisioning_uri}
+                      {`${t("Provisioning URI")}: ${currentSetup.provisioning_uri}`}
                     </Typography>
                     {helperText?.map((item) => (
                       <Typography color="text.secondary" key={item} variant="body2">
@@ -132,7 +139,7 @@ export function MfaEnrollmentPage() {
                   </Stack>
                 ) : (
                   <Typography color="text.secondary" variant="body2">
-                    Create a setup first to receive a TOTP secret and provisioning URI.
+                    {t("Create a setup first to receive a TOTP secret and provisioning URI.")}
                   </Typography>
                 )}
                 <FormProvider {...verificationForm}>
@@ -144,17 +151,19 @@ export function MfaEnrollmentPage() {
                         type="submit"
                         variant="contained"
                       >
-                        {verifyEnrollmentMutation.isPending ? <CircularProgress color="inherit" size={20} /> : "Verify and enable MFA"}
+                        {verifyEnrollmentMutation.isPending
+                          ? <CircularProgress color="inherit" size={20} />
+                          : t("Verify and enable MFA")}
                       </Button>
                       <Button onClick={() => navigate("/dashboard")} variant="outlined">
-                        Skip for now
+                        {t("Skip for now")}
                       </Button>
                     </Stack>
                   </Stack>
                 </FormProvider>
                 {recoveryCodes.length > 0 ? (
                   <Button onClick={() => navigate("/dashboard", { replace: true })} variant="contained">
-                    Continue to dashboard
+                    {t("ui.continueToDashboard")}
                   </Button>
                 ) : null}
               </Stack>

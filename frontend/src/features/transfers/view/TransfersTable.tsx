@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import Grid from "@mui/material/Grid";
 import { Button, Stack } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type {
   ReplenishmentRuleRecord,
   ReplenishmentTaskRecord,
@@ -144,6 +145,7 @@ export function TransfersTable({
   onCompleteTask,
   transferOrderSelection,
 }: TransfersTableProps) {
+  const { t } = useI18n();
   const transferOrderRowSelection: ResourceTableRowSelection<TransferOrderRecord> = {
     selectedRowIds: transferOrderSelection.selectedIds,
     onToggleAll: (rows) => transferOrderSelection.toggleMany(rows.map((row) => row.id)),
@@ -205,7 +207,7 @@ export function TransfersTable({
               {transferOrderToolbar}
               <DataViewToolbar
                 activeFilterCount={transferOrdersView.activeFilterCount}
-                contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={transferOrderFields}
                 filters={transferOrdersView.filters}
                 onChange={transferOrdersView.updateFilter}
@@ -308,7 +310,7 @@ export function TransfersTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={replenishmentRulesView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={replenishmentRuleFields}
               filters={replenishmentRulesView.filters}
               onChange={replenishmentRulesView.updateFilter}
@@ -364,7 +366,7 @@ export function TransfersTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={replenishmentTasksView.activeFilterCount}
-              contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={replenishmentTaskFields}
               filters={replenishmentTasksView.filters}
               onChange={replenishmentTasksView.updateFilter}

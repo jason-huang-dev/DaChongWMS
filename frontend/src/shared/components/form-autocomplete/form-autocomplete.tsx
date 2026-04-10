@@ -33,7 +33,7 @@ export function FormAutocomplete<TValue extends string | number>({
   ...props
 }: FormAutocompleteProps<TValue>) {
   const { control } = useFormContext();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const theme = useTheme();
   const optionCacheRef = useRef(new Map<TValue, ReferenceOption<TValue>>());
 
@@ -69,8 +69,8 @@ export function FormAutocomplete<TValue extends string | number>({
             inputValue={searchText}
             isOptionEqualToValue={(option, value) => option.value === value.value}
             loading={loading || isLoadingMore}
-            loadingText={translateText(isLoadingMore ? "Loading more..." : "Loading...")}
-            noOptionsText={translateText(emptyText)}
+            loadingText={t(isLoadingMore ? "Loading more..." : "Loading...")}
+            noOptionsText={t(emptyText)}
             onChange={(_event, option) => field.onChange(option?.value ?? null)}
             onInputChange={(_event, value, reason) => {
               if (!onSearchTextChange) {
@@ -86,18 +86,19 @@ export function FormAutocomplete<TValue extends string | number>({
                 {...params}
                 {...props}
                 error={fieldState.invalid}
-                helperText={fieldState.error?.message ?? (typeof helperText === "string" ? translateText(helperText) : helperText)}
+                helperText={fieldState.error?.message ?? (typeof helperText === "string" ? t(helperText) : helperText)}
                 fullWidth={props.fullWidth ?? true}
-                label={typeof props.label === "string" ? translateText(props.label) : props.label}
+                label={typeof props.label === "string" ? t(props.label) : props.label}
+                placeholder={typeof props.placeholder === "string" ? t(props.placeholder) : props.placeholder}
               />
             )}
             renderOption={(optionProps, option) => (
               <li {...optionProps} key={option.value}>
                 <div>
-                  <div>{option.label}</div>
+                  <div>{t(option.label)}</div>
                   {option.description ? (
                     <div style={{ color: theme.palette.text.secondary, fontSize: "0.75rem" }}>
-                      {option.description}
+                      {t(option.description)}
                     </div>
                   ) : null}
                 </div>

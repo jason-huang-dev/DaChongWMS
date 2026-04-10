@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from "react";
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import { resolveTranslation, translateText, type TranslationKey } from "@/app/i18n";
+import { msg, resolveTranslatableText, resolveTranslation, type TranslatableText } from "@/app/i18n";
 import {
   getUiPreferencesSnapshot,
   saveUiPreferencesSnapshot,
@@ -66,9 +66,9 @@ export function useI18n() {
   return useMemo(
     () => ({
       locale,
-      t: (key: TranslationKey, params?: Record<string, string | number | null | undefined>) =>
-        resolveTranslation(locale, key, params),
-      translateText: (value: string) => translateText(locale, value),
+      t: (key: string, params?: Record<string, string | number | null | undefined>) => resolveTranslation(locale, key, params),
+      translate: (message: TranslatableText) => resolveTranslatableText(locale, message),
+      msg,
     }),
     [locale],
   );

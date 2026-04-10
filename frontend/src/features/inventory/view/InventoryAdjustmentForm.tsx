@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Grid, MenuItem, Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import {
   defaultInventoryAdjustmentValues,
 } from "@/features/inventory/model/mappers";
@@ -31,6 +32,7 @@ export function InventoryAdjustmentForm({
   submitLabel = "Post adjustment",
   successMessage,
 }: InventoryAdjustmentFormProps) {
+  const { t, translate, msg } = useI18n();
   const form = useForm<InventoryAdjustmentValues>({
     defaultValues: defaultInventoryAdjustmentValues,
     resolver: zodResolver(inventoryAdjustmentSchema),
@@ -57,8 +59,8 @@ export function InventoryAdjustmentForm({
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
             <FormTextField label="Adjustment type" name="movement_type" select>
-              <MenuItem value="ADJUSTMENT_OUT">Adjustment out</MenuItem>
-              <MenuItem value="ADJUSTMENT_IN">Adjustment in</MenuItem>
+              <MenuItem value="ADJUSTMENT_OUT">{t("Adjustment out")}</MenuItem>
+              <MenuItem value="ADJUSTMENT_IN">{t("Adjustment in")}</MenuItem>
             </FormTextField>
           </Grid>
           <Grid size={{ xs: 12, md: 6 }}>
@@ -74,11 +76,11 @@ export function InventoryAdjustmentForm({
         <Stack direction="row" justifyContent="flex-end" spacing={1}>
           {onCancel ? (
             <Button color="inherit" onClick={onCancel}>
-              Cancel
+              {t("Cancel")}
             </Button>
           ) : null}
           <Button disabled={isSubmitting} type="submit" variant="contained">
-            {isSubmitting ? "Posting..." : submitLabel}
+            {isSubmitting ? t("Posting...") : t(submitLabel)}
           </Button>
         </Stack>
       </Stack>

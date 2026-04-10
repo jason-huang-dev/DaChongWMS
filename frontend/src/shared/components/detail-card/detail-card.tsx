@@ -11,7 +11,7 @@ interface DetailCardProps extends PropsWithChildren {
 }
 
 export function DetailCard({ title, description, actions, children }: DetailCardProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Card>
@@ -19,10 +19,10 @@ export function DetailCard({ title, description, actions, children }: DetailCard
         <Stack spacing={2.5}>
           <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
             <Box>
-              <Typography variant="h6">{translateText(title)}</Typography>
+              <Typography variant="h6">{t(title)}</Typography>
               {description ? (
                 <Typography color="text.secondary" variant="body2">
-                  {translateText(description)}
+                  {t(description)}
                 </Typography>
               ) : null}
             </Box>

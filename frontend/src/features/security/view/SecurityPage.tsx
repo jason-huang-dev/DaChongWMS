@@ -2,6 +2,7 @@ import Grid from "@mui/material/Grid";
 import { Alert, Button, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { useSecurityController } from "@/features/security/controller/useSecurityController";
 import { AccessAuditTable } from "@/features/security/view/AccessAuditTable";
@@ -19,6 +20,7 @@ import { hasAnyRole } from "@/shared/utils/permissions";
 
 export function SecurityPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const { session } = useAuth();
   const {
     company,
@@ -162,7 +164,7 @@ export function SecurityPage() {
               <CompanyMembershipTable
                 activeFilterCount={membershipView.activeFilterCount}
                 applySavedView={membershipView.applySavedView}
-                contextLabel={company ? `Workspace: ${company.label}` : "Tenant-wide memberships"}
+                contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide memberships")}
                 deleteSavedView={membershipView.deleteSavedView}
                 filters={membershipView.filters}
                 isIssuingPasswordReset={issuePasswordResetMutation.isPending}
@@ -184,7 +186,7 @@ export function SecurityPage() {
               <AccessInviteTable
                 activeFilterCount={invitesView.activeFilterCount}
                 applySavedView={invitesView.applySavedView}
-                contextLabel={company ? `Workspace: ${company.label}` : "Tenant-wide invites"}
+                contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide invites")}
                 deleteSavedView={invitesView.deleteSavedView}
                 filters={invitesView.filters}
                 invitesQuery={invitesQuery}
@@ -204,7 +206,7 @@ export function SecurityPage() {
               <AccessPasswordResetTable
                 activeFilterCount={passwordResetView.activeFilterCount}
                 applySavedView={passwordResetView.applySavedView}
-                contextLabel={company ? `Workspace: ${company.label}` : "Tenant-wide resets"}
+                contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide resets")}
                 deleteSavedView={passwordResetView.deleteSavedView}
                 filters={passwordResetView.filters}
                 isRevoking={revokePasswordResetMutation.isPending}
@@ -234,7 +236,7 @@ export function SecurityPage() {
           <SecurityTable
             activeFilterCount={staffView.activeFilterCount}
             applySavedView={staffView.applySavedView}
-            contextLabel={activeWarehouse ? `Warehouse context: ${activeWarehouse.warehouse_name}` : "Tenant-wide directory"}
+            contextLabel={activeWarehouse ? t("shell.warehouseContextChip", { label: activeWarehouse.warehouse_name }) : t("Tenant-wide directory")}
             deleteSavedView={staffView.deleteSavedView}
             filters={staffView.filters}
             onEdit={(record) => setSelectedStaff(record)}
@@ -256,7 +258,7 @@ export function SecurityPage() {
               activeFilterCount={auditView.activeFilterCount}
               applySavedView={auditView.applySavedView}
               auditQuery={auditEventsQuery}
-              contextLabel={company ? `Workspace: ${company.label}` : "Tenant-wide audit"}
+              contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide audit")}
               deleteSavedView={auditView.deleteSavedView}
               filters={auditView.filters}
               page={auditView.page}

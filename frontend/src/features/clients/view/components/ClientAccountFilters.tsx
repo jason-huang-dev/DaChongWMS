@@ -29,7 +29,7 @@ export function ClientAccountFilters({
 }: ClientAccountFiltersProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   const surfaceColor = alpha(theme.palette.background.paper, isDark ? 0.52 : 0.88);
   const surfaceBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.52 : 0.8)}`;
@@ -93,7 +93,7 @@ export function ClientAccountFilters({
           value={filters.customerField}
           slotProps={{
             htmlInput: {
-              "aria-label": translateText("Customer information field"),
+              "aria-label": t("Customer information field"),
             },
           }}
           sx={{
@@ -105,19 +105,19 @@ export function ClientAccountFilters({
         >
           {clientCustomerSearchFieldOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
-              {translateText(option.label)}
+              {t(option.label)}
             </MenuItem>
           ))}
         </TextField>
         <TextField
           hiddenLabel
           onChange={(event) => onChange("customerQuery", event.target.value)}
-          placeholder={translateText(clientSearchPlaceholders[filters.customerField])}
+          placeholder={t(clientSearchPlaceholders[filters.customerField])}
           size="small"
           value={filters.customerQuery}
           slotProps={{
             htmlInput: {
-              "aria-label": translateText("Customer information"),
+              "aria-label": t("Customer information"),
               autoCapitalize: "none",
               autoCorrect: "off",
               spellCheck: false,
@@ -150,7 +150,7 @@ export function ClientAccountFilters({
           value={filters.companyField}
           slotProps={{
             htmlInput: {
-              "aria-label": translateText("Company information field"),
+              "aria-label": t("Company information field"),
             },
           }}
           sx={{
@@ -162,19 +162,19 @@ export function ClientAccountFilters({
         >
           {clientCompanySearchFieldOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
-              {translateText(option.label)}
+              {t(option.label)}
             </MenuItem>
           ))}
         </TextField>
         <TextField
           hiddenLabel
           onChange={(event) => onChange("companyQuery", event.target.value)}
-          placeholder={translateText(clientSearchPlaceholders[filters.companyField])}
+          placeholder={t(clientSearchPlaceholders[filters.companyField])}
           size="small"
           value={filters.companyQuery}
           slotProps={{
             htmlInput: {
-              "aria-label": translateText("Company information"),
+              "aria-label": t("Company information"),
               autoCapitalize: "none",
               autoCorrect: "off",
               spellCheck: false,
@@ -189,9 +189,9 @@ export function ClientAccountFilters({
         </Stack>
 
         <RangePicker
-          endAriaLabel={translateText("Maximum finance value")}
+          endAriaLabel={t("Maximum finance value")}
           endInputProps={{ inputMode: "numeric" }}
-          endPlaceholder={translateText("Max")}
+          endPlaceholder={t("Max")}
           endValue={filters.financeMax}
           fieldSx={{
             minWidth: 0,
@@ -208,7 +208,7 @@ export function ClientAccountFilters({
               value={filters.financeField}
               slotProps={{
                 htmlInput: {
-                  "aria-label": translateText("Finance field"),
+                  "aria-label": t("Finance field"),
                 },
               }}
               sx={{
@@ -219,7 +219,7 @@ export function ClientAccountFilters({
             >
               {clientMetricFieldOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {translateText(option.label)}
+                  {t(option.label)}
                 </MenuItem>
               ))}
             </TextField>
@@ -248,9 +248,9 @@ export function ClientAccountFilters({
               xs: "100%",
             },
           }}
-          startAriaLabel={translateText("Minimum finance value")}
+          startAriaLabel={t("Minimum finance value")}
           startInputProps={{ inputMode: "numeric" }}
-          startPlaceholder={translateText("Min")}
+          startPlaceholder={t("Min")}
           startValue={filters.financeMin}
         />
       </Box>
@@ -286,7 +286,7 @@ export function ClientAccountFilters({
           value={filters.setupField}
           slotProps={{
             htmlInput: {
-              "aria-label": translateText("Account setup field"),
+              "aria-label": t("Account setup field"),
             },
           }}
           sx={{
@@ -298,19 +298,19 @@ export function ClientAccountFilters({
         >
           {clientSetupSearchFieldOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
-              {translateText(option.label)}
+              {t(option.label)}
             </MenuItem>
           ))}
         </TextField>
         <TextField
           hiddenLabel
           onChange={(event) => onChange("setupQuery", event.target.value)}
-          placeholder={translateText(clientSearchPlaceholders[filters.setupField])}
+          placeholder={t(clientSearchPlaceholders[filters.setupField])}
           size="small"
           value={filters.setupQuery}
           slotProps={{
             htmlInput: {
-              "aria-label": translateText("Account setup"),
+              "aria-label": t("Account setup"),
               autoCapitalize: "none",
               autoCorrect: "off",
               spellCheck: false,
@@ -325,8 +325,8 @@ export function ClientAccountFilters({
         </Stack>
 
         <RangePicker
-          endAriaLabel={translateText("Time to")}
-          endPlaceholder={translateText("To")}
+          endAriaLabel={t("Time to")}
+          endPlaceholder={t("To")}
           endValue={filters.timeEnd}
           fieldSx={{
             minWidth: 0,
@@ -343,7 +343,7 @@ export function ClientAccountFilters({
               value={filters.timeField}
               slotProps={{
                 htmlInput: {
-                  "aria-label": translateText("Time field"),
+                  "aria-label": t("Time field"),
                 },
               }}
               sx={{
@@ -354,7 +354,7 @@ export function ClientAccountFilters({
             >
               {clientTimeFieldOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {translateText(option.label)}
+                  {t(option.label)}
                 </MenuItem>
               ))}
             </TextField>
@@ -378,8 +378,8 @@ export function ClientAccountFilters({
               xs: "100%",
             },
           }}
-          startAriaLabel={translateText("Time from")}
-          startPlaceholder={translateText("From")}
+          startAriaLabel={t("Time from")}
+          startPlaceholder={t("From")}
           startValue={filters.timeStart}
         />
       </Box>

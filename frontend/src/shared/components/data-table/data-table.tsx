@@ -122,6 +122,7 @@ interface DataTableProps<TRow, TSortKey extends string = string> {
   stickyHeader?: boolean;
   onScrollStateChange?: (state: DataTableScrollState) => void;
   toolbarPlacement?: "inner" | "outer";
+  renderDetailContent?: (row: TRow) => ReactNode;
   sorting?: {
     direction: "asc" | "desc";
     onSortChange: (sortKey: TSortKey) => void;
@@ -145,10 +146,11 @@ export function DataTable<TRow, TSortKey extends string = string>({
   stickyHeader = false,
   onScrollStateChange,
   toolbarPlacement = "outer",
+  renderDetailContent,
   sorting,
 }: DataTableProps<TRow, TSortKey>) {
   const theme = useTheme();
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
@@ -490,10 +492,10 @@ export function DataTable<TRow, TSortKey extends string = string>({
                               width: "100%",
                             }}
                           >
-                            {translateText(column.header)}
+                            {t(column.header)}
                           </TableSortLabel>
                         ) : (
-                          translateText(column.header)
+                          t(column.header)
                         )}
                       </TableCell>
                     ))}
@@ -505,7 +507,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                       <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                         <Stack alignItems="center" direction="row" justifyContent="center" spacing={1.5} sx={{ py: 4 }}>
                           <CircularProgress size={20} />
-                          <Typography variant="body2">{translateText("Loading data...")}</Typography>
+                          <Typography variant="body2">{t("Loading data...")}</Typography>
                         </Stack>
                       </TableCell>
                     </TableRow>
@@ -513,7 +515,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                     <TableRow>
                       <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                         <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
-                          {translateText(emptyMessage)}
+                          {t(emptyMessage)}
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -606,22 +608,28 @@ export function DataTable<TRow, TSortKey extends string = string>({
                                 }}
                               />
                             ) : null}
-                            {columns.map((column) => (
-                              <TableCell
-                                align={column.align}
-                                data-sticky-column={column.sticky}
-                                key={column.key}
-                                sx={{
-                                  ...getStickyColumnSx(column),
-                                  minWidth: column.minWidth,
-                                  px: 1.25,
-                                  textAlign: column.align,
-                                  width: column.width,
-                                }}
-                              >
-                                {column.render(row)}
+                            {renderDetailContent ? (
+                              <TableCell colSpan={columns.length} sx={{ minWidth: 0, px: 0, py: 0 }}>
+                                {renderDetailContent(row)}
                               </TableCell>
-                            ))}
+                            ) : (
+                              columns.map((column) => (
+                                <TableCell
+                                  align={column.align}
+                                  data-sticky-column={column.sticky}
+                                  key={column.key}
+                                  sx={{
+                                    ...getStickyColumnSx(column),
+                                    minWidth: column.minWidth,
+                                    px: 1.25,
+                                    textAlign: column.align,
+                                    width: column.width,
+                                  }}
+                                >
+                                  {column.render(row)}
+                                </TableCell>
+                              ))
+                            )}
                           </TableRow>
                         </Fragment>
                       );

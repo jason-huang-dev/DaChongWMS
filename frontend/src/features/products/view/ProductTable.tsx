@@ -1,5 +1,6 @@
 import { Button } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { ProductRecord } from "@/features/products/model/types";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { ResourceTable } from "@/shared/components/resource-table";
@@ -46,6 +47,8 @@ export function ProductTable({
   dataView,
   onEdit,
 }: ProductTableProps) {
+  const { t } = useI18n();
+
   return (
     <ResourceTable
       columns={[
@@ -80,7 +83,7 @@ export function ProductTable({
       toolbar={
         <DataViewToolbar
           activeFilterCount={dataView.activeFilterCount}
-          contextLabel={companyLabel ? `Workspace: ${companyLabel}` : undefined}
+          contextLabel={companyLabel ? t("shell.workspaceChip", { label: companyLabel }) : undefined}
           fields={productFields}
           filters={dataView.filters}
           onChange={dataView.updateFilter}

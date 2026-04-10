@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 
 import { Alert, Button, Stack, Typography } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import { MutationCard } from "@/shared/components/mutation-card";
 
 const templateHeaders = [
@@ -45,6 +46,7 @@ export function StockInImportPanel({
   onSubmit,
   successMessage,
 }: StockInImportPanelProps) {
+  const { t, translate, msg } = useI18n();
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -52,7 +54,7 @@ export function StockInImportPanel({
   const handleSubmit = async () => {
     const file = inputRef.current?.files?.[0];
     if (!file) {
-      setLocalError("Select a CSV file before importing.");
+      setLocalError(t("Select a CSV file before importing."));
       return;
     }
     setLocalError(null);
@@ -72,15 +74,14 @@ export function StockInImportPanel({
     >
       <Stack spacing={2}>
         <Alert severity="info">
-          Use the CSV template for manifest uploads. Provide either <code>purchase_order_number</code> or{" "}
-          <code>asn_number</code> per row.
+          {t("Use the CSV template for manifest uploads. Provide either purchase_order_number or asn_number per row.")}
         </Alert>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1.5}>
           <Button onClick={downloadTemplate} type="button" variant="outlined">
-            Download CSV template
+            {t("Download CSV template")}
           </Button>
           <Button component="label" variant="outlined">
-            Choose CSV file
+            {t("Choose CSV file")}
             <input
               accept=".csv,text/csv"
               hidden
@@ -94,11 +95,11 @@ export function StockInImportPanel({
             />
           </Button>
           <Button disabled={isPending} onClick={() => void handleSubmit()} type="button" variant="contained">
-            {isPending ? "Importing..." : "Run import"}
+            {isPending ? t("Importing...") : t("Run import")}
           </Button>
         </Stack>
         <Typography color="text.secondary" variant="body2">
-          {selectedFileName ? `Selected file: ${selectedFileName}` : "No file selected yet."}
+          {selectedFileName ? t("files.selectedFile", { name: selectedFileName }) : t("No file selected yet.")}
         </Typography>
       </Stack>
     </MutationCard>

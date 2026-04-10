@@ -18,7 +18,7 @@ interface WorkspaceTabsBarProps {
 
 export function WorkspaceTabsBar({ activePath, compact = true, isClosingTab = false, onActivate, onClose, tabs }: WorkspaceTabsBarProps) {
   const theme = useTheme();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const isDark = theme.palette.mode === "dark";
 
   return (
@@ -34,7 +34,7 @@ export function WorkspaceTabsBar({ activePath, compact = true, isClosingTab = fa
         return (
           <Stack
             alignItems="center"
-            aria-label={translateText(tab.title)}
+            aria-label={t(tab.title)}
             aria-selected={isActive}
             component="button"
             direction="row"
@@ -100,7 +100,7 @@ export function WorkspaceTabsBar({ activePath, compact = true, isClosingTab = fa
                 maxWidth: compact ? 150 : 180,
               }}
             >
-              {translateText(tab.title)}
+              {t(tab.title)}
             </Typography>
             {tab.route_path !== "/dashboard" ? (
               <IconButton
@@ -127,7 +127,7 @@ export function WorkspaceTabsBar({ activePath, compact = true, isClosingTab = fa
       {tabs.length === 0 ? (
         <Box sx={{ px: 1.5, py: 0.75 }}>
           <Typography color="text.secondary" variant="caption">
-            {translateText("Open routes are kept here for quick return.")}
+            {t("Open routes are kept here for quick return.")}
           </Typography>
         </Box>
       ) : null}

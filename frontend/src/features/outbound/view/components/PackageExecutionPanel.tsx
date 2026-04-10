@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, Grid, Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import { usePackageExecutionController } from "@/features/outbound/controller/useOutboundController";
 import type { PackageExecutionValues } from "@/features/outbound/model/types";
 import { packageExecutionSchema } from "@/features/outbound/model/validators";
@@ -37,6 +38,7 @@ export function PackageExecutionPanel({
   stepType,
   orderType,
 }: PackageExecutionPanelProps) {
+  const { t, translate, msg } = useI18n();
   const { mutation, successMessage, errorMessage } = usePackageExecutionController();
   const form = useForm<PackageExecutionValues>({
     defaultValues: {
@@ -120,7 +122,7 @@ export function PackageExecutionPanel({
             </Grid>
           </Grid>
           <Button disabled={mutation.isPending} type="submit" variant="contained">
-            {mutation.isPending ? "Submitting..." : submitLabel}
+            {mutation.isPending ? t("Submitting...") : t(submitLabel)}
           </Button>
         </Stack>
       </FormProvider>

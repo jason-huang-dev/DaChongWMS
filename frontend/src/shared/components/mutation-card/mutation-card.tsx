@@ -18,16 +18,16 @@ export function MutationCard({
   successMessage,
   children,
 }: MutationCardProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Card>
       <CardContent>
         <Stack spacing={2}>
           <Stack spacing={0.75}>
-            <Typography variant="h6">{translateText(title)}</Typography>
+            <Typography variant="h6">{t(title)}</Typography>
             <Typography color="text.secondary" variant="body2">
-              {translateText(description)}
+              {t(description)}
             </Typography>
           </Stack>
           {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}

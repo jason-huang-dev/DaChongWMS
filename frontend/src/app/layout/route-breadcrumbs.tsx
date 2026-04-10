@@ -84,7 +84,7 @@ function useSessionRouteBreadcrumbHistory(currentEntry: SessionRouteBreadcrumbEn
 export function RouteBreadcrumbs() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const location = useLocation();
   const matches = useMatches();
   const currentLabelKey = buildRouteLabelKey(matches);
@@ -104,9 +104,9 @@ export function RouteBreadcrumbs() {
       historyEntries.map((entry) => ({
         ...entry,
         isCurrent: currentEntry != null && entry.href === currentEntry.href,
-        label: translateText(entry.labelKey),
+        label: t(entry.labelKey),
       })),
-    [currentEntry?.href, historyEntries, translateText],
+    [currentEntry?.href, historyEntries, t],
   );
   const measurementKey = useMemo(() => buildMeasurementKey(renderedEntries), [renderedEntries]);
   const overflowCounts = useMemo(
@@ -242,7 +242,7 @@ export function RouteBreadcrumbs() {
         </Link>
         {!entry.isCurrent ? (
           <IconButton
-            aria-label={`${translateText("Remove from quick access")}: ${entry.label}`}
+            aria-label={`${t("Remove from quick access")}: ${entry.label}`}
             className="breadcrumb-remove"
             onClick={(event) => {
               event.preventDefault();
@@ -281,7 +281,7 @@ export function RouteBreadcrumbs() {
         aria-controls={!measureOnly && overflowAnchorEl ? "route-breadcrumbs-overflow-menu" : undefined}
         aria-expanded={!measureOnly && overflowAnchorEl ? "true" : undefined}
         aria-haspopup={measureOnly ? undefined : "menu"}
-        aria-label={measureOnly ? undefined : translateText("Show hidden visited pages")}
+        aria-label={measureOnly ? undefined : t("Show hidden visited pages")}
         key={`hidden-${hiddenCount}`}
         onClick={
           measureOnly
@@ -417,7 +417,7 @@ export function RouteBreadcrumbs() {
       <Menu
         anchorEl={overflowAnchorEl}
         id="route-breadcrumbs-overflow-menu"
-        MenuListProps={{ "aria-label": translateText("Recent pages"), dense: true }}
+        MenuListProps={{ "aria-label": t("Recent pages"), dense: true }}
         onClose={() => {
           setOverflowAnchorEl(null);
         }}
@@ -453,7 +453,7 @@ export function RouteBreadcrumbs() {
             </MenuItem>
             {!entry.isCurrent ? (
               <IconButton
-                aria-label={`${translateText("Remove from recent pages")}: ${entry.label}`}
+                aria-label={`${t("Remove from recent pages")}: ${entry.label}`}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();

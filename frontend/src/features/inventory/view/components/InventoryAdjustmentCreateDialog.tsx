@@ -137,16 +137,16 @@ function parseQuantity(value: string) {
 
 function getLineValidationMessage(
   line: InventoryAdjustmentDraftLine,
-  translateText: (value: string) => string,
+  t: (key: string, params?: Record<string, string | number | null | undefined>) => string,
 ) {
   const quantity = parseQuantity(line.quantity);
 
   if (!line.quantity.trim() || !Number.isFinite(quantity) || quantity <= 0) {
-    return translateText("Quantity must be greater than zero.");
+    return t("Quantity must be greater than zero.");
   }
 
   if (line.movementType === "ADJUSTMENT_OUT" && quantity > Number(line.availableQty)) {
-    return translateText("Reduce quantity cannot exceed available stock.");
+    return t("Reduce quantity cannot exceed available stock.");
   }
 
   return null;
@@ -184,7 +184,7 @@ export function InventoryAdjustmentCreateDialog({
 }: InventoryAdjustmentCreateDialogProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const [warehouseId, setWarehouseId] = useState<number | null>(getDefaultWarehouseId(initialWarehouseId, warehouses));
   const [adjustmentType, setAdjustmentType] = useState<string>(adjustmentTypeOptions[0]?.value ?? "");
   const [note, setNote] = useState("");
@@ -307,7 +307,7 @@ export function InventoryAdjustmentCreateDialog({
         key: "adjustmentQty",
         minWidth: 240,
         render: (line) => {
-          const validationMessage = getLineValidationMessage(line, translateText);
+          const validationMessage = getLineValidationMessage(line, t);
 
           return (
             <Stack spacing={0.5}>
@@ -324,25 +324,25 @@ export function InventoryAdjustmentCreateDialog({
                   SelectProps={{
                     displayEmpty: true,
                     SelectDisplayProps: {
-                      "aria-label": translateText(`Adjustment direction for ${line.goodsCode}`),
+                      "aria-label": t("inventory.adjustmentDirectionFor", { goodsCode: line.goodsCode }),
                     },
                   }}
                   sx={{ flex: "0 0 124px", minWidth: 124 }}
                 >
                   {lineMovementTypeOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
-                      {translateText(option.label)}
+                      {t(option.label)}
                     </MenuItem>
                   ))}
                 </TextField>
                 <TextField
                   error={Boolean(validationMessage)}
                   onChange={(event) => updateLine(line.id, { quantity: event.target.value })}
-                  placeholder={translateText("Please enter")}
+                  placeholder={t("Please enter")}
                   size="small"
                   slotProps={{
                     htmlInput: {
-                      "aria-label": translateText(`Adjustment quantity for ${line.goodsCode}`),
+                      "aria-label": t("inventory.adjustmentQuantityFor", { goodsCode: line.goodsCode }),
                       inputMode: "decimal",
                       min: 0,
                       step: "0.0001",
@@ -369,9 +369,9 @@ export function InventoryAdjustmentCreateDialog({
         minWidth: 80,
         render: (line) => (
           <ActionIconButton
-            aria-label={translateText(`Remove ${line.goodsCode}`)}
+            aria-label={t("inventory.removeProductFor", { goodsCode: line.goodsCode })}
             onClick={() => removeLine(line.id)}
-            title={translateText("Remove product")}
+            title={t("Remove product")}
           >
             <DeleteOutlineRoundedIcon fontSize="small" />
           </ActionIconButton>
@@ -379,7 +379,7 @@ export function InventoryAdjustmentCreateDialog({
         width: "12%",
       },
     ],
-    [isDark, theme, translateText],
+    [isDark, t, theme],
   );
 
   const pickerColumns = useMemo<Array<DataTableColumnDefinition<InventoryBalanceRecord>>>(
@@ -454,7 +454,7 @@ export function InventoryAdjustmentCreateDialog({
       pickerSelectedBalanceIds.includes(balance.id),
     );
     if (selectedBalances.length === 0) {
-      setLocalErrorMessage(translateText("Select at least one product."));
+      setLocalErrorMessage(t("Select at least one product."));
       return;
     }
 
@@ -475,7 +475,7 @@ export function InventoryAdjustmentCreateDialog({
   const handleApplyBatchValues = () => {
     const parsedQuantity = parseQuantity(batchQuantity);
     if (!Number.isFinite(parsedQuantity) || parsedQuantity <= 0) {
-      setLocalErrorMessage(translateText("Quantity must be greater than zero."));
+      setLocalErrorMessage(t("Quantity must be greater than zero."));
       return;
     }
 
@@ -493,27 +493,27 @@ export function InventoryAdjustmentCreateDialog({
 
   const handleSubmit = async () => {
     if (!warehouseId) {
-      setLocalErrorMessage(translateText("Warehouse is required."));
+      setLocalErrorMessage(t("Warehouse is required."));
       return;
     }
     if (!adjustmentType.trim()) {
-      setLocalErrorMessage(translateText("Adjustment type is required."));
+      setLocalErrorMessage(t("Adjustment type is required."));
       return;
     }
     if (lines.length === 0) {
-      setLocalErrorMessage(translateText("Select at least one product."));
+      setLocalErrorMessage(t("Select at least one product."));
       return;
     }
     if (buildAdjustmentReasonLength(adjustmentType, note) > 255) {
       setLocalErrorMessage(
-        translateText("Adjustment note must be 255 characters or less once combined with adjustment type."),
+        t("Adjustment note must be 255 characters or less once combined with adjustment type."),
       );
       return;
     }
 
-    const invalidLine = lines.find((line) => getLineValidationMessage(line, translateText));
+    const invalidLine = lines.find((line) => getLineValidationMessage(line, t));
     if (invalidLine) {
-      setLocalErrorMessage(getLineValidationMessage(invalidLine, translateText));
+      setLocalErrorMessage(getLineValidationMessage(invalidLine, t));
       return;
     }
 
@@ -547,14 +547,14 @@ export function InventoryAdjustmentCreateDialog({
             spacing={1.5}
           >
             <Typography sx={{ fontWeight: 800 }} variant="h5">
-              {translateText("Create Adjustment List")}
+              {t("Create Adjustment List")}
             </Typography>
             <Stack direction="row" spacing={1}>
               <Button color="inherit" disabled={isSubmitting} onClick={onClose} variant="outlined">
-                {translateText("Cancel")}
+                {t("Cancel")}
               </Button>
               <Button disabled={isSubmitting} onClick={() => void handleSubmit()} variant="contained">
-                {isSubmitting ? translateText("Submitting...") : translateText("Confirm the Adjustment")}
+                {isSubmitting ? t("Submitting...") : t("Confirm the Adjustment")}
               </Button>
             </Stack>
           </Stack>
@@ -577,7 +577,7 @@ export function InventoryAdjustmentCreateDialog({
                     }}
                   >
                     <TextField
-                      label={translateText("Warehouse")}
+                      label={t("Warehouse")}
                       onChange={(event) => {
                         const nextWarehouseId = Number(event.target.value);
                         setWarehouseId(Number.isFinite(nextWarehouseId) ? nextWarehouseId : null);
@@ -592,7 +592,7 @@ export function InventoryAdjustmentCreateDialog({
                       value={warehouseId ?? ""}
                       SelectProps={{
                         displayEmpty: true,
-                        SelectDisplayProps: { "aria-label": translateText("Warehouse") },
+                        SelectDisplayProps: { "aria-label": t("Warehouse") },
                       }}
                     >
                       {warehouses.map((warehouse) => (
@@ -602,7 +602,7 @@ export function InventoryAdjustmentCreateDialog({
                       ))}
                     </TextField>
                     <TextField
-                      label={translateText("Adjustment Type")}
+                      label={t("Adjustment Type")}
                       onChange={(event) => {
                         setAdjustmentType(event.target.value);
                         setLocalErrorMessage(null);
@@ -612,29 +612,29 @@ export function InventoryAdjustmentCreateDialog({
                       value={adjustmentType}
                       SelectProps={{
                         displayEmpty: true,
-                        SelectDisplayProps: { "aria-label": translateText("Adjustment Type") },
+                        SelectDisplayProps: { "aria-label": t("Adjustment Type") },
                       }}
                     >
                       {adjustmentTypeOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          {translateText(option.label)}
+                          {t(option.label)}
                         </MenuItem>
                       ))}
                     </TextField>
                   </Box>
                   <TextField
-                    label={translateText("Note")}
+                    label={t("Note")}
                     multiline
                     minRows={4}
                     onChange={(event) => {
                       setNote(event.target.value);
                       setLocalErrorMessage(null);
                     }}
-                    placeholder={translateText("Please enter")}
+                    placeholder={t("Please enter")}
                     slotProps={{
                       formHelperText: { sx: { textAlign: "right" } },
                       htmlInput: {
-                        "aria-label": translateText("Adjustment note"),
+                        "aria-label": t("Adjustment note"),
                         maxLength: 255,
                       },
                     }}
@@ -664,7 +664,7 @@ export function InventoryAdjustmentCreateDialog({
                   </Typography>
                   <Stack direction="row" spacing={1}>
                     <Button disabled={lines.length === 0} onClick={() => setIsBatchDialogOpen(true)} variant="outlined">
-                      {translateText("Batch Add Products")}
+                      {t("Batch Add Products")}
                     </Button>
                     <Button
                       disabled={!warehouseId || balanceQuery.isLoading}
@@ -677,7 +677,7 @@ export function InventoryAdjustmentCreateDialog({
                       }}
                       variant="outlined"
                     >
-                      {translateText("Select Products")}
+                      {t("Select Products")}
                     </Button>
                   </Stack>
                 </Stack>
@@ -694,7 +694,7 @@ export function InventoryAdjustmentCreateDialog({
         onClose={() => setIsPickerOpen(false)}
         open={open && isPickerOpen}
       >
-        <DialogTitle>{translateText("Select Products")}</DialogTitle>
+        <DialogTitle>{t("Select Products")}</DialogTitle>
         <DialogContent dividers sx={{ pb: 2.5, pt: 2.5 }}>
           <Stack spacing={2}>
             <TextField
@@ -702,11 +702,11 @@ export function InventoryAdjustmentCreateDialog({
                 setPickerSearchText(event.target.value);
                 setPickerPage(1);
               }}
-              placeholder={translateText("Search SKU or shelf")}
+              placeholder={t("Search SKU or shelf")}
               size="small"
               slotProps={{
                 htmlInput: {
-                  "aria-label": translateText("Product search"),
+                  "aria-label": t("Product search"),
                 },
                 input: {
                   startAdornment: (
@@ -742,7 +742,7 @@ export function InventoryAdjustmentCreateDialog({
                     onClick={handleConfirmSelectedProducts}
                     variant="contained"
                   >
-                    {translateText("Add selected products")}
+                    {t("Add selected products")}
                   </Button>
                 </Stack>
               }
@@ -758,11 +758,11 @@ export function InventoryAdjustmentCreateDialog({
         onClose={() => setIsBatchDialogOpen(false)}
         open={open && isBatchDialogOpen}
       >
-        <DialogTitle>{translateText("Batch Add Products")}</DialogTitle>
+        <DialogTitle>{t("Batch Add Products")}</DialogTitle>
         <DialogContent dividers sx={{ pb: 2.5, pt: 2.5 }}>
           <Stack spacing={2}>
             <TextField
-              label={translateText("Adjustment direction")}
+              label={t("Adjustment direction")}
               onChange={(event) => setBatchMovementType(event.target.value as InventoryAdjustmentLineMovementType)}
               select
               size="small"
@@ -770,17 +770,17 @@ export function InventoryAdjustmentCreateDialog({
             >
               {lineMovementTypeOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {translateText(option.label)}
+                  {t(option.label)}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
-              label={translateText("Adjustment Qty")}
+              label={t("Adjustment Qty")}
               onChange={(event) => setBatchQuantity(event.target.value)}
               size="small"
               slotProps={{
                 htmlInput: {
-                  "aria-label": translateText("Batch adjustment quantity"),
+                  "aria-label": t("Batch adjustment quantity"),
                   inputMode: "decimal",
                   min: 0,
                   step: "0.0001",
@@ -791,10 +791,10 @@ export function InventoryAdjustmentCreateDialog({
             />
             <Stack direction="row" justifyContent="flex-end" spacing={1}>
               <Button color="inherit" onClick={() => setIsBatchDialogOpen(false)}>
-                {translateText("Cancel")}
+                {t("Cancel")}
               </Button>
               <Button onClick={handleApplyBatchValues} variant="contained">
-                {translateText("Apply to all rows")}
+                {t("Apply to all rows")}
               </Button>
             </Stack>
           </Stack>

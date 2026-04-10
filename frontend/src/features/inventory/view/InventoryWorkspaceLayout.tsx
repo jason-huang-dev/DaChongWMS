@@ -31,8 +31,8 @@ function InventoryHiddenSidebarHandle({
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { translateText } = useI18n();
-  const label = translateText("Show inventory sidebar");
+  const { t, translate, msg } = useI18n();
+  const label = t("Show inventory sidebar");
 
   return (
     <Tooltip enterDelay={200} title={label}>
@@ -128,7 +128,7 @@ function InventorySidebar({
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Box
@@ -165,7 +165,7 @@ function InventorySidebar({
             {inventoryWorkspaceItems.map((item) => {
               const Icon = item.icon;
               const active = isInventoryWorkspaceItemActive(item, activePath);
-              const label = translateText(item.label);
+              const label = t(item.label);
 
               return (
                 <Tooltip enterDelay={200} key={item.to} placement="right" title={label}>
@@ -219,11 +219,11 @@ function InventorySidebar({
           </Stack>
         </Stack>
         <Stack alignItems="center" direction={{ xs: "row", md: "column" }} spacing={0.25}>
-          <Tooltip enterDelay={200} title={translateText("Hide inventory sidebar")}>
+          <Tooltip enterDelay={200} title={t("Hide inventory sidebar")}>
             <IconButton
               aria-controls={inventoryWorkspacePagesNavigationId}
               aria-expanded
-              aria-label={translateText("Hide inventory sidebar")}
+              aria-label={t("Hide inventory sidebar")}
               disabled={isSaving}
               onClick={onHide}
               size="small"

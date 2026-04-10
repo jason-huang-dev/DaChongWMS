@@ -2,6 +2,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, MenuItem, Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { AccessInviteFormValues } from "@/features/security/model/types";
 import { accessInviteFormSchema } from "@/features/security/model/validators";
 import { FormSwitchField } from "@/shared/components/form-switch-field";
@@ -30,6 +31,7 @@ export function AccessInviteForm({
   warehouseReference,
   onSubmit,
 }: AccessInviteFormProps) {
+  const { t, translate, msg } = useI18n();
   const form = useForm<AccessInviteFormValues>({
     defaultValues,
     resolver: zodResolver(accessInviteFormSchema),
@@ -67,7 +69,7 @@ export function AccessInviteForm({
           <FormSwitchField label="Can manage users" name="can_manage_users" />
           <Alert severity="info">Invites return a token so warehouse admins can distribute it through their own communication channel.</Alert>
           <Button disabled={isSubmitting} type="submit" variant="contained">
-            {isSubmitting ? "Issuing..." : "Issue invite"}
+            {isSubmitting ? t("Issuing...") : t("Issue invite")}
           </Button>
         </Stack>
       </FormProvider>

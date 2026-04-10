@@ -11,14 +11,14 @@ type MetricCardTone = "neutral" | "info" | "success" | "warning" | "danger";
 interface MetricCardProps {
   label: string;
   value: ReactNode;
-  helper?: string;
+  helper?: ReactNode;
   to?: string;
   tone?: MetricCardTone;
 }
 
 export function MetricCard({ label, value, helper, to, tone = "neutral" }: MetricCardProps) {
   const theme = useTheme();
-  const { translateText } = useI18n();
+  const { t } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const toneColor =
     tone === "success"
@@ -45,7 +45,7 @@ export function MetricCard({ label, value, helper, to, tone = "neutral" }: Metri
         <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={1}>
           <Stack alignItems="center" direction="row" spacing={0.85}>
             <Typography color="text.secondary" variant="body2">
-              {translateText(label)}
+              {t(label)}
             </Typography>
             <span
               aria-hidden="true"
@@ -62,7 +62,7 @@ export function MetricCard({ label, value, helper, to, tone = "neutral" }: Metri
           </Stack>
           {to ? (
             <Typography color="text.secondary" variant="caption">
-              {translateText("Open")}
+              {t("ui.openAction")}
             </Typography>
           ) : null}
         </Stack>
@@ -71,7 +71,7 @@ export function MetricCard({ label, value, helper, to, tone = "neutral" }: Metri
         </Typography>
         {helper ? (
           <Typography color="text.secondary" variant="body2">
-            {translateText(helper)}
+            {helper}
           </Typography>
         ) : null}
       </Stack>

@@ -14,7 +14,7 @@ interface ModuleTopNavProps {
 
 export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: ModuleTopNavProps) {
   const theme = useTheme();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const activeValue = items.find((item) => activePath === item.path || activePath.startsWith(`${item.path}/`))?.path ?? false;
 
@@ -50,7 +50,7 @@ export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: 
       >
       {items.map((item) => {
         const Icon = item.icon;
-        const label = translateText(item.label);
+        const label = t(item.label);
         return (
           <Tab
             aria-label={label}

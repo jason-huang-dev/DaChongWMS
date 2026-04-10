@@ -103,7 +103,7 @@ function buildWarehouseColumns() {
 
 export function StatisticsPage() {
   const controller = useStatisticsController();
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   const inboundLoading =
     controller.standardPurchaseOrdersQuery.isLoading ||
@@ -147,7 +147,7 @@ export function StatisticsPage() {
                 onClick={() => controller.setTimeWindow(option.value)}
                 variant={controller.timeWindow === option.value ? "contained" : "outlined"}
               >
-                {translateText(option.label)}
+                {t(option.label)}
               </Button>
             ))}
           </ButtonGroup>
@@ -156,7 +156,7 @@ export function StatisticsPage() {
         title="Statistics"
       />
       {!controller.company ? (
-        <Alert severity="info">{translateText("Select an active workspace membership before viewing statistics.")}</Alert>
+        <Alert severity="info">{t("Select an active workspace membership before viewing statistics.")}</Alert>
       ) : null}
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, md: 6, xl: 3 }}>

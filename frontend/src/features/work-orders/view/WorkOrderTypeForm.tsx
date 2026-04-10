@@ -28,7 +28,7 @@ export function WorkOrderTypeForm({
   onSubmit,
   onCancelEdit,
 }: WorkOrderTypeFormProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const form = useForm<WorkOrderTypeFormValues>({
     defaultValues,
     resolver: zodResolver(workOrderTypeFormSchema),
@@ -47,17 +47,17 @@ export function WorkOrderTypeForm({
           <FormTextField label="Type code" name="code" />
           <FormTextField label="Type name" name="name" />
           <FormTextField label="Workstream" name="workstream" select>
-            <MenuItem value="INBOUND">Inbound</MenuItem>
-            <MenuItem value="OUTBOUND">Outbound</MenuItem>
-            <MenuItem value="INVENTORY">Inventory</MenuItem>
-            <MenuItem value="RETURNS">Returns</MenuItem>
-            <MenuItem value="GENERAL">General</MenuItem>
+            <MenuItem value="INBOUND">{t("Inbound")}</MenuItem>
+            <MenuItem value="OUTBOUND">{t("Outbound")}</MenuItem>
+            <MenuItem value="INVENTORY">{t("Inventory")}</MenuItem>
+            <MenuItem value="RETURNS">{t("Returns")}</MenuItem>
+            <MenuItem value="GENERAL">{t("General")}</MenuItem>
           </FormTextField>
           <FormTextField label="Default urgency" name="default_urgency" select>
-            <MenuItem value="LOW">Low</MenuItem>
-            <MenuItem value="MEDIUM">Medium</MenuItem>
-            <MenuItem value="HIGH">High</MenuItem>
-            <MenuItem value="CRITICAL">Critical</MenuItem>
+            <MenuItem value="LOW">{t("Low")}</MenuItem>
+            <MenuItem value="MEDIUM">{t("Medium")}</MenuItem>
+            <MenuItem value="HIGH">{t("High")}</MenuItem>
+            <MenuItem value="CRITICAL">{t("Critical")}</MenuItem>
           </FormTextField>
           <FormTextField label="Default priority score" name="default_priority_score" />
           <FormTextField label="Target SLA hours" name="target_sla_hours" />
@@ -66,12 +66,12 @@ export function WorkOrderTypeForm({
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting} type="submit" variant="contained">
               {isSubmitting
-                ? translateText("Saving...")
-                : translateText(isEditing ? "Save work order type" : "Create work order type")}
+                ? t("Saving...")
+                : t(isEditing ? "Save work order type" : "Create work order type")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">
-                {translateText("Cancel edit")}
+                {t("Cancel edit")}
               </Button>
             ) : null}
           </Stack>
@@ -80,4 +80,3 @@ export function WorkOrderTypeForm({
     </MutationCard>
   );
 }
-

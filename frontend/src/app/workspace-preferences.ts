@@ -103,7 +103,7 @@ export function useWorkspaceTabs() {
   const matches = useMatches();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { locale, translateText } = useI18n();
+  const { locale, t, translate, msg } = useI18n();
   const { activeMembershipId, activeWarehouseId, company } = useTenantScope();
 
   const tabsQuery = useQuery({
@@ -143,7 +143,7 @@ export function useWorkspaceTabs() {
     syncMutation.mutate({
       route_key: buildRouteKey(location.pathname),
       route_path: location.pathname,
-      title: translateText(buildTabTitle(location.pathname, matches)),
+      title: t(buildTabTitle(location.pathname, matches)),
       is_active: true,
       context_payload: {
         company_id: company?.id ?? null,

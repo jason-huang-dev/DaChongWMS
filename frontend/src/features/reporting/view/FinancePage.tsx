@@ -2,6 +2,7 @@ import Grid from "@mui/material/Grid";
 import { Box, Stack } from "@mui/material";
 import { useSearchParams } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useReportingController } from "@/features/reporting/controller/useReportingController";
 import { FinanceTable } from "@/features/reporting/view/FinanceTable";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
@@ -56,6 +57,7 @@ const exportFields: DataViewFieldConfig<{ status: string }>[] = [
 
 export function FinancePage() {
   const [searchParams] = useSearchParams();
+  const { t } = useI18n();
 
   useScrollToHash();
 
@@ -216,7 +218,7 @@ export function FinancePage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={exportsView.activeFilterCount}
-                  contextLabel={activeWarehouse ? `Warehouse: ${activeWarehouse.warehouse_name}` : "All warehouses"}
+                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={exportFields}
                   filters={exportsView.filters}
                   onChange={exportsView.updateFilter}

@@ -32,7 +32,7 @@ export function BulkActionBar({
   extraControls,
   justifyContent = "space-between",
 }: BulkActionBarProps) {
-  const { t, translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   if (selectedCount <= 0) {
     return null;
@@ -54,14 +54,14 @@ export function BulkActionBar({
           <Chip color="primary" label={t("bulk.selectedCount", { count: selectedCount })} size="small" />
           {helperText ? (
             <Typography color="text.secondary" variant="body2">
-              {translateText(helperText)}
+              {t(helperText)}
             </Typography>
           ) : null}
         </Stack>
         <Stack alignItems={{ md: "center" }} direction={{ xs: "column", md: "row" }} spacing={1}>
           {extraControls}
           <Button color="inherit" onClick={onClear} size="small">
-            {translateText("Clear selection")}
+            {t("Clear selection")}
           </Button>
           {actions.map((action) => (
             <Button
@@ -72,7 +72,7 @@ export function BulkActionBar({
               size="small"
               variant={action.variant ?? "contained"}
             >
-              {translateText(action.label)}
+              {t(action.label)}
             </Button>
           ))}
         </Stack>

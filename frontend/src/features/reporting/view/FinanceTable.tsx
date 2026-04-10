@@ -1,3 +1,4 @@
+import { useI18n } from "@/app/ui-preferences";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
 import { ResourceTable } from "@/shared/components/resource-table";
@@ -42,6 +43,8 @@ interface FinanceTableProps {
 }
 
 export function FinanceTable({ rows, isLoading, error, total, activeWarehouseName, dataView }: FinanceTableProps) {
+  const { t } = useI18n();
+
   return (
     <ResourceTable
       columns={[
@@ -86,7 +89,7 @@ export function FinanceTable({ rows, isLoading, error, total, activeWarehouseNam
       toolbar={
         <DataViewToolbar
           activeFilterCount={dataView.activeFilterCount}
-          contextLabel={activeWarehouseName ? `Warehouse: ${activeWarehouseName}` : "All warehouses"}
+          contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
           fields={invoiceFields}
           filters={dataView.filters}
           onChange={dataView.updateFilter}

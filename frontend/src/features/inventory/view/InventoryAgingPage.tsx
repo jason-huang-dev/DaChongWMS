@@ -12,7 +12,7 @@ import { formatDateTime, formatNumber } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function InventoryAgingPage() {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
   const {
     generateStockAgeReportMutation,
     reportErrorMessage,
@@ -32,13 +32,13 @@ export function InventoryAgingPage() {
         justifyContent="space-between"
         spacing={1.5}
       >
-        <Typography variant="h5">{translateText("Stock Age Report")}</Typography>
+        <Typography variant="h5">{t("Stock Age Report")}</Typography>
         <Button
           disabled={generateStockAgeReportMutation.isPending}
           onClick={() => generateStockAgeReportMutation.mutate()}
           variant="contained"
         >
-          {translateText(generateStockAgeReportMutation.isPending ? "Generating..." : "Generate stock age report")}
+          {t(generateStockAgeReportMutation.isPending ? "Generating..." : "Generate stock age report")}
         </Button>
       </Stack>
       <QueryAlert message={reportErrorMessage} />
@@ -47,7 +47,7 @@ export function InventoryAgingPage() {
         {stockAgeBuckets.map((bucket) => (
           <Grid key={bucket.label} size={{ xs: 12, md: 6, xl: 3 }}>
             <MetricCard
-              helper={`${formatNumber(bucket.quantity)} on hand`}
+              helper={t("inventory.onHandUnits", { count: formatNumber(bucket.quantity) })}
               label={bucket.label}
               tone={bucket.label.includes("90") || bucket.label.includes("120") ? "danger" : bucket.label.includes("60") ? "warning" : "info"}
               value={bucket.count}

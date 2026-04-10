@@ -12,7 +12,7 @@ interface WorkbenchPanelProps {
 }
 
 export function WorkbenchPanel({ title, subtitle, actions, children }: WorkbenchPanelProps) {
-  const { translateText } = useI18n();
+  const { t, translate, msg } = useI18n();
 
   return (
     <Card>
@@ -20,10 +20,10 @@ export function WorkbenchPanel({ title, subtitle, actions, children }: Workbench
         <Stack spacing={2}>
           <Stack alignItems={{ md: "center" }} direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1}>
             <Box>
-              <Typography variant="h6">{translateText(title)}</Typography>
+              <Typography variant="h6">{t(title)}</Typography>
               {subtitle ? (
                 <Typography color="text.secondary" variant="body2">
-                  {translateText(subtitle)}
+                  {t(subtitle)}
                 </Typography>
               ) : null}
             </Box>

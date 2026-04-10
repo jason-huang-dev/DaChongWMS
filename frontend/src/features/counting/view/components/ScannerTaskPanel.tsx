@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Divider, Grid, Stack, Typography } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useScannerTaskController } from "@/features/counting/controller/useCountingController";
 import { defaultScannerCompleteValues } from "@/features/counting/model/mappers";
 import type { NextCountTaskRecord, ScannerCompleteValues } from "@/features/counting/model/types";
@@ -20,6 +21,7 @@ interface ScannerTaskPanelProps {
 }
 
 export function ScannerTaskPanel({ task, isLoading, errorMessage }: ScannerTaskPanelProps) {
+  const { t, translate, msg } = useI18n();
   const { ackMutation, completeMutation, errorMessage: actionErrorMessage, startMutation, successMessage } =
     useScannerTaskController(task?.id);
   const form = useForm<ScannerCompleteValues>({
@@ -47,50 +49,52 @@ export function ScannerTaskPanel({ task, isLoading, errorMessage }: ScannerTaskP
       successMessage={successMessage}
       title="Scanner count task"
     >
-      {isLoading ? <Alert severity="info">Loading the next assigned count task...</Alert> : null}
-      {!isLoading && !task ? <Alert severity="info">No active count or recount task is assigned to this operator.</Alert> : null}
+      {isLoading ? <Alert severity="info">{t("Loading the next assigned count task...")}</Alert> : null}
+      {!isLoading && !task ? (
+        <Alert severity="info">{t("No active count or recount task is assigned to this operator.")}</Alert>
+      ) : null}
       {task ? (
         <Stack spacing={2}>
           <Grid container spacing={1.5}>
             <Grid size={{ xs: 12, md: 6 }}>
-              <Typography variant="body2">Count line</Typography>
+              <Typography variant="body2">{t("Count line")}</Typography>
               <Typography variant="subtitle2">{`${task.cycle_count}-${task.line_number}`}</Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
-              <Typography variant="body2">Task type</Typography>
+              <Typography variant="body2">{t("Task type")}</Typography>
               <Typography variant="subtitle2">{task.task_type}</Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="body2">Location</Typography>
+              <Typography variant="body2">{t("Location")}</Typography>
               <Typography variant="subtitle2">{task.location_code}</Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="body2">SKU</Typography>
+              <Typography variant="body2">{t("SKU")}</Typography>
               <Typography variant="subtitle2">{task.goods_code}</Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="body2">Scanner status</Typography>
+              <Typography variant="body2">{t("Scanner status")}</Typography>
               <StatusChip status={task.scanner_task_status || task.status} />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="body2">System qty</Typography>
+              <Typography variant="body2">{t("System qty")}</Typography>
               <Typography variant="subtitle2">{task.system_qty === null ? "--" : formatNumber(task.system_qty)}</Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="body2">Current counted qty</Typography>
+              <Typography variant="body2">{t("Current counted qty")}</Typography>
               <Typography variant="subtitle2">{task.counted_qty === null ? "--" : formatNumber(task.counted_qty)}</Typography>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="body2">Last operator</Typography>
+              <Typography variant="body2">{t("Last operator")}</Typography>
               <Typography variant="subtitle2">{task.scanner_task_last_operator || "--"}</Typography>
             </Grid>
           </Grid>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={ackMutation.isPending} onClick={() => ackMutation.mutate()} variant="outlined">
-              {ackMutation.isPending ? "Acknowledging..." : "Acknowledge"}
+              {ackMutation.isPending ? t("Acknowledging...") : t("Acknowledge")}
             </Button>
             <Button disabled={startMutation.isPending} onClick={() => startMutation.mutate()} variant="outlined">
-              {startMutation.isPending ? "Starting..." : "Start"}
+              {startMutation.isPending ? t("Starting...") : t("Start")}
             </Button>
           </Stack>
           <Divider />
@@ -108,7 +112,7 @@ export function ScannerTaskPanel({ task, isLoading, errorMessage }: ScannerTaskP
                 </Grid>
               </Grid>
               <Button disabled={completeMutation.isPending} type="submit" variant="contained">
-                {completeMutation.isPending ? "Completing count..." : "Complete scanner count"}
+                {completeMutation.isPending ? t("Completing count...") : t("Complete scanner count")}
               </Button>
             </Stack>
           </FormProvider>

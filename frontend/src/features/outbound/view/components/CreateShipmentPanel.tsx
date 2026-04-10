@@ -5,6 +5,7 @@ import { AddOutlined, DeleteOutline } from "@mui/icons-material";
 import { Button, Divider, Grid, IconButton, Stack } from "@mui/material";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import { defaultShipmentCreateValues } from "@/features/outbound/model/mappers";
 import { outboundApi } from "@/features/outbound/model/api";
 import type { SalesOrderRecord, ShipmentCreateValues } from "@/features/outbound/model/types";
@@ -49,6 +50,7 @@ export function CreateShipmentPanel({
   onSubmit,
   successMessage,
 }: CreateShipmentPanelProps) {
+  const { t } = useI18n();
   const form = useForm<ShipmentCreateValues>({
     defaultValues: defaultShipmentCreateValues,
     resolver: zodResolver(shipmentCreateSchema),
@@ -135,7 +137,7 @@ export function CreateShipmentPanel({
               <Grid container spacing={1.5} key={field.id}>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <FormAutocomplete
-                    label={`Order line ${index + 1}`}
+                    label={<>{t("Order line {{index}}", { index: index + 1 })}</>}
                     name={`line_items.${index}.sales_order_line`}
                     options={lineOptions}
                     loading={salesOrderQuery.isLoading}
