@@ -4,6 +4,7 @@ import { alpha, useTheme } from "@mui/material/styles";
 
 import type { DataViewFilters } from "@/shared/hooks/use-data-view";
 import { useI18n } from "@/app/ui-preferences";
+import { FieldSelectorFilter } from "@/shared/components/field-selector-filter";
 import { RangePicker } from "@/shared/components/range-picker";
 import type { WarehouseRecord } from "@/shared/types/domain";
 
@@ -110,47 +111,49 @@ export function InventoryAdjustmentFilters({
         startAriaLabel={translateText("Adjustment date from")}
         startValue={filters.dateFrom}
       />
-      <TextField
-        hiddenLabel
-        onChange={(event) => onChange("searchField", event.target.value)}
-        select
-        size="small"
-        SelectProps={{
-          displayEmpty: true,
-          SelectDisplayProps: { "aria-label": translateText("Adjustment search field") },
-        }}
-        sx={{ ...filterControlSx, flex: "0 0 172px" }}
-        value={filters.searchField}
-      >
-        {searchFieldOptions.map((option) => (
-          <MenuItem key={option.value} value={option.value}>
-            {translateText(option.label)}
-          </MenuItem>
-        ))}
-      </TextField>
-      <TextField
-        hiddenLabel
-        onChange={(event) => onChange("searchText", event.target.value)}
-        placeholder={translateText("Search content")}
-        size="small"
-        slotProps={{
-          htmlInput: {
-            "aria-label": translateText("Adjustment search text"),
-            autoCapitalize: "none",
-            autoCorrect: "off",
-            spellCheck: false,
-          },
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchRoundedIcon color="action" fontSize="small" />
-              </InputAdornment>
-            ),
-          },
-        }}
-        sx={{ ...filterControlSx, flex: "1 1 280px", minWidth: 220 }}
-        value={filters.searchText}
-      />
+      <FieldSelectorFilter sx={{ flex: "1 1 452px" }}>
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("searchField", event.target.value)}
+          select
+          size="small"
+          SelectProps={{
+            displayEmpty: true,
+            SelectDisplayProps: { "aria-label": translateText("Adjustment search field") },
+          }}
+          sx={{ ...filterControlSx, flex: "0 0 172px", minWidth: 172 }}
+          value={filters.searchField}
+        >
+          {searchFieldOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {translateText(option.label)}
+            </MenuItem>
+          ))}
+        </TextField>
+        <TextField
+          hiddenLabel
+          onChange={(event) => onChange("searchText", event.target.value)}
+          placeholder={translateText("Search content")}
+          size="small"
+          slotProps={{
+            htmlInput: {
+              "aria-label": translateText("Adjustment search text"),
+              autoCapitalize: "none",
+              autoCorrect: "off",
+              spellCheck: false,
+            },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchRoundedIcon color="action" fontSize="small" />
+                </InputAdornment>
+              ),
+            },
+          }}
+          sx={{ ...filterControlSx, flex: "1 1 220px", minWidth: 220 }}
+          value={filters.searchText}
+        />
+      </FieldSelectorFilter>
       <TextField
         hiddenLabel
         onChange={(event) => onChange("matchMode", event.target.value === "contains" ? "" : event.target.value)}

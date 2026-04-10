@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.inventory.models import (
@@ -72,6 +74,30 @@ class InventoryMovementSerializer(serializers.ModelSerializer):
             "resulting_to_qty",
         )
         read_only_fields = ("id", "organization_id", "resulting_from_qty", "resulting_to_qty")
+
+
+class InventoryAdjustmentListLineSerializer(serializers.Serializer):
+    balance_id = serializers.IntegerField()
+    movement_type = serializers.ChoiceField(choices=("ADJUSTMENT_IN", "ADJUSTMENT_OUT"))
+    quantity = serializers.DecimalField(max_digits=18, decimal_places=4, min_value=Decimal("0.0001"))
+
+
+class InventoryAdjustmentListCreateSerializer(serializers.Serializer):
+    warehouse_id = serializers.IntegerField()
+    adjustment_type = serializers.CharField(max_length=120)
+    note = serializers.CharField(allow_blank=True, max_length=255, required=False)
+    reference_code = serializers.CharField(allow_blank=True, max_length=64, required=False)
+    items = InventoryAdjustmentListLineSerializer(many=True, allow_empty=False)
+
+    def validate(self, attrs: dict[str, object]) -> dict[str, object]:
+        adjustment_type = str(attrs.get("adjustment_type", "")).strip()
+        note = str(attrs.get("note", "")).strip()
+        reason = adjustment_type if not note else f"{adjustment_type}: {note}"
+        if len(reason) > 255:
+            raise serializers.ValidationError(
+                {"note": "Adjustment note must be 255 characters or less once combined with adjustment type."}
+            )
+        return attrs
 
 
 class InventoryHoldSerializer(serializers.ModelSerializer):

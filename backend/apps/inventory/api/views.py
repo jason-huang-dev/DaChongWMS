@@ -27,6 +27,7 @@ from apps.inventory.permissions import (
 )
 from apps.inventory.serializers import (
     InventoryAdjustmentApprovalRuleSerializer,
+    InventoryAdjustmentListCreateSerializer,
     InventoryAdjustmentReasonSerializer,
     InventoryBalanceSerializer,
     InventoryHoldSerializer,
@@ -34,6 +35,8 @@ from apps.inventory.serializers import (
 )
 from apps.inventory.services.inventory_service import (
     CreateInventoryAdjustmentApprovalRuleInput,
+    CreateInventoryAdjustmentListInput,
+    CreateInventoryAdjustmentListLineInput,
     CreateInventoryAdjustmentReasonInput,
     CreateInventoryHoldInput,
     CreateInventoryMovementInput,
@@ -44,6 +47,7 @@ from apps.inventory.services.inventory_service import (
     list_inventory_adjustment_reasons,
     list_organization_inventory_balances,
     list_organization_inventory_holds,
+    record_inventory_adjustment_list,
     record_inventory_movement,
     release_inventory_hold,
     update_inventory_adjustment_approval_rule,
@@ -274,6 +278,55 @@ class InventoryMovementListCreateAPIView(OrganizationInventoryBaseAPIView):
         return response
 
     def post(self, request: Request, *args: object, **kwargs: object) -> Response:
+        if isinstance(request.data, dict) and "items" in request.data:
+            serializer = InventoryAdjustmentListCreateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            warehouse = self.get_warehouse(serializer.validated_data["warehouse_id"])
+            line_items = serializer.validated_data["items"]
+            balance_ids = [item["balance_id"] for item in line_items]
+            balances_by_id = {
+                balance.id: balance
+                for balance in InventoryBalance.objects.select_related("warehouse", "location", "product").filter(
+                    organization=self.organization,
+                    id__in=balance_ids,
+                )
+            }
+            missing_balance_ids = [balance_id for balance_id in balance_ids if balance_id not in balances_by_id]
+            if missing_balance_ids:
+                return Response(
+                    {"balance_id": "One or more selected inventory positions are no longer available."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            result = record_inventory_adjustment_list(
+                CreateInventoryAdjustmentListInput(
+                    organization=self.organization,
+                    warehouse=warehouse,
+                    adjustment_type=serializer.validated_data["adjustment_type"],
+                    note=serializer.validated_data.get("note", ""),
+                    performed_by=_actor_name_from_request(request),
+                    reference_code=serializer.validated_data.get("reference_code", ""),
+                    items=tuple(
+                        CreateInventoryAdjustmentListLineInput(
+                            inventory_balance=balances_by_id[item["balance_id"]],
+                            movement_type=item["movement_type"],
+                            quantity=item["quantity"],
+                        )
+                        for item in line_items
+                    ),
+                )
+            )
+            return Response(
+                {
+                    "count": len(result.movements),
+                    "reason": result.reason,
+                    "reference_code": result.reference_code,
+                    "warehouse_id": warehouse.id,
+                    "results": InventoryMovementSerializer(result.movements, many=True).data,
+                },
+                status=status.HTTP_201_CREATED,
+            )
+
         serializer = InventoryMovementSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         warehouse = self.get_warehouse(serializer.validated_data["warehouse_id"])

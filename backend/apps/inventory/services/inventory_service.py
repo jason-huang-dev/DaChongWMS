@@ -62,6 +62,31 @@ class CreateInventoryMovementInput:
 
 
 @dataclass(frozen=True, slots=True)
+class CreateInventoryAdjustmentListLineInput:
+    inventory_balance: InventoryBalance
+    movement_type: str
+    quantity: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class CreateInventoryAdjustmentListInput:
+    organization: Organization
+    warehouse: Warehouse
+    adjustment_type: str
+    note: str
+    performed_by: str
+    items: tuple[CreateInventoryAdjustmentListLineInput, ...]
+    reference_code: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class CreateInventoryAdjustmentListResult:
+    movements: tuple[InventoryMovement, ...]
+    reason: str
+    reference_code: str
+
+
+@dataclass(frozen=True, slots=True)
 class CreateInventoryHoldInput:
     organization: Organization
     inventory_balance: InventoryBalance
@@ -266,6 +291,24 @@ def _increase_balance(balance: InventoryBalance, quantity: Decimal, occurred_at:
     return balance
 
 
+def _build_inventory_adjustment_reason(*, adjustment_type: str, note: str) -> str:
+    normalized_adjustment_type = adjustment_type.strip()
+    normalized_note = note.strip()
+    reason = normalized_adjustment_type if not normalized_note else f"{normalized_adjustment_type}: {normalized_note}"
+    if len(reason) > 255:
+        raise ValidationError(
+            {"note": "Adjustment note must be 255 characters or less once combined with adjustment type."}
+        )
+    return reason
+
+
+def _build_inventory_adjustment_reference_code(reference_code: str) -> str:
+    normalized_reference_code = reference_code.strip()
+    if normalized_reference_code:
+        return normalized_reference_code[:64]
+    return f"ADJ-{timezone.now().strftime('%Y%m%d%H%M%S%f')[:20]}"
+
+
 @transaction.atomic
 def record_inventory_movement(payload: CreateInventoryMovementInput) -> InventoryMovement:
     occurred_at = payload.occurred_at or timezone.now()
@@ -371,6 +414,53 @@ def record_inventory_movement(payload: CreateInventoryMovementInput) -> Inventor
     )
     movement.save()
     return movement
+
+
+@transaction.atomic
+def record_inventory_adjustment_list(payload: CreateInventoryAdjustmentListInput) -> CreateInventoryAdjustmentListResult:
+    reason = _build_inventory_adjustment_reason(
+        adjustment_type=payload.adjustment_type,
+        note=payload.note,
+    )
+    reference_code = _build_inventory_adjustment_reference_code(payload.reference_code)
+    movements: list[InventoryMovement] = []
+
+    for item in payload.items:
+        balance = item.inventory_balance
+        errors: dict[str, str] = {}
+        if balance.organization_id != payload.organization.id:
+            errors["balance_id"] = "Inventory balance must belong to the same organization as the adjustment."
+        if balance.warehouse_id != payload.warehouse.id:
+            errors["balance_id"] = "Inventory balance must belong to the selected warehouse."
+        if errors:
+            raise ValidationError(errors)
+
+        movement = record_inventory_movement(
+            CreateInventoryMovementInput(
+                organization=payload.organization,
+                warehouse=payload.warehouse,
+                product=balance.product,
+                movement_type=item.movement_type,
+                quantity=item.quantity,
+                performed_by=payload.performed_by,
+                from_location=balance.location if item.movement_type == MovementType.ADJUSTMENT_OUT else None,
+                to_location=balance.location if item.movement_type == MovementType.ADJUSTMENT_IN else None,
+                stock_status=balance.stock_status,
+                lot_number=balance.lot_number,
+                serial_number=balance.serial_number,
+                unit_cost=balance.unit_cost,
+                currency=balance.currency,
+                reference_code=reference_code,
+                reason=reason,
+            )
+        )
+        movements.append(movement)
+
+    return CreateInventoryAdjustmentListResult(
+        movements=tuple(movements),
+        reason=reason,
+        reference_code=reference_code,
+    )
 
 
 @transaction.atomic

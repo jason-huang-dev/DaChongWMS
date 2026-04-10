@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
@@ -192,6 +192,13 @@ describe("InventoryAdjustmentsPage", () => {
     apiGetMock.mockReset();
     apiPostMock.mockReset();
     setActiveWarehouseIdMock.mockReset();
+    apiPostMock.mockResolvedValue({
+      count: 1,
+      reason: "Good Product Adjustment: Cycle count review",
+      reference_code: "ADJ-202604100001",
+      warehouse_id: 7,
+      results: [],
+    });
     apiGetMock.mockImplementation((path: string) => {
       if (path === "/api/v1/organizations/1/inventory/movements/") {
         return Promise.resolve(movementHistoryResponse);
@@ -240,8 +247,63 @@ describe("InventoryAdjustmentsPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Create Adjustment List" }));
 
-    expect(await screen.findByRole("heading", { name: "Create inventory adjustment" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Inventory position")).toBeInTheDocument();
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Create Adjustment List" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("combobox", { name: "Warehouse" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("combobox", { name: "Adjustment Type" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("textbox", { name: "Adjustment note" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Batch Add Products" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Select Products" })).toBeInTheDocument();
+    expect(within(dialog).getByText("No products selected yet.")).toBeInTheDocument();
+  });
+
+  test("creates an adjustment list from selected products", async () => {
+    const user = userEvent.setup();
+
+    renderWithProviders(<InventoryAdjustmentsPage />);
+
+    expect(await screen.findByText("Create Adjustment List")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Create Adjustment List" }));
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByRole("textbox", { name: "Adjustment note" }), "Cycle count review");
+    await user.click(within(dialog).getByRole("button", { name: "Select Products" }));
+
+    const pickerDialog = await screen.findByRole("dialog", { name: "Select Products" });
+    expect(within(pickerDialog).getByText("5ZG00543")).toBeInTheDocument();
+
+    const pickerCheckboxes = within(pickerDialog).getAllByRole("checkbox");
+    await user.click(pickerCheckboxes[1]);
+    await user.click(within(pickerDialog).getByRole("button", { name: "Add selected products" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog", { name: "Select Products" })).not.toBeInTheDocument();
+    });
+
+    await user.clear(within(dialog).getByRole("spinbutton", { name: "Adjustment quantity for 5ZG00543" }));
+    await user.type(within(dialog).getByRole("spinbutton", { name: "Adjustment quantity for 5ZG00543" }), "12");
+    await user.click(within(dialog).getByRole("button", { name: "Confirm the Adjustment" }));
+
+    await waitFor(() => {
+      expect(apiPostMock).toHaveBeenCalledWith(
+        "/api/v1/organizations/1/inventory/movements/",
+        {
+          warehouse_id: 7,
+          adjustment_type: "Good Product Adjustment",
+          note: "Cycle count review",
+          items: [
+            {
+              balance_id: 11,
+              movement_type: "ADJUSTMENT_OUT",
+              quantity: 12,
+            },
+          ],
+        },
+      );
+    });
+
+    expect(setActiveWarehouseIdMock).toHaveBeenCalledWith(7);
   });
 
   test("keeps the table toolbar visible while the filter chrome collapses on scroll", async () => {

@@ -16,7 +16,6 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
-import { brandColors } from "@/app/brand";
 import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
 import { inventoryApi } from "@/features/inventory/model/api";
@@ -38,6 +37,7 @@ import {
   type DataTableColumnDefinition,
   type DataTableRowSelection,
 } from "@/shared/components/data-table";
+import { FieldSelectorFilter } from "@/shared/components/field-selector-filter";
 import { FilterCard } from "@/shared/components/filter-card";
 import { MultiSelectFilter } from "@/shared/components/multi-select-filter";
 import { RangePicker } from "@/shared/components/range-picker";
@@ -53,17 +53,12 @@ const increaseMovementTypes = new Set(["OPENING", "RECEIPT", "PUTAWAY", "TRANSFE
 const decreaseMovementTypes = new Set(["PICK", "SHIP", "ADJUSTMENT_OUT", "HOLD"]);
 
 interface InventoryMovementFilters extends DataViewFilters {
-  query: string;
   warehouses: string;
   movementTypes: string;
   dateFrom: string;
   dateTo: string;
-  quantityMin: string;
-  quantityMax: string;
-  merchantSku: string;
-  locationCode: string;
-  performedBy: string;
-  referenceCode: string;
+  searchField: string;
+  searchText: string;
   matchMode: string;
 }
 
@@ -79,18 +74,46 @@ function buildMovementHistoryQueryParams({
   page: number;
   pageSize: number;
   warehouseId: number | null;
-  filters: Record<string, string>;
+  filters: InventoryMovementFilters;
   sorting: { key: InventoryMovementHistorySortKey; direction: "asc" | "desc" };
 }) {
+  const searchText = filters.searchText.trim();
+  const searchField = filters.searchField || "merchantSku";
+  const searchParams =
+    searchText.length > 0
+      ? searchField === "locationCode"
+        ? { locationCode: searchText }
+        : searchField === "performedBy"
+          ? { performedBy: searchText }
+          : searchField === "referenceCode"
+            ? { referenceCode: searchText }
+            : searchField === "query"
+              ? { query: searchText }
+              : { merchantSku: searchText }
+      : {};
+
   return {
     page,
     page_size: pageSize,
     warehouse_id: warehouseId ?? undefined,
     sortKey: sorting.key,
     sortDirection: sorting.direction,
-    ...filters,
+    warehouses: filters.warehouses || undefined,
+    movementTypes: filters.movementTypes || undefined,
+    dateFrom: filters.dateFrom || undefined,
+    dateTo: filters.dateTo || undefined,
+    matchMode: filters.matchMode || undefined,
+    ...searchParams,
   };
 }
+
+const movementSearchFieldOptions = [
+  { label: "Merchant SKU", value: "merchantSku" },
+  { label: "Reference", value: "referenceCode" },
+  { label: "Location", value: "locationCode" },
+  { label: "Performed By", value: "performedBy" },
+  { label: "Search all", value: "query" },
+] as const;
 
 function InventoryMovementProductCell({ row }: { row: InventoryMovementHistoryRow }) {
   return (
@@ -248,17 +271,12 @@ export function InventoryMovementsPage() {
   const movementView = useDataView<InventoryMovementFilters>({
     viewKey: `inventory-movements.${company?.openid ?? "anonymous"}`,
     defaultFilters: {
-      query: "",
       warehouses: "",
       movementTypes: "",
       dateFrom: "",
       dateTo: "",
-      quantityMin: "",
-      quantityMax: "",
-      merchantSku: "",
-      locationCode: "",
-      performedBy: "",
-      referenceCode: "",
+      searchField: "merchantSku",
+      searchText: "",
       matchMode: "",
     },
     pageSize: movementHistoryPageSize,
@@ -282,7 +300,7 @@ export function InventoryMovementsPage() {
           page: movementView.page,
           pageSize: movementView.pageSize,
           warehouseId: activeWarehouseId,
-          filters: movementView.queryFilters,
+          filters: movementView.filters,
           sorting,
         }),
       ),
@@ -294,6 +312,17 @@ export function InventoryMovementsPage() {
   const filterOptions = movementHistoryQuery.data?.filterOptions;
   const isDark = theme.palette.mode === "dark";
   const matchModeValue = movementView.filters.matchMode || "contains";
+  const filterControlSx = {
+    "& .MuiInputBase-input": {
+      fontSize: theme.typography.body2.fontSize,
+      py: 0.95,
+    },
+    "& .MuiOutlinedInput-root": {
+      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.54 : 0.98),
+      borderRadius: 2,
+      minHeight: 42,
+    },
+  } as const;
   const columns = useMemo<InventoryMovementColumnDefinition[]>(
     () => [
       {
@@ -423,332 +452,167 @@ export function InventoryMovementsPage() {
               }}
             >
               <Stack spacing={0.75}>
-            <Stack
-              alignItems="center"
-              direction="row"
-              spacing={1}
-              sx={{
-                flexWrap: "nowrap",
-                minWidth: 0,
-                overflow: "hidden",
-              }}
-            >
-              <MultiSelectFilter
-                label={translateText("Warehouses")}
-                onChange={(nextValues) =>
-                  movementView.updateFilter(
-                    "warehouses",
-                    nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "",
-                  )
-                }
-                options={filterOptions?.warehouses ?? []}
-                placeholder={translateText("Warehouses")}
-                selectedValues={decodeInventoryInformationMultiValue(movementView.filters.warehouses)}
-              />
-              <MultiSelectFilter
-                label={translateText("Movement Types")}
-                onChange={(nextValues) =>
-                  movementView.updateFilter(
-                    "movementTypes",
-                    nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "",
-                  )
-                }
-                options={filterOptions?.movementTypes ?? []}
-                placeholder={translateText("Movement Types")}
-                selectedValues={decodeInventoryInformationMultiValue(movementView.filters.movementTypes)}
-              />
-              <RangePicker
-                endAriaLabel={translateText("To date")}
-                endValue={movementView.filters.dateTo}
-                fieldSx={{
-                  minWidth: { xs: "100%", md: 168 },
-                  width: { md: 168 },
-                }}
-                inputType="date"
-                onEndChange={(value) => movementView.updateFilter("dateTo", value)}
-                onStartChange={(value) => movementView.updateFilter("dateFrom", value)}
-                rootSx={{ flex: "0 0 auto" }}
-                startAriaLabel={translateText("From date")}
-                startValue={movementView.filters.dateFrom}
-              />
-            </Stack>
-            <Stack
-              alignItems="center"
-              direction="row"
-              spacing={1}
-              sx={{ minWidth: 0 }}
-            >
-              <Stack
-                alignItems="center"
-                direction="row"
-                spacing={1}
-                sx={{
-                  flex: "1 1 auto",
-                  minWidth: 0,
-                  overflow: "hidden",
-                }}
-              >
-                <TextField
-                  hiddenLabel
-                  onChange={(event) => movementView.updateFilter("merchantSku", event.target.value)}
-                  placeholder={translateText("Merchant SKU")}
-                  size="small"
-                  slotProps={{
-                    htmlInput: {
-                      "aria-label": translateText("Merchant SKU"),
-                      autoCapitalize: "none",
-                      autoCorrect: "off",
-                      spellCheck: false,
-                    },
-                  }}
-                  sx={{
-                    flex: "1 1 0",
-                    minWidth: 140,
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                      borderRadius: 2,
-                      minHeight: 34,
-                    },
-                  }}
-                  value={movementView.filters.merchantSku}
-                />
-                <TextField
-                  hiddenLabel
-                  onChange={(event) => movementView.updateFilter("locationCode", event.target.value)}
-                  placeholder={translateText("Location")}
-                  size="small"
-                  slotProps={{
-                    htmlInput: {
-                      "aria-label": translateText("Location"),
-                      autoCapitalize: "none",
-                      autoCorrect: "off",
-                      spellCheck: false,
-                    },
-                  }}
-                  sx={{
-                    flex: "1 1 0",
-                    minWidth: 140,
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                      borderRadius: 2,
-                      minHeight: 34,
-                    },
-                  }}
-                  value={movementView.filters.locationCode}
-                />
-                <TextField
-                  hiddenLabel
-                  onChange={(event) => movementView.updateFilter("performedBy", event.target.value)}
-                  placeholder={translateText("Performed By")}
-                  size="small"
-                  slotProps={{
-                    htmlInput: {
-                      "aria-label": translateText("Performed By"),
-                      autoCapitalize: "none",
-                      autoCorrect: "off",
-                      spellCheck: false,
-                    },
-                  }}
-                  sx={{
-                    flex: "1 1 0",
-                    minWidth: 140,
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                      borderRadius: 2,
-                      minHeight: 34,
-                    },
-                  }}
-                  value={movementView.filters.performedBy}
-                />
-                <TextField
-                  hiddenLabel
-                  onChange={(event) => movementView.updateFilter("referenceCode", event.target.value)}
-                  placeholder={translateText("Reference")}
-                  size="small"
-                  slotProps={{
-                    htmlInput: {
-                      "aria-label": translateText("Reference"),
-                      autoCapitalize: "none",
-                      autoCorrect: "off",
-                      spellCheck: false,
-                    },
-                  }}
-                  sx={{
-                    flex: "1 1 0",
-                    minWidth: 140,
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                      borderRadius: 2,
-                      minHeight: 34,
-                    },
-                  }}
-                  value={movementView.filters.referenceCode}
-                />
-              </Stack>
-            </Stack>
-            <Stack
-              alignItems="center"
-              direction="row"
-              justifyContent="space-between"
-              spacing={1}
-              sx={{ minWidth: 0 }}
-            >
-              <Stack
-                alignItems="center"
-                direction="row"
-                spacing={1}
-                sx={{
-                  flex: "1 1 auto",
-                  minWidth: 0,
-                  overflow: "hidden",
-                }}
-              >
-                <TextField
-                  hiddenLabel
-                  onChange={(event) => movementView.updateFilter("query", event.target.value)}
-                  placeholder={translateText("Search all text")}
-                  size="small"
-                  slotProps={{
-                    htmlInput: {
-                      "aria-label": translateText("Search all text"),
-                      autoCapitalize: "none",
-                      autoCorrect: "off",
-                      spellCheck: false,
-                    },
-                    input: {
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchRoundedIcon color="action" fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    },
-                  }}
-                  sx={{
-                    flex: "1 1 auto",
-                    minWidth: 180,
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      backgroundColor: alpha(theme.palette.background.paper, isDark ? 0.48 : 0.96),
-                      borderRadius: 2,
-                      minHeight: 34,
-                    },
-                  }}
-                  value={movementView.filters.query}
-                />
-                <TextField
-                  hiddenLabel
-                  onChange={(event) =>
-                    movementView.updateFilter("matchMode", event.target.value === "contains" ? "" : event.target.value)
-                  }
-                  select
-                  size="small"
-                  slotProps={{ select: { "aria-label": translateText("Match mode") } }}
-                  sx={{
-                    flex: "0 0 140px",
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      minHeight: 34,
-                    },
-                  }}
-                  value={matchModeValue}
+                <Stack
+                  alignItems={{ xs: "stretch", md: "center" }}
+                  direction={{ xs: "column", md: "row" }}
+                  spacing={1}
+                  sx={{ minWidth: 0 }}
                 >
-                  <MenuItem value="contains">{translateText("Contains")}</MenuItem>
-                  <MenuItem value="exact">{translateText("Exact")}</MenuItem>
-                </TextField>
-                <RangePicker
-                  endAriaLabel={translateText("Maximum quantity")}
-                  endInputProps={{ inputMode: "numeric", min: 0 }}
-                  endPlaceholder={translateText("Max Qty")}
-                  endValue={movementView.filters.quantityMax}
-                  fieldSx={{
-                    minWidth: { xs: "100%", md: 110 },
-                    width: { md: 110 },
-                    "& .MuiInputBase-input": {
-                      fontSize: theme.typography.body2.fontSize,
-                      py: 0.875,
-                    },
-                    "& .MuiOutlinedInput-root": {
-                      minHeight: 34,
-                    },
-                  }}
-                  inputType="number"
-                  onEndChange={(value) => movementView.updateFilter("quantityMax", value)}
-                  onStartChange={(value) => movementView.updateFilter("quantityMin", value)}
-                  rootSx={{ flex: "0 0 auto" }}
-                  startAriaLabel={translateText("Minimum quantity")}
-                  startInputProps={{ inputMode: "numeric", min: 0 }}
-                  startPlaceholder={translateText("Min Qty")}
-                  startValue={movementView.filters.quantityMin}
-                />
-              </Stack>
-            </Stack>
-            <Stack
-              alignItems={{ xs: "stretch", md: "center" }}
-              direction={{ xs: "column", md: "row" }}
-              justifyContent="space-between"
-              spacing={0.5}
-              sx={{ minWidth: 0 }}
-            >
-              <Stack
-                alignItems={{ xs: "stretch", md: "center" }}
-                direction={{ xs: "column", md: "row" }}
-                spacing={0.5}
-                sx={{ flex: "1 1 auto", minWidth: 0 }}
-              >
-                <Chip
-                  color={selectedVisibleCount > 0 ? "primary" : "default"}
-                  label={t("bulk.selectedCount", { count: selectedVisibleCount })}
-                  size="small"
-                  sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
-                />
-                {selectedVisibleCount > 0 ? (
-                  <Button onClick={() => setSelectedRowIds([])} size="small" sx={{ alignSelf: { xs: "flex-start", md: "center" }, minHeight: 28, px: 1 }}>
-                    {translateText("Clear selection")}
-                  </Button>
-                ) : null}
-              </Stack>
-              <Stack
-                alignItems="center"
-                direction="row"
-                spacing={0.5}
-                sx={{ flex: "0 0 auto", flexWrap: "wrap", justifyContent: { xs: "flex-start", md: "flex-end" } }}
-              >
-                <Typography color="text.secondary" sx={{ fontSize: theme.typography.pxToRem(12), whiteSpace: "nowrap" }} variant="body2">
-                  {t("inventory.resultCount", { count: movementHistoryQuery.data?.count ?? 0 })}
-                </Typography>
-                <ActionIconButton
-                  aria-label={translateText("Clear all filters")}
-                  disabled={movementView.activeFilterCount === 0}
-                  onClick={movementView.resetFilters}
-                  sx={{ flex: "0 0 auto" }}
-                  title={translateText("Clear all filters")}
+                  <MultiSelectFilter
+                    label={translateText("Warehouses")}
+                    onChange={(nextValues) =>
+                      movementView.updateFilter(
+                        "warehouses",
+                        nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "",
+                      )
+                    }
+                    options={filterOptions?.warehouses ?? []}
+                    placeholder={translateText("Warehouses")}
+                    selectedValues={decodeInventoryInformationMultiValue(movementView.filters.warehouses)}
+                    sx={filterControlSx}
+                  />
+                  <MultiSelectFilter
+                    label={translateText("Movement Types")}
+                    onChange={(nextValues) =>
+                      movementView.updateFilter(
+                        "movementTypes",
+                        nextValues.length > 0 ? encodeInventoryInformationMultiValue(nextValues) : "",
+                      )
+                    }
+                    options={filterOptions?.movementTypes ?? []}
+                    placeholder={translateText("Movement Types")}
+                    selectedValues={decodeInventoryInformationMultiValue(movementView.filters.movementTypes)}
+                    sx={filterControlSx}
+                  />
+                  <RangePicker
+                    endAriaLabel={translateText("To date")}
+                    endValue={movementView.filters.dateTo}
+                    fieldSx={{
+                      ...filterControlSx,
+                      minWidth: { xs: "100%", md: 156 },
+                      width: { md: 156 },
+                    }}
+                    inputType="date"
+                    onEndChange={(value) => movementView.updateFilter("dateTo", value)}
+                    onStartChange={(value) => movementView.updateFilter("dateFrom", value)}
+                    rootSx={{ flex: "0 0 auto" }}
+                    startAriaLabel={translateText("From date")}
+                    startValue={movementView.filters.dateFrom}
+                  />
+                  <FieldSelectorFilter sx={{ flex: "1 1 440px" }}>
+                    <TextField
+                      hiddenLabel
+                      onChange={(event) => movementView.updateFilter("searchField", event.target.value)}
+                      select
+                      size="small"
+                      SelectProps={{
+                        displayEmpty: true,
+                        SelectDisplayProps: { "aria-label": translateText("Movement search field") },
+                      }}
+                      sx={{ ...filterControlSx, flex: "0 0 164px", minWidth: 164 }}
+                      value={movementView.filters.searchField}
+                    >
+                      {movementSearchFieldOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {translateText(option.label)}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <TextField
+                      hiddenLabel
+                      onChange={(event) => movementView.updateFilter("searchText", event.target.value)}
+                      placeholder={translateText("Search content")}
+                      size="small"
+                      slotProps={{
+                        htmlInput: {
+                          "aria-label": translateText("Movement search text"),
+                          autoCapitalize: "none",
+                          autoCorrect: "off",
+                          spellCheck: false,
+                        },
+                        input: {
+                          startAdornment: (
+                            <InputAdornment position="start">
+                              <SearchRoundedIcon color="action" fontSize="small" />
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                      sx={{ ...filterControlSx, flex: "1 1 220px", minWidth: 220 }}
+                      value={movementView.filters.searchText}
+                    />
+                  </FieldSelectorFilter>
+                  <TextField
+                    hiddenLabel
+                    onChange={(event) =>
+                      movementView.updateFilter("matchMode", event.target.value === "contains" ? "" : event.target.value)
+                    }
+                    select
+                    size="small"
+                    SelectProps={{
+                      displayEmpty: true,
+                      SelectDisplayProps: { "aria-label": translateText("Movement match mode") },
+                    }}
+                    sx={{ ...filterControlSx, flex: "0 0 156px", minWidth: 156 }}
+                    value={matchModeValue}
+                  >
+                    <MenuItem value="contains">{translateText("Contains")}</MenuItem>
+                    <MenuItem value="exact">{translateText("Exact")}</MenuItem>
+                  </TextField>
+                </Stack>
+                <Stack
+                  alignItems={{ xs: "stretch", md: "center" }}
+                  direction={{ xs: "column", md: "row" }}
+                  justifyContent="space-between"
+                  spacing={0.5}
+                  sx={{ minWidth: 0 }}
                 >
-                  <RestartAltRoundedIcon fontSize="small" />
-                </ActionIconButton>
-              </Stack>
-            </Stack>
+                  <Stack
+                    alignItems={{ xs: "stretch", md: "center" }}
+                    direction={{ xs: "column", md: "row" }}
+                    spacing={0.5}
+                    sx={{ flex: "1 1 auto", minWidth: 0 }}
+                  >
+                    <Chip
+                      color={selectedVisibleCount > 0 ? "primary" : "default"}
+                      label={t("bulk.selectedCount", { count: selectedVisibleCount })}
+                      size="small"
+                      sx={{ alignSelf: { xs: "flex-start", md: "center" }, flex: "0 0 auto" }}
+                    />
+                    {selectedVisibleCount > 0 ? (
+                      <Button
+                        onClick={() => setSelectedRowIds([])}
+                        size="small"
+                        sx={{ alignSelf: { xs: "flex-start", md: "center" }, minHeight: 28, px: 1 }}
+                      >
+                        {translateText("Clear selection")}
+                      </Button>
+                    ) : null}
+                  </Stack>
+                  <Stack
+                    alignItems="center"
+                    direction="row"
+                    spacing={0.5}
+                    sx={{ flex: "0 0 auto", flexWrap: "wrap", justifyContent: { xs: "flex-start", md: "flex-end" } }}
+                  >
+                    <Typography
+                      color="text.secondary"
+                      sx={{ fontSize: theme.typography.pxToRem(12), whiteSpace: "nowrap" }}
+                      variant="body2"
+                    >
+                      {t("inventory.resultCount", { count: movementHistoryQuery.data?.count ?? 0 })}
+                    </Typography>
+                    <ActionIconButton
+                      aria-label={translateText("Clear all filters")}
+                      disabled={movementView.activeFilterCount === 0}
+                      onClick={movementView.resetFilters}
+                      sx={{ flex: "0 0 auto" }}
+                      title={translateText("Clear all filters")}
+                    >
+                      <RestartAltRoundedIcon fontSize="small" />
+                    </ActionIconButton>
+                  </Stack>
+                </Stack>
               </Stack>
             </FilterCard>
           </Box>

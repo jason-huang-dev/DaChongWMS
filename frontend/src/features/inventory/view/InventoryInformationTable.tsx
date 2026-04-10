@@ -31,6 +31,7 @@ import {
   type DataTableColumnDefinition,
   type DataTableRowSelection,
 } from "@/shared/components/data-table";
+import { FieldSelectorFilter } from "@/shared/components/field-selector-filter";
 import { FilterCard } from "@/shared/components/filter-card";
 import { MultiSelectFilter } from "@/shared/components/multi-select-filter";
 import { PageTabs } from "@/shared/components/page-tabs";
@@ -632,18 +633,6 @@ function InventoryInformationToolbar({
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const { translateText } = useI18n();
-  const surfaceColor = alpha(theme.palette.background.paper, isDark ? 0.52 : 0.88);
-  const surfaceBorder = `1px solid ${alpha(theme.palette.divider, isDark ? 0.52 : 0.8)}`;
-  const groupSx = {
-    alignItems: "center",
-    backgroundColor: surfaceColor,
-    border: surfaceBorder,
-    borderRadius: 2.5,
-    boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, isDark ? 0.05 : 0.72)}`,
-    minHeight: 42,
-    px: 0.625,
-    py: 0.375,
-  } as const;
   const standaloneFieldSx = {
     minWidth: 0,
     width: "100%",
@@ -757,17 +746,7 @@ function InventoryInformationToolbar({
             minWidth: 0,
           }}
         >
-          <Stack
-            alignItems="center"
-            direction="row"
-            spacing={1}
-            useFlexGap
-            sx={{
-              ...groupSx,
-              flexWrap: "wrap",
-              minWidth: 0,
-            }}
-          >
+          <FieldSelectorFilter>
             <TextField
               hiddenLabel
               onChange={(event) =>
@@ -814,7 +793,7 @@ function InventoryInformationToolbar({
                 ...compoundFieldSx,
               }}
             />
-          </Stack>
+          </FieldSelectorFilter>
           <RangePicker
             endAriaLabel={translateText("Maximum value")}
             endInputProps={{ inputMode: "numeric" }}
@@ -854,10 +833,6 @@ function InventoryInformationToolbar({
             onEndChange={(value) => dataView.updateFilter("metricMax", value)}
             onStartChange={(value) => dataView.updateFilter("metricMin", value)}
             rootSx={{
-              backgroundColor: surfaceColor,
-              border: surfaceBorder,
-              borderRadius: 2.5,
-              boxShadow: `inset 0 1px 0 ${alpha(theme.palette.common.white, isDark ? 0.05 : 0.72)}`,
               height: "auto",
               justifySelf: {
                 md: "start",

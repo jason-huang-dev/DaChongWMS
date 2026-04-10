@@ -17,7 +17,7 @@ The first-class `apps.inventory` module provides the current stock picture and t
 - The frontend inventory module is now expected to surface six operator views from this domain stack: inventory information, stock-count review, internal move monitoring, stock-age reporting, manual inventory adjustment, and inter-warehouse transfer planning.
 - Stock count is still owned by counting workflows; inventory provides the balance state, reason codes, and approval rules that those workflows consume.
 - Internal move execution now posts through the first-class movement ledger with `movement_type=PUTAWAY|TRANSFER`.
-- Manual adjustment posting is fulfilled through `POST /api/v1/organizations/{organization_id}/inventory/movements/` with `movement_type=ADJUSTMENT_IN|ADJUSTMENT_OUT`.
+- Manual adjustment posting is fulfilled through `POST /api/v1/organizations/{organization_id}/inventory/movements/` with either a single `movement_type=ADJUSTMENT_IN|ADJUSTMENT_OUT` payload or a grouped adjustment-list payload containing `warehouse_id`, `adjustment_type`, `note`, and `items[]`.
 - Dedicated warehouse-to-warehouse transfer requests are still not implemented. The current inventory module can support planning visibility across warehouses, but executable cross-warehouse transfer orchestration still needs a separate transfer-request workflow.
 
 ## Business Rules

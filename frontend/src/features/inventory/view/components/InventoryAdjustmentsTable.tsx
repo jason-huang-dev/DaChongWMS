@@ -39,10 +39,12 @@ function InventoryAdjustmentMetaField({
   label: string;
   value: string;
 }) {
+  const { translateText } = useI18n();
+
   return (
     <Typography sx={{ lineHeight: 1.35 }} variant="body2">
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
-        {label}:
+        {translateText(label)}:
       </Box>{" "}
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
         {value || "--"}
@@ -193,7 +195,7 @@ export function InventoryAdjustmentsTable({
   onScrollStateChange,
 }: InventoryAdjustmentsTableProps) {
   const theme = useTheme();
-  const { t } = useI18n();
+  const { t, translateText } = useI18n();
 
   return (
     <DataTable
@@ -285,7 +287,7 @@ export function InventoryAdjustmentsTable({
         >
           <Stack alignItems={{ md: "center", xs: "stretch" }} direction={{ md: "row", xs: "column" }} spacing={1}>
             <Button onClick={onOpenCreate} startIcon={<AddRoundedIcon />} variant="contained">
-              Create Adjustment List
+              {translateText("Create Adjustment List")}
             </Button>
             <Button
               color="inherit"
@@ -294,20 +296,20 @@ export function InventoryAdjustmentsTable({
               startIcon={<DownloadOutlinedIcon />}
               variant="outlined"
             >
-              {selectedCount > 0 ? "Export selected" : "Export"}
+              {translateText(selectedCount > 0 ? "Export selected" : "Export")}
             </Button>
             {selectedCount > 0 ? (
               <>
                 <Chip color="primary" label={t("bulk.selectedCount", { count: selectedCount })} size="small" />
                 <Button color="inherit" onClick={onClearSelection} size="small">
-                  Clear selection
+                  {translateText("Clear selection")}
                 </Button>
               </>
             ) : null}
           </Stack>
           <Stack alignItems="center" direction="row" spacing={0.5} sx={{ flexWrap: "wrap", justifyContent: "flex-end" }}>
             <Typography color="text.secondary" sx={{ fontSize: theme.typography.pxToRem(12) }} variant="body2">
-              {total} adjustments
+              {t("inventory.resultCount", { count: total })}
             </Typography>
             <ActionIconButton aria-label="Refresh adjustments" onClick={onRefresh} title="Refresh adjustments">
               <RefreshRoundedIcon fontSize="small" />

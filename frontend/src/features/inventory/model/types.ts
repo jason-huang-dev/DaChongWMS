@@ -219,6 +219,29 @@ export interface InventoryAdjustmentGroupRow {
   items: InventoryAdjustmentGroupItem[];
 }
 
+export type InventoryAdjustmentLineMovementType = "ADJUSTMENT_IN" | "ADJUSTMENT_OUT";
+
+export interface InventoryAdjustmentListItemValues {
+  balanceId: number;
+  movementType: InventoryAdjustmentLineMovementType;
+  quantity: number;
+}
+
+export interface InventoryAdjustmentListValues {
+  warehouseId: number;
+  adjustmentType: string;
+  note: string;
+  items: InventoryAdjustmentListItemValues[];
+}
+
+export interface InventoryAdjustmentListCreateResponse {
+  count: number;
+  reason: string;
+  reference_code: string;
+  warehouse_id: number;
+  results: InventoryMovementRecord[];
+}
+
 export interface InventoryInformationImportApiRow {
   merchant_sku: string;
   product_name: string;

@@ -79,6 +79,7 @@ describe("InventoryMovementsPage", () => {
   beforeEach(() => {
     apiGetMock.mockReset();
     apiGetMock.mockResolvedValue(movementHistoryResponse);
+    window.localStorage.clear();
   });
 
   test("renders backend-driven inventory movement history", async () => {
@@ -94,11 +95,9 @@ describe("InventoryMovementsPage", () => {
     expect(screen.getByText("PT-RCPT-2001-1")).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Warehouses" })).toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Movement Types" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Merchant SKU" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Location" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Performed By" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Reference" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Search all text" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Movement search field" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Movement search text" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Movement match mode" })).toBeInTheDocument();
     expect(apiGetMock).toHaveBeenCalledWith(
       "/api/v1/organizations/1/inventory/movements/",
       expect.objectContaining({
@@ -109,6 +108,21 @@ describe("InventoryMovementsPage", () => {
         warehouse_id: 7,
       }),
     );
+  });
+
+  test("renders translated movement filters when the locale is switched to Chinese", async () => {
+    window.localStorage.setItem(
+      "dachongwms.ui-preferences",
+      JSON.stringify({ locale: "zh-CN", themeMode: "light" }),
+    );
+
+    renderWithProviders(<InventoryMovementsPage />);
+
+    expect(await screen.findByText("SKU-001")).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "仓库" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "库存流水搜索字段" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "库存流水搜索内容" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "库存流水匹配方式" })).toBeInTheDocument();
   });
 
   test("uses the standard sticky-table page chrome collapse interaction", async () => {
@@ -128,7 +142,7 @@ describe("InventoryMovementsPage", () => {
     });
 
     expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("aria-hidden", "false");
-    expect(screen.getByRole("textbox", { name: "Search all text" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Movement search text" })).toBeInTheDocument();
 
     fireEvent.scroll(tableScrollRegion!, { target: { scrollTop: 220 } });
 
@@ -136,7 +150,7 @@ describe("InventoryMovementsPage", () => {
       expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("aria-hidden", "true");
     });
 
-    expect(screen.queryByRole("textbox", { name: "Search all text" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Movement search text" })).not.toBeInTheDocument();
 
     fireEvent.scroll(tableScrollRegion!, { target: { scrollTop: 0 } });
 

@@ -5,14 +5,14 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { Alert, Box, Stack } from "@mui/material";
 
 import { useTenantScope } from "@/app/scope-context";
-import { runInventoryAdjustmentCreate } from "@/features/inventory/controller/actions";
+import { runInventoryAdjustmentListCreate } from "@/features/inventory/controller/actions";
 import { inventoryApi } from "@/features/inventory/model/api";
 import {
   buildInventoryAdjustmentGroups,
   downloadInventoryAdjustmentGroupsCsv,
 } from "@/features/inventory/model/mappers";
 import type {
-  InventoryAdjustmentValues,
+  InventoryAdjustmentListValues,
   InventoryMovementHistoryListResponse,
   InventoryMovementHistoryRow,
 } from "@/features/inventory/model/types";
@@ -30,7 +30,6 @@ import { FilterCard } from "@/shared/components/filter-card";
 import { StickyTableLayout } from "@/shared/components/sticky-table-layout";
 import { useCollapsibleTablePageChrome } from "@/shared/hooks/use-collapsible-table-page-chrome";
 import { useDataView } from "@/shared/hooks/use-data-view";
-import { useInventoryBalanceReferenceOptions } from "@/shared/hooks/use-reference-options";
 import { invalidateQueryGroups } from "@/shared/lib/query-invalidation";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 import { apiGet } from "@/lib/http";
@@ -155,13 +154,6 @@ export function InventoryAdjustmentsPage() {
   const pageChrome = useCollapsibleTablePageChrome();
   const companyId = company?.id !== undefined && company?.id !== null ? Number(company.id) : null;
   const activeFilterCount = countActiveInventoryAdjustmentFilters(adjustmentView.filters);
-  const adjustmentBalanceReference = useInventoryBalanceReferenceOptions(activeWarehouseId, {
-    enabled: isCreateDialogOpen && Boolean(activeWarehouseId),
-  });
-  const adjustmentBalancesById = useMemo(
-    () => new Map(adjustmentBalanceReference.options.map((option) => [option.value, option.record])),
-    [adjustmentBalanceReference.options],
-  );
 
   const adjustmentHistoryQuery = useQuery({
     queryKey: [
@@ -182,13 +174,14 @@ export function InventoryAdjustmentsPage() {
   });
 
   const createAdjustmentMutation = useMutation({
-    mutationFn: (values: InventoryAdjustmentValues) =>
-      runInventoryAdjustmentCreate(values, adjustmentBalancesById),
-    onSuccess: async (movement) => {
+    mutationFn: (values: InventoryAdjustmentListValues) =>
+      runInventoryAdjustmentListCreate(companyId ?? 0, values),
+    onSuccess: async (result, values) => {
       setAdjustmentErrorMessage(null);
       setAdjustmentSuccessMessage(
-        `Inventory adjustment posted for ${movement.goods_code} at ${movement.to_location_code || movement.from_location_code}.`,
+        `Created adjustment list ${result.reference_code} with ${result.count} items.`,
       );
+      setActiveWarehouseId(values.warehouseId);
       setIsCreateDialogOpen(false);
       await invalidateQueryGroups(queryClient, [
         ["dashboard"],
@@ -318,7 +311,7 @@ export function InventoryAdjustmentsPage() {
       />
       <InventoryAdjustmentCreateDialog
         errorMessage={adjustmentErrorMessage}
-        inventoryBalanceReference={adjustmentBalanceReference}
+        initialWarehouseId={activeWarehouseId}
         isSubmitting={createAdjustmentMutation.isPending}
         onClose={() => {
           setAdjustmentErrorMessage(null);
@@ -326,6 +319,7 @@ export function InventoryAdjustmentsPage() {
         }}
         onSubmit={(values) => createAdjustmentMutation.mutateAsync(values)}
         open={isCreateDialogOpen}
+        warehouses={warehouses}
       />
       <AppToast
         message={adjustmentSuccessMessage}

@@ -8,6 +8,8 @@ import {
 import { mapInventoryInformationImportResult } from "@/features/inventory/model/inventory-information";
 import type {
   InventoryAdjustmentValues,
+  InventoryAdjustmentListCreateResponse,
+  InventoryAdjustmentListValues,
   InventoryBalanceRecord,
   InventoryMovementRecord,
   OperationalReportExportRecord,
@@ -45,6 +47,25 @@ export function runInventoryAdjustmentCreate(
   return apiPost<InventoryMovementRecord>(
     inventoryApi.movements,
     buildAdjustmentPayload(values, balance),
+  );
+}
+
+export function runInventoryAdjustmentListCreate(
+  organizationId: number,
+  values: InventoryAdjustmentListValues,
+) {
+  return apiPost<InventoryAdjustmentListCreateResponse>(
+    inventoryApi.movementHistory(organizationId),
+    {
+      warehouse_id: values.warehouseId,
+      adjustment_type: values.adjustmentType,
+      note: values.note,
+      items: values.items.map((item) => ({
+        balance_id: item.balanceId,
+        movement_type: item.movementType,
+        quantity: item.quantity,
+      })),
+    },
   );
 }
 

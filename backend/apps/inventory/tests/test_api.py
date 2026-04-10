@@ -174,6 +174,100 @@ class InventoryAPITests(TestCase):
         )
         self.assertEqual(reason_response.status_code, status.HTTP_201_CREATED)
 
+    def test_manager_can_record_atomic_inventory_adjustment_list(self) -> None:
+        self.client.force_authenticate(self.manager)
+        product_two = Product.objects.create(
+            organization=self.organization,
+            sku="SKU-002",
+            name="Label Printer",
+        )
+
+        first_receipt_response = self.client.post(
+            reverse(
+                "organization-inventory-movement-list",
+                kwargs={"organization_id": self.organization.id},
+            ),
+            {
+                "warehouse_id": self.warehouse.id,
+                "product_id": self.product.id,
+                "to_location_id": self.location.id,
+                "movement_type": "RECEIPT",
+                "stock_status": "AVAILABLE",
+                "quantity": "8.0000",
+                "unit_cost": "3.2500",
+                "reason": "Initial receipt",
+            },
+            format="json",
+        )
+        self.assertEqual(first_receipt_response.status_code, status.HTTP_201_CREATED)
+
+        second_receipt_response = self.client.post(
+            reverse(
+                "organization-inventory-movement-list",
+                kwargs={"organization_id": self.organization.id},
+            ),
+            {
+                "warehouse_id": self.warehouse.id,
+                "product_id": product_two.id,
+                "to_location_id": self.location.id,
+                "movement_type": "RECEIPT",
+                "stock_status": "AVAILABLE",
+                "quantity": "5.0000",
+                "unit_cost": "4.5000",
+                "reason": "Initial receipt",
+            },
+            format="json",
+        )
+        self.assertEqual(second_receipt_response.status_code, status.HTTP_201_CREATED)
+
+        balances = InventoryBalance.objects.select_related("product").filter(organization=self.organization).order_by("product__sku")
+        self.assertEqual(balances.count(), 2)
+        first_balance, second_balance = list(balances)
+
+        adjustment_response = self.client.post(
+            reverse(
+                "organization-inventory-movement-list",
+                kwargs={"organization_id": self.organization.id},
+            ),
+            {
+                "warehouse_id": self.warehouse.id,
+                "adjustment_type": "Good Product Adjustment",
+                "note": "Cycle count review",
+                "items": [
+                    {
+                        "balance_id": first_balance.id,
+                        "movement_type": "ADJUSTMENT_OUT",
+                        "quantity": "2.0000",
+                    },
+                    {
+                        "balance_id": second_balance.id,
+                        "movement_type": "ADJUSTMENT_IN",
+                        "quantity": "3.0000",
+                    },
+                ],
+            },
+            format="json",
+        )
+
+        self.assertEqual(adjustment_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(adjustment_response.data["count"], 2)
+        self.assertEqual(adjustment_response.data["warehouse_id"], self.warehouse.id)
+        self.assertEqual(
+            adjustment_response.data["reason"],
+            "Good Product Adjustment: Cycle count review",
+        )
+        self.assertTrue(adjustment_response.data["reference_code"].startswith("ADJ-"))
+        self.assertEqual(len(adjustment_response.data["results"]), 2)
+        self.assertEqual(
+            {result["reference_code"] for result in adjustment_response.data["results"]},
+            {adjustment_response.data["reference_code"]},
+        )
+
+        first_balance.refresh_from_db()
+        second_balance.refresh_from_db()
+        self.assertEqual(first_balance.on_hand_qty, Decimal("6.0000"))
+        self.assertEqual(second_balance.on_hand_qty, Decimal("8.0000"))
+
     def test_viewer_can_list_balances_but_cannot_record_inventory(self) -> None:
         self.client.force_authenticate(self.viewer)
 
