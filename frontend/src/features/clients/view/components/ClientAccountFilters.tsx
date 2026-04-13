@@ -105,14 +105,14 @@ export function ClientAccountFilters({
         >
           {clientCustomerSearchFieldOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
-              {t(option.label)}
+              {translate(option.label)}
             </MenuItem>
           ))}
         </TextField>
         <TextField
           hiddenLabel
           onChange={(event) => onChange("customerQuery", event.target.value)}
-          placeholder={t(clientSearchPlaceholders[filters.customerField])}
+          placeholder={translate(clientSearchPlaceholders[filters.customerField])}
           size="small"
           value={filters.customerQuery}
           slotProps={{
@@ -162,14 +162,14 @@ export function ClientAccountFilters({
         >
           {clientCompanySearchFieldOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
-              {t(option.label)}
+              {translate(option.label)}
             </MenuItem>
           ))}
         </TextField>
         <TextField
           hiddenLabel
           onChange={(event) => onChange("companyQuery", event.target.value)}
-          placeholder={t(clientSearchPlaceholders[filters.companyField])}
+          placeholder={translate(clientSearchPlaceholders[filters.companyField])}
           size="small"
           value={filters.companyQuery}
           slotProps={{
@@ -219,7 +219,7 @@ export function ClientAccountFilters({
             >
               {clientMetricFieldOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {t(option.label)}
+                  {translate(option.label)}
                 </MenuItem>
               ))}
             </TextField>
@@ -298,14 +298,14 @@ export function ClientAccountFilters({
         >
           {clientSetupSearchFieldOptions.map((option) => (
             <MenuItem key={option.value} value={option.value}>
-              {t(option.label)}
+              {translate(option.label)}
             </MenuItem>
           ))}
         </TextField>
         <TextField
           hiddenLabel
           onChange={(event) => onChange("setupQuery", event.target.value)}
-          placeholder={t(clientSearchPlaceholders[filters.setupField])}
+          placeholder={translate(clientSearchPlaceholders[filters.setupField])}
           size="small"
           value={filters.setupQuery}
           slotProps={{
@@ -354,7 +354,7 @@ export function ClientAccountFilters({
             >
               {clientTimeFieldOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {t(option.label)}
+                  {translate(option.label)}
                 </MenuItem>
               ))}
             </TextField>

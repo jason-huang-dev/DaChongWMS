@@ -331,7 +331,7 @@ export function InventoryAdjustmentCreateDialog({
                 >
                   {lineMovementTypeOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
-                      {t(option.label)}
+                      {translate(option.label)}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -617,7 +617,7 @@ export function InventoryAdjustmentCreateDialog({
                     >
                       {adjustmentTypeOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          {t(option.label)}
+                          {translate(option.label)}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -770,7 +770,7 @@ export function InventoryAdjustmentCreateDialog({
             >
               {lineMovementTypeOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {t(option.label)}
+                  {translate(option.label)}
                 </MenuItem>
               ))}
             </TextField>

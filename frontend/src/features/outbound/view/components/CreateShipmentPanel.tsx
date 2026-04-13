@@ -50,7 +50,7 @@ export function CreateShipmentPanel({
   onSubmit,
   successMessage,
 }: CreateShipmentPanelProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
   const form = useForm<ShipmentCreateValues>({
     defaultValues: defaultShipmentCreateValues,
     resolver: zodResolver(shipmentCreateSchema),
@@ -91,11 +91,11 @@ export function CreateShipmentPanel({
   const lineOptions = useMemo(() => {
     return (salesOrderQuery.data?.lines ?? []).map((line) => ({
       value: line.id,
-      label: `Line ${line.line_number} · ${line.goods_code}`,
-      description: `${line.ordered_qty} ordered · ${line.allocated_qty} allocated`,
+      label: t("Line {{index}} · {{goodsCode}}", { goodsCode: line.goods_code, index: line.line_number }),
+      description: t("{{ordered}} ordered · {{allocated}} allocated", { allocated: line.allocated_qty, ordered: line.ordered_qty }),
       record: line,
     }));
-  }, [salesOrderQuery.data?.lines]);
+  }, [salesOrderQuery.data?.lines, t]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit(values);
@@ -137,7 +137,7 @@ export function CreateShipmentPanel({
               <Grid container spacing={1.5} key={field.id}>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <FormAutocomplete
-                    label={<>{t("Order line {{index}}", { index: index + 1 })}</>}
+                    label={msg("Order line {{index}}", { index: index + 1 })}
                     name={`line_items.${index}.sales_order_line`}
                     options={lineOptions}
                     loading={salesOrderQuery.isLoading}
@@ -162,7 +162,7 @@ export function CreateShipmentPanel({
                 </Grid>
                 <Grid size={{ xs: 12, md: 1 }}>
                   <IconButton
-                    aria-label={`remove-shipment-line-${index + 1}`}
+                    aria-label={t("Remove line {{index}}", { index: index + 1 })}
                     disabled={fields.length === 1}
                     onClick={() => remove(index)}
                     sx={{ mt: 1 }}

@@ -6,17 +6,18 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 
 import { brandColors, brandMotion, brandShadows } from "@/app/brand";
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 export interface WorkspaceIconNavItem {
-  label: string;
+  label: TranslatableText;
   to: string;
   icon: ComponentType<SvgIconProps>;
   exact?: boolean;
 }
 
 interface WorkspaceIconNavProps {
-  ariaLabel?: string;
+  ariaLabel?: TranslatableText;
   items: WorkspaceIconNavItem[];
 }
 
@@ -32,7 +33,7 @@ export function WorkspaceIconNav({ ariaLabel = "Workspace navigation", items }: 
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
   const location = useLocation();
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Box
@@ -44,7 +45,7 @@ export function WorkspaceIconNav({ ariaLabel = "Workspace navigation", items }: 
       }}
     >
       <Stack
-        aria-label={ariaLabel}
+        aria-label={translate(ariaLabel)}
         direction={{ xs: "row", md: "column" }}
         gap={1}
         role="navigation"
@@ -60,7 +61,7 @@ export function WorkspaceIconNav({ ariaLabel = "Workspace navigation", items }: 
       >
         {items.map((item) => {
           const Icon = item.icon;
-          const label = t(item.label);
+          const label = translate(item.label);
           const active = isItemActive(item, location.pathname);
 
           return (

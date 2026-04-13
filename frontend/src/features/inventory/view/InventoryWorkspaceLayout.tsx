@@ -31,7 +31,7 @@ function InventoryHiddenSidebarHandle({
 }) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const label = t("Show inventory sidebar");
 
   return (
@@ -165,7 +165,7 @@ function InventorySidebar({
             {inventoryWorkspaceItems.map((item) => {
               const Icon = item.icon;
               const active = isInventoryWorkspaceItemActive(item, activePath);
-              const label = t(item.label);
+              const label = translate(item.label);
 
               return (
                 <Tooltip enterDelay={200} key={item.to} placement="right" title={label}>

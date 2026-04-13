@@ -164,7 +164,7 @@ export function SecurityPage() {
               <CompanyMembershipTable
                 activeFilterCount={membershipView.activeFilterCount}
                 applySavedView={membershipView.applySavedView}
-                contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide memberships")}
+                contextLabel={company ? msg("shell.workspaceChip", { label: company.label }) : t("Tenant-wide memberships")}
                 deleteSavedView={membershipView.deleteSavedView}
                 filters={membershipView.filters}
                 isIssuingPasswordReset={issuePasswordResetMutation.isPending}
@@ -186,7 +186,7 @@ export function SecurityPage() {
               <AccessInviteTable
                 activeFilterCount={invitesView.activeFilterCount}
                 applySavedView={invitesView.applySavedView}
-                contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide invites")}
+                contextLabel={company ? msg("shell.workspaceChip", { label: company.label }) : t("Tenant-wide invites")}
                 deleteSavedView={invitesView.deleteSavedView}
                 filters={invitesView.filters}
                 invitesQuery={invitesQuery}
@@ -206,7 +206,7 @@ export function SecurityPage() {
               <AccessPasswordResetTable
                 activeFilterCount={passwordResetView.activeFilterCount}
                 applySavedView={passwordResetView.applySavedView}
-                contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide resets")}
+                contextLabel={company ? msg("shell.workspaceChip", { label: company.label }) : t("Tenant-wide resets")}
                 deleteSavedView={passwordResetView.deleteSavedView}
                 filters={passwordResetView.filters}
                 isRevoking={revokePasswordResetMutation.isPending}
@@ -236,7 +236,7 @@ export function SecurityPage() {
           <SecurityTable
             activeFilterCount={staffView.activeFilterCount}
             applySavedView={staffView.applySavedView}
-            contextLabel={activeWarehouse ? t("shell.warehouseContextChip", { label: activeWarehouse.warehouse_name }) : t("Tenant-wide directory")}
+            contextLabel={activeWarehouse ? msg("shell.warehouseContextChip", { label: activeWarehouse.warehouse_name }) : t("Tenant-wide directory")}
             deleteSavedView={staffView.deleteSavedView}
             filters={staffView.filters}
             onEdit={(record) => setSelectedStaff(record)}
@@ -258,7 +258,7 @@ export function SecurityPage() {
               activeFilterCount={auditView.activeFilterCount}
               applySavedView={auditView.applySavedView}
               auditQuery={auditEventsQuery}
-              contextLabel={company ? t("shell.workspaceChip", { label: company.label }) : t("Tenant-wide audit")}
+              contextLabel={company ? msg("shell.workspaceChip", { label: company.label }) : t("Tenant-wide audit")}
               deleteSavedView={auditView.deleteSavedView}
               filters={auditView.filters}
               page={auditView.page}

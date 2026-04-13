@@ -112,7 +112,9 @@ export function WorkOrderForm({
             <Button disabled={isSubmitting || !workOrderTypes.length} type="submit" variant="contained">
               {isSubmitting
                 ? t("Saving...")
-                : t(isEditing ? "Save work order" : "Create work order")}
+                : isEditing
+                  ? t("Save work order")
+                  : t("Create work order")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">

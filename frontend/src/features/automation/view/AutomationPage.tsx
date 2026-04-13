@@ -5,6 +5,7 @@ import Grid from "@mui/material/Grid";
 import { Button, Stack } from "@mui/material";
 import { useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useAutomationController } from "@/features/automation/controller/useAutomationController";
 import type { ScheduledTaskCreateValues } from "@/features/automation/model/types";
 import { scheduledTaskCreateSchema } from "@/features/automation/model/validators";
@@ -18,6 +19,7 @@ import { formatDateTime } from "@/shared/utils/format";
 import { parseApiError } from "@/shared/utils/parse-api-error";
 
 export function AutomationPage() {
+  const { t } = useI18n();
   const {
     activeWarehouse,
     alertsQuery,
@@ -64,10 +66,10 @@ export function AutomationPage() {
   const alertItems = useMemo(() => {
     const alerts = dashboardQuery.data?.alerts ?? [];
     return alerts.slice(0, 4).map((alert, index) => ({
-      label: `Alert ${index + 1}`,
+      label: t("Alert {{index}}", { index: index + 1 }),
       value: `${alert.severity} · ${alert.summary}`,
     }));
-  }, [dashboardQuery.data?.alerts]);
+  }, [dashboardQuery.data?.alerts, t]);
 
   return (
     <Stack spacing={3}>

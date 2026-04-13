@@ -14,14 +14,14 @@ interface ModuleTopNavProps {
 
 export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: ModuleTopNavProps) {
   const theme = useTheme();
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const activeValue = items.find((item) => activePath === item.path || activePath.startsWith(`${item.path}/`))?.path ?? false;
 
   return (
     <Box sx={{ display: "flex", justifyContent: "center", minWidth: 0 }}>
       <Tabs
-        aria-label="Primary navigation"
+        aria-label={t("Primary navigation")}
         allowScrollButtonsMobile={false}
         onChange={(_event, nextValue: string) => onNavigate(nextValue)}
         scrollButtons={false}
@@ -50,7 +50,7 @@ export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: 
       >
       {items.map((item) => {
         const Icon = item.icon;
-        const label = t(item.label);
+        const label = translate(item.label);
         return (
           <Tab
             aria-label={label}

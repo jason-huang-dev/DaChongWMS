@@ -1,5 +1,6 @@
 import { Alert, Button, Card, CardContent, FormControlLabel, Grid, MenuItem, Stack, Switch, TextField, Typography } from "@mui/material";
 
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 type LogisticsEditorValues<TValues> = {
@@ -8,19 +9,19 @@ type LogisticsEditorValues<TValues> = {
 
 export interface LogisticsEditorOption {
   value: string;
-  label: string;
+  label: TranslatableText;
 }
 
 export interface LogisticsEditorField<TValues extends LogisticsEditorValues<TValues>> {
   key: keyof TValues & string;
-  label: string;
+  label: TranslatableText;
   type?: "text" | "number" | "textarea" | "date" | "datetime-local" | "select" | "checkbox";
   options?: LogisticsEditorOption[];
 }
 
 interface LogisticsEditorCardProps<TValues extends LogisticsEditorValues<TValues>> {
-  title: string;
-  description: string;
+  title: TranslatableText;
+  description: TranslatableText;
   fields: Array<LogisticsEditorField<TValues>>;
   values: TValues;
   onChange: <TKey extends keyof TValues & string>(key: TKey, value: TValues[TKey]) => void;
@@ -45,7 +46,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
   successMessage,
   errorMessage,
 }: LogisticsEditorCardProps<TValues>) {
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
 
   return (
     <Card>
@@ -59,9 +60,9 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
           spacing={2}
         >
           <Stack spacing={0.5}>
-            <Typography variant="h6">{t(title)}</Typography>
+            <Typography variant="h6">{translate(title)}</Typography>
             <Typography color="text.secondary" variant="body2">
-              {t(description)}
+              {translate(description)}
             </Typography>
           </Stack>
           {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
@@ -78,7 +79,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
                           onChange={(_event, checked) => onChange(field.key, checked as TValues[typeof field.key])}
                         />
                       }
-                      label={t(field.label)}
+                      label={translate(field.label)}
                     />
                   </Grid>
                 );
@@ -88,7 +89,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
                 <Grid key={field.key} size={{ xs: 12, md: field.type === "textarea" ? 12 : 6 }}>
                   <TextField
                     fullWidth
-                    label={t(field.label)}
+                    label={translate(field.label)}
                     multiline={field.type === "textarea"}
                     minRows={field.type === "textarea" ? 3 : undefined}
                     onChange={(event) => onChange(field.key, event.target.value as TValues[typeof field.key])}
@@ -100,7 +101,7 @@ export function LogisticsEditorCard<TValues extends LogisticsEditorValues<TValue
                     {field.type === "select"
                       ? field.options?.map((option) => (
                           <MenuItem key={option.value} value={option.value}>
-                            {t(option.label)}
+                            {translate(option.label)}
                           </MenuItem>
                         ))
                       : null}

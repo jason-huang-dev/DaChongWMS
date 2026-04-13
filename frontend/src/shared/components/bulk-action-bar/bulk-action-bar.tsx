@@ -2,11 +2,12 @@ import type { ReactNode } from "react";
 
 import { Alert, Button, Chip, Stack, Typography } from "@mui/material";
 
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 interface BulkActionDescriptor {
   key: string;
-  label: string;
+  label: TranslatableText;
   onClick: () => void;
   disabled?: boolean;
   color?: "inherit" | "primary" | "secondary" | "success" | "error";
@@ -17,7 +18,7 @@ interface BulkActionBarProps {
   selectedCount: number;
   onClear: () => void;
   actions: BulkActionDescriptor[];
-  helperText?: string;
+  helperText?: TranslatableText;
   errorMessage?: string | null;
   extraControls?: ReactNode;
   justifyContent?: "space-between" | "flex-start";
@@ -32,7 +33,7 @@ export function BulkActionBar({
   extraControls,
   justifyContent = "space-between",
 }: BulkActionBarProps) {
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
 
   if (selectedCount <= 0) {
     return null;
@@ -54,7 +55,7 @@ export function BulkActionBar({
           <Chip color="primary" label={t("bulk.selectedCount", { count: selectedCount })} size="small" />
           {helperText ? (
             <Typography color="text.secondary" variant="body2">
-              {t(helperText)}
+              {translate(helperText)}
             </Typography>
           ) : null}
         </Stack>
@@ -72,7 +73,7 @@ export function BulkActionBar({
               size="small"
               variant={action.variant ?? "contained"}
             >
-              {t(action.label)}
+              {translate(action.label)}
             </Button>
           ))}
         </Stack>

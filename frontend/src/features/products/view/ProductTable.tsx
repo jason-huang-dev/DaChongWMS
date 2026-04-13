@@ -83,7 +83,7 @@ export function ProductTable({
       toolbar={
         <DataViewToolbar
           activeFilterCount={dataView.activeFilterCount}
-          contextLabel={companyLabel ? t("shell.workspaceChip", { label: companyLabel }) : undefined}
+          contextLabel={companyLabel ? msg("shell.workspaceChip", { label: companyLabel }) : undefined}
           fields={productFields}
           filters={dataView.filters}
           onChange={dataView.updateFilter}

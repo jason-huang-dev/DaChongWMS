@@ -5,13 +5,14 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { Link as RouterLink } from "react-router-dom";
 
 import { brandColors, brandMotion, brandStatusColors } from "@/app/brand";
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 export type DashboardQueueMetricTone = "info" | "success" | "warning" | "danger" | "neutral";
 
 export interface DashboardQueueMetric {
   key: string;
-  label: string;
+  label: TranslatableText;
   value: ReactNode;
   to?: string;
   tone?: DashboardQueueMetricTone;
@@ -19,7 +20,7 @@ export interface DashboardQueueMetric {
 
 export interface DashboardQueueSection {
   key: string;
-  title: string;
+  title: TranslatableText;
   icon?: ReactNode;
   iconTone?: DashboardQueueMetricTone;
   metrics: DashboardQueueMetric[];
@@ -27,8 +28,8 @@ export interface DashboardQueueSection {
 }
 
 interface DashboardQueueCardProps {
-  title?: string;
-  subtitle?: string;
+  title?: TranslatableText;
+  subtitle?: TranslatableText;
   icon?: ReactNode;
   iconTone?: DashboardQueueMetricTone;
   metrics?: DashboardQueueMetric[];
@@ -46,7 +47,7 @@ export function DashboardQueueCard({
   sections,
 }: DashboardQueueCardProps) {
   const theme = useTheme();
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
 
   function getToneColor(tone: DashboardQueueMetricTone | undefined) {
@@ -99,7 +100,7 @@ export function DashboardQueueCard({
                 lineHeight: 1.45,
               }}
             >
-              {t(subtitle)}
+              {translate(subtitle)}
             </Typography>
           ) : null}
           <Stack spacing={1.75} sx={{ flexGrow: 1 }}>
@@ -144,7 +145,7 @@ export function DashboardQueueCard({
                         minWidth: 0,
                       }}
                     >
-                      {t(section.title)}
+                      {translate(section.title)}
                     </Typography>
                   </Stack>
                   <Box
@@ -156,7 +157,7 @@ export function DashboardQueueCard({
                     }}
                   >
                     {section.metrics.map((metric, metricIndex) => {
-                      const translatedLabel = t(metric.label);
+                      const translatedLabel = translate(metric.label);
                       const valueColor = getMetricValueColor(metric);
                       const metricToneColor =
                         metric.tone && metric.tone !== "neutral"

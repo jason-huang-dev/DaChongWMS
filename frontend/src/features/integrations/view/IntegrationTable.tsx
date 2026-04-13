@@ -292,7 +292,7 @@ export function IntegrationTable({
               {jobsToolbar}
               <DataViewToolbar
                 activeFilterCount={jobsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={jobFields}
                 filters={jobsView.filters}
                 onChange={jobsView.updateFilter}
@@ -354,7 +354,7 @@ export function IntegrationTable({
               {webhooksToolbar}
               <DataViewToolbar
                 activeFilterCount={webhooksView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={webhookFields}
                 filters={webhooksView.filters}
                 onChange={webhooksView.updateFilter}
@@ -431,7 +431,7 @@ export function IntegrationTable({
               {carrierToolbar}
               <DataViewToolbar
                 activeFilterCount={carrierBookingsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={carrierBookingFields}
                 filters={carrierBookingsView.filters}
                 onChange={carrierBookingsView.updateFilter}

@@ -184,10 +184,22 @@ export function ProductsPage() {
                 items={[
                   { label: "Tracking mode", value: serialManagement?.tracking_mode ?? "NONE" },
                   { label: "Pattern", value: serialManagement?.serial_pattern || "--" },
-                  { label: "Inbound capture", value: t(serialManagement?.capture_on_inbound ? "Enabled" : "Disabled") },
-                  { label: "Outbound capture", value: t(serialManagement?.capture_on_outbound ? "Enabled" : "Disabled") },
-                  { label: "Returns capture", value: t(serialManagement?.capture_on_returns ? "Enabled" : "Disabled") },
-                  { label: "Unique serials", value: t(serialManagement?.requires_uniqueness ? "Required" : "Not required") },
+                  {
+                    label: "Inbound capture",
+                    value: serialManagement?.capture_on_inbound ? t("Enabled") : t("Disabled"),
+                  },
+                  {
+                    label: "Outbound capture",
+                    value: serialManagement?.capture_on_outbound ? t("Enabled") : t("Disabled"),
+                  },
+                  {
+                    label: "Returns capture",
+                    value: serialManagement?.capture_on_returns ? t("Enabled") : t("Disabled"),
+                  },
+                  {
+                    label: "Unique serials",
+                    value: serialManagement?.requires_uniqueness ? t("Required") : t("Not required"),
+                  },
                 ]}
                 title="Serial summary"
               />

@@ -5,7 +5,6 @@ import { useLocation, useMatches, useNavigate } from "react-router-dom";
 
 import { queryClient } from "@/lib/query-client";
 import { useTenantScope } from "@/app/scope-context";
-import { useI18n } from "@/app/ui-preferences";
 import { apiDelete, apiGet, apiPatch, apiPost } from "@/lib/http";
 import type { PaginatedResponse } from "@/shared/types/api";
 import type { AuthSession, WorkspaceTabPreferenceRecord, WorkbenchPreferenceRecord } from "@/shared/types/domain";
@@ -103,7 +102,6 @@ export function useWorkspaceTabs() {
   const matches = useMatches();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { locale, t, translate, msg } = useI18n();
   const { activeMembershipId, activeWarehouseId, company } = useTenantScope();
 
   const tabsQuery = useQuery({
@@ -143,7 +141,7 @@ export function useWorkspaceTabs() {
     syncMutation.mutate({
       route_key: buildRouteKey(location.pathname),
       route_path: location.pathname,
-      title: t(buildTabTitle(location.pathname, matches)),
+      title: buildTabTitle(location.pathname, matches),
       is_active: true,
       context_payload: {
         company_id: company?.id ?? null,
@@ -152,7 +150,7 @@ export function useWorkspaceTabs() {
     });
     // The tab state should track route changes only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeMembershipId, activeWarehouseId, company?.id, locale, location.pathname]);
+  }, [activeMembershipId, activeWarehouseId, company?.id, location.pathname]);
 
   return {
     tabsQuery,

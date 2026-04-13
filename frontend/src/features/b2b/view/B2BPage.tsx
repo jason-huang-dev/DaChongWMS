@@ -214,7 +214,7 @@ export function B2BPage() {
       <Stack direction="row" flexWrap="wrap" gap={1}>
         {sectionLinks.map((sectionLink) => (
           <Button component="a" href={sectionLink.href} key={sectionLink.href} size="small" variant="outlined">
-            {t(sectionLink.label)}
+            {translate(sectionLink.label)}
           </Button>
         ))}
       </Stack>
@@ -225,7 +225,7 @@ export function B2BPage() {
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 3 }}>
               <MetricCard
-                helper={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                helper={inbound.activeWarehouse ? msg("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 label="Open purchase orders"
                 value={inbound.purchaseOrdersQuery.data?.count ?? "--"}
               />
@@ -269,7 +269,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.purchaseOrdersView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={inbound.activeWarehouse ? msg("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={purchaseOrderFields}
                 filters={inbound.purchaseOrdersView.filters}
                 onChange={inbound.purchaseOrdersView.updateFilter}
@@ -308,7 +308,7 @@ export function B2BPage() {
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 3 }}>
               <MetricCard
-                helper={outbound.activeWarehouse ? t("shell.warehouseChip", { label: outbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                helper={outbound.activeWarehouse ? msg("shell.warehouseChip", { label: outbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 label="Sales orders"
                 value={outbound.salesOrdersQuery.data?.count ?? "--"}
               />
@@ -371,7 +371,7 @@ export function B2BPage() {
                 />
                 <DataViewToolbar
                   activeFilterCount={outbound.salesOrdersView.activeFilterCount}
-                  contextLabel={outbound.activeWarehouse ? t("shell.warehouseChip", { label: outbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                  contextLabel={outbound.activeWarehouse ? msg("shell.warehouseChip", { label: outbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={salesOrderFields}
                   filters={outbound.salesOrdersView.filters}
                   onChange={outbound.salesOrdersView.updateFilter}
@@ -443,7 +443,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.advanceShipmentNoticesView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={inbound.activeWarehouse ? msg("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={asnFields}
                 filters={inbound.advanceShipmentNoticesView.filters}
                 onChange={inbound.advanceShipmentNoticesView.updateFilter}
@@ -490,7 +490,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.signingRecordsView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={inbound.activeWarehouse ? msg("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={signingFields}
                 filters={inbound.signingRecordsView.filters}
                 onChange={inbound.signingRecordsView.updateFilter}
@@ -536,7 +536,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.receiptsView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={inbound.activeWarehouse ? msg("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={receiptFields}
                 filters={inbound.receiptsView.filters}
                 onChange={inbound.receiptsView.updateFilter}
@@ -583,7 +583,7 @@ export function B2BPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={inbound.putawayTasksView.activeFilterCount}
-                contextLabel={inbound.activeWarehouse ? t("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={inbound.activeWarehouse ? msg("shell.warehouseChip", { label: inbound.activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={putawayFields}
                 filters={inbound.putawayTasksView.filters}
                 onChange={inbound.putawayTasksView.updateFilter}

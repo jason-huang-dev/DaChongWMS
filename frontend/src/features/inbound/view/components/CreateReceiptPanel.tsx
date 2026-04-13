@@ -5,6 +5,7 @@ import { AddOutlined, DeleteOutline } from "@mui/icons-material";
 import { Button, Divider, Grid, IconButton, Stack } from "@mui/material";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import { defaultReceiptCreateValues } from "@/features/inbound/model/mappers";
 import { inboundApi } from "@/features/inbound/model/api";
 import type { PurchaseOrderRecord, ReceiptCreateValues } from "@/features/inbound/model/types";
@@ -49,6 +50,7 @@ export function CreateReceiptPanel({
   onSubmit,
   successMessage,
 }: CreateReceiptPanelProps) {
+  const { t, msg } = useI18n();
   const form = useForm<ReceiptCreateValues>({
     defaultValues: defaultReceiptCreateValues,
     resolver: zodResolver(receiptCreateSchema),
@@ -86,11 +88,11 @@ export function CreateReceiptPanel({
   const lineOptions = useMemo(() => {
     return (purchaseOrderQuery.data?.lines ?? []).map((line) => ({
       value: line.id,
-      label: `Line ${line.line_number} · ${line.goods_code}`,
-      description: `${line.ordered_qty} ordered · ${line.received_qty} received`,
+      label: t("Line {{index}} · {{goodsCode}}", { goodsCode: line.goods_code, index: line.line_number }),
+      description: t("{{ordered}} ordered · {{received}} received", { ordered: line.ordered_qty, received: line.received_qty }),
       record: line,
     }));
-  }, [purchaseOrderQuery.data?.lines]);
+  }, [purchaseOrderQuery.data?.lines, t]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit(values);
@@ -132,7 +134,7 @@ export function CreateReceiptPanel({
               <Grid container spacing={1.5} key={field.id}>
                 <Grid size={{ xs: 12, md: 4 }}>
                   <FormAutocomplete
-                    label={`PO line ${index + 1}`}
+                    label={msg("PO line {{index}}", { index: index + 1 })}
                     name={`line_items.${index}.purchase_order_line`}
                     options={lineOptions}
                     loading={purchaseOrderQuery.isLoading}
@@ -153,7 +155,7 @@ export function CreateReceiptPanel({
                 </Grid>
                 <Grid size={{ xs: 12, md: 1 }}>
                   <IconButton
-                    aria-label={`remove-receipt-line-${index + 1}`}
+                    aria-label={t("Remove line {{index}}", { index: index + 1 })}
                     disabled={fields.length === 1}
                     onClick={() => remove(index)}
                     sx={{ mt: 1 }}

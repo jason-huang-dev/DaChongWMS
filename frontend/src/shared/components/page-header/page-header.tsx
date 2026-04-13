@@ -2,12 +2,13 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { Box, Stack, Typography } from "@mui/material";
 
 import { brandColors, brandGradients } from "@/app/brand";
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 import type { ReactNode } from "react";
 
 interface PageHeaderProps {
-  title: string;
-  description?: string;
+  title: TranslatableText;
+  description?: TranslatableText;
   actions?: ReactNode;
   compact?: boolean;
 }
@@ -15,7 +16,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, actions, compact = true }: PageHeaderProps) {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Stack direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={2}>
@@ -30,11 +31,11 @@ export function PageHeader({ title, description, actions, compact = true }: Page
           }}
         />
         <Typography sx={{ fontSize: compact ? 18 : undefined, lineHeight: compact ? 1.15 : undefined }} variant="h4">
-          {t(title)}
+          {translate(title)}
         </Typography>
         {description ? (
           <Typography color="text.secondary" sx={{ fontSize: compact ? 12 : undefined }} variant="body1">
-            {t(description)}
+            {translate(description)}
           </Typography>
         ) : null}
       </Stack>

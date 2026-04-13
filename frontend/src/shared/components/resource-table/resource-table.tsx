@@ -22,14 +22,15 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { brandColors, brandMotion } from "@/app/brand";
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 interface ColumnDefinition<TRow> {
   key: string;
-  header: string;
+  header: TranslatableText;
   align?: "left" | "right" | "center";
   headerAlign?: "left" | "right" | "center";
-  headerTooltip?: string;
+  headerTooltip?: TranslatableText;
   fitContent?: boolean;
   minWidth?: number | string;
   nowrap?: boolean;
@@ -54,15 +55,15 @@ export interface ResourceTableRowSelection<TRow> {
 }
 
 interface ResourceTableProps<TRow> {
-  title?: string;
-  subtitle?: string;
+  title?: TranslatableText;
+  subtitle?: TranslatableText;
   rows: TRow[];
   columns: ColumnDefinition<TRow>[];
   getRowId: (row: TRow) => string | number;
   isLoading?: boolean;
   error?: string | null;
   pagination?: PaginationState;
-  emptyMessage?: string;
+  emptyMessage?: TranslatableText;
   toolbar?: ReactNode;
   rowSelection?: ResourceTableRowSelection<TRow>;
   tableBorderRadius?: number | string;
@@ -98,7 +99,7 @@ export function ResourceTable<TRow>({
   const defaultCompactCellPaddingX = compact ? 1.25 : undefined;
   const fitContentCompactCellPaddingX = compact ? 0.875 : undefined;
   const theme = useTheme();
-  const { locale, t, translate, msg } = useI18n();
+  const { locale, t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const isChineseLocale = locale === "zh-CN";
   const compactHeaderFontSize = compact ? theme.typography.overline.fontSize : 12;
@@ -117,10 +118,10 @@ export function ResourceTable<TRow>({
         <Stack spacing={2}>
           {title || subtitle ? (
             <Box>
-              {title ? <Typography variant="h6">{t(title)}</Typography> : null}
+              {title ? <Typography variant="h6">{translate(title)}</Typography> : null}
               {subtitle ? (
                 <Typography color="text.secondary" variant="body2">
-                  {t(subtitle)}
+                  {translate(subtitle)}
                 </Typography>
               ) : null}
             </Box>
@@ -210,7 +211,7 @@ export function ResourceTable<TRow>({
                       }}
                     >
                       {column.headerTooltip ? (
-                        <Tooltip enterDelay={200} title={t(column.headerTooltip)}>
+                        <Tooltip enterDelay={200} title={translate(column.headerTooltip)}>
                           <Box component="span" sx={{ display: "block", width: "100%" }}>
                             {sorting && column.sortKey ? (
                               <TableSortLabel
@@ -238,10 +239,10 @@ export function ResourceTable<TRow>({
                                   },
                                 }}
                               >
-                                {t(column.header)}
+                                {translate(column.header)}
                               </TableSortLabel>
                             ) : (
-                              t(column.header)
+                              translate(column.header)
                             )}
                           </Box>
                         </Tooltip>
@@ -271,10 +272,10 @@ export function ResourceTable<TRow>({
                             },
                           }}
                         >
-                          {t(column.header)}
+                          {translate(column.header)}
                         </TableSortLabel>
                       ) : (
-                        t(column.header)
+                        translate(column.header)
                       )}
                     </TableCell>
                   ))}
@@ -294,7 +295,7 @@ export function ResourceTable<TRow>({
                   <TableRow>
                     <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                       <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
-                        {t(emptyMessage)}
+                        {translate(emptyMessage)}
                       </Typography>
                     </TableCell>
                   </TableRow>

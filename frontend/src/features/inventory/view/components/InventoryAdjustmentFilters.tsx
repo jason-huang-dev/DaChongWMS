@@ -140,7 +140,7 @@ export function InventoryAdjustmentFilters({
           >
             {searchFieldOptions.map((option) => (
               <MenuItem key={option.value} value={option.value}>
-                {t(option.label)}
+                {translate(option.label)}
               </MenuItem>
             ))}
           </TextField>

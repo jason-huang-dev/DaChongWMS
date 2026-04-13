@@ -5,21 +5,26 @@ import { Box, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
 import type { ReactNode } from "react";
 
 import { brandColors, brandGradients, brandShadows } from "@/app/brand";
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 import { BrandLogo } from "@/shared/components/brand-logo";
 import { UiPreferencesControls } from "@/shared/components/ui-preferences-controls";
 
 interface AuthShellProps {
   children: ReactNode;
-  description: string;
-  eyebrow?: string;
-  heroPoints?: string[];
-  heroSummary?: string;
-  heroTitle?: string;
-  title: string;
+  description: TranslatableText;
+  eyebrow?: TranslatableText;
+  heroPoints?: TranslatableText[];
+  heroSummary?: TranslatableText;
+  heroTitle?: TranslatableText;
+  title: TranslatableText;
 }
 
-const defaultHeroPoints = ["Scanner-first workflows", "Finance-ready operations", "MFA-protected access"];
+const defaultHeroPoints: TranslatableText[] = [
+  "Scanner-first workflows",
+  "Finance-ready operations",
+  "MFA-protected access",
+];
 
 export function AuthShell({
   children,
@@ -31,7 +36,7 @@ export function AuthShell({
   title,
 }: AuthShellProps) {
   const theme = useTheme();
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
 
   return (
@@ -66,13 +71,13 @@ export function AuthShell({
                 <Stack spacing={2}>
                   <Stack spacing={1}>
                     <Typography color="secondary.main" sx={{ fontWeight: 700, letterSpacing: "0.12em" }} variant="overline">
-                      {t(eyebrow)}
+                      {translate(eyebrow)}
                     </Typography>
                     <Typography sx={{ color: "text.primary", maxWidth: 420 }} variant="h4">
-                      {t(title)}
+                      {translate(title)}
                     </Typography>
                     <Typography color="text.secondary" sx={{ maxWidth: 420 }} variant="body1">
-                      {t(description)}
+                      {translate(description)}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -113,13 +118,13 @@ export function AuthShell({
                       sx={{ color: isDark ? brandColors.accentSoft : brandColors.accentStrong, maxWidth: 520 }}
                       variant="h3"
                     >
-                      {t(heroTitle)}
+                      {translate(heroTitle)}
                     </Typography>
                     <Typography
                       sx={{ color: alpha(isDark ? brandColors.textPrimaryDark : brandColors.textPrimaryLight, 0.78), maxWidth: 540 }}
                       variant="body1"
                     >
-                      {t(heroSummary)}
+                      {translate(heroSummary)}
                     </Typography>
                   </Stack>
                 </Stack>
@@ -127,7 +132,7 @@ export function AuthShell({
                   {heroPoints.map((point) => (
                     <Chip
                       key={point}
-                      label={t(point)}
+                      label={translate(point)}
                       sx={{
                         backgroundColor: alpha(brandColors.accent, isDark ? 0.14 : 0.12),
                         border: `1px solid ${alpha(brandColors.accentStrong, isDark ? 0.22 : 0.16)}`,

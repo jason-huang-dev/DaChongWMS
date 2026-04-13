@@ -36,7 +36,7 @@ export function InventoryInformationImportDialog({
   onFileChange,
   onSubmit,
 }: InventoryInformationImportDialogProps) {
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
 
   return (
     <Dialog fullWidth maxWidth="md" onClose={onClose} open={open}>
@@ -96,7 +96,7 @@ export function InventoryInformationImportDialog({
               {inventoryImportInstructions.map((instruction) => (
                 <ListItem key={instruction} disableGutters sx={{ alignItems: "flex-start", py: 0.25 }}>
                   <Typography color="text.secondary" variant="body2">
-                    {t(instruction)}
+                    {translate(instruction)}
                   </Typography>
                 </ListItem>
               ))}

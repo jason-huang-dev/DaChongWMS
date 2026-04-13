@@ -1,6 +1,12 @@
 import { Button, Chip, Stack, Typography } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
+import {
+  getWorkOrderSlaStatusLabelKey,
+  getWorkOrderStatusLabelKey,
+  getWorkOrderUrgencyLabelKey,
+  getWorkOrderWorkstreamLabelKey,
+} from "@/features/work-orders/model/label-keys";
 import type { WorkOrderRecord } from "@/features/work-orders/model/types";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { ResourceTable } from "@/shared/components/resource-table";
@@ -129,10 +135,17 @@ export function WorkOrderTable({
   onEdit,
 }: WorkOrderTableProps) {
   const { t, translate, msg } = useI18n();
-  const contextParts = [
-    companyLabel ? t("shell.workspaceChip", { label: companyLabel }) : null,
-    activeWarehouseName ? t("shell.warehouseContextChip", { label: activeWarehouseName }) : null,
-  ].filter(Boolean);
+  const contextLabel =
+    companyLabel && activeWarehouseName
+      ? msg("shell.workspaceWarehouseContext", {
+          warehouse: activeWarehouseName,
+          workspace: companyLabel,
+        })
+      : companyLabel
+        ? msg("shell.workspaceChip", { label: companyLabel })
+        : activeWarehouseName
+          ? msg("shell.warehouseContextChip", { label: activeWarehouseName })
+          : undefined;
 
   return (
     <ResourceTable
@@ -156,18 +169,50 @@ export function WorkOrderTable({
           ),
         },
         { header: "Type", key: "type", render: (row) => row.work_order_type_name },
-        { header: "Workstream", key: "workstream", render: (row) => t(row.workstream) },
+        {
+          header: "Workstream",
+          key: "workstream",
+          render: (row) => {
+            const labelKey = getWorkOrderWorkstreamLabelKey(row.workstream);
+            return labelKey ? translate(labelKey) : row.workstream;
+          },
+        },
         {
           header: "Urgency",
           key: "urgency",
-          render: (row) => <Chip color={urgencyChipColor(row.urgency)} label={t(row.urgency)} size="small" />,
+          render: (row) => {
+            const labelKey = getWorkOrderUrgencyLabelKey(row.urgency);
+            return (
+              <Chip
+                color={urgencyChipColor(row.urgency)}
+                label={labelKey ? translate(labelKey) : row.urgency}
+                size="small"
+              />
+            );
+          },
         },
         { header: "Priority score", key: "priority", render: (row) => String(row.priority_score) },
-        { header: "Status", key: "status", render: (row) => t(row.status) },
+        {
+          header: "Status",
+          key: "status",
+          render: (row) => {
+            const labelKey = getWorkOrderStatusLabelKey(row.status);
+            return labelKey ? translate(labelKey) : row.status;
+          },
+        },
         {
           header: "SLA",
           key: "sla",
-          render: (row) => <Chip color={slaChipColor(row.sla_status)} label={t(row.sla_status)} size="small" />,
+          render: (row) => {
+            const labelKey = getWorkOrderSlaStatusLabelKey(row.sla_status);
+            return (
+              <Chip
+                color={slaChipColor(row.sla_status)}
+                label={labelKey ? translate(labelKey) : row.sla_status}
+                size="small"
+              />
+            );
+          },
         },
         { header: "Due", key: "due", render: (row) => formatDateTime(row.due_at) },
         { header: "Assignee", key: "assignee", render: (row) => row.assignee_name || "--" },
@@ -197,7 +242,7 @@ export function WorkOrderTable({
       toolbar={
         <DataViewToolbar
           activeFilterCount={dataView.activeFilterCount}
-          contextLabel={contextParts.join(" | ") || undefined}
+          contextLabel={contextLabel}
           fields={workOrderFields}
           filters={dataView.filters}
           onChange={dataView.updateFilter}

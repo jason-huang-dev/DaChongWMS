@@ -184,7 +184,7 @@ export function AutomationTable({
               {scheduledTaskToolbar}
               <DataViewToolbar
                 activeFilterCount={scheduledTasksView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={scheduledTaskFields}
                 filters={scheduledTasksView.filters}
                 onChange={scheduledTasksView.updateFilter}
@@ -247,7 +247,7 @@ export function AutomationTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={backgroundTasksView.activeFilterCount}
-              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+              contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={backgroundTaskFields}
               filters={backgroundTasksView.filters}
               onChange={backgroundTasksView.updateFilter}
@@ -328,7 +328,7 @@ export function AutomationTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={alertsView.activeFilterCount}
-              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+              contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={alertFields}
               filters={alertsView.filters}
               onChange={alertsView.updateFilter}

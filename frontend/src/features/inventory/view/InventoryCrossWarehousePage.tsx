@@ -49,7 +49,7 @@ export function InventoryCrossWarehousePage() {
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 4 }}>
               <MetricCard
-                helper={activeWarehouse ? t("shell.warehouseContextChip", { label: activeWarehouse.warehouse_name }) : t("No warehouse selected")}
+                helper={activeWarehouse ? msg("shell.warehouseContextChip", { label: activeWarehouse.warehouse_name }) : t("No warehouse selected")}
                 label="Warehouse comparisons"
                 tone="info"
                 value={warehouses.length}

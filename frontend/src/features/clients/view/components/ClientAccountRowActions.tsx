@@ -5,6 +5,7 @@ import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlin
 import MoreHorizOutlinedIcon from "@mui/icons-material/MoreHorizOutlined";
 import { IconButton, Menu, MenuItem, Stack, Tooltip } from "@mui/material";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { ClientAccountRecord } from "@/features/clients/model/types";
 
 interface ClientAccountRowActionsProps {
@@ -24,24 +25,29 @@ export function ClientAccountRowActions({
   onResetPassword,
   onObtainToken,
 }: ClientAccountRowActionsProps) {
+  const { t } = useI18n();
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
   return (
     <>
       <Stack direction="row" spacing={0.25} sx={{ justifyContent: "flex-start" }}>
-        <Tooltip title="Portal access">
-          <IconButton aria-label={`Open portal access for ${client.name}`} onClick={() => onOpenPortalAccess(client)} size="small">
+        <Tooltip title={t("Portal access")}>
+          <IconButton
+            aria-label={t("Open portal access for {{name}}", { name: client.name })}
+            onClick={() => onOpenPortalAccess(client)}
+            size="small"
+          >
             <ManageAccountsOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Edit client">
-          <IconButton aria-label={`Edit client ${client.name}`} onClick={() => onEdit(client)} size="small">
+        <Tooltip title={t("Edit client")}>
+          <IconButton aria-label={t("Edit client {{name}}", { name: client.name })} onClick={() => onEdit(client)} size="small">
             <EditOutlinedIcon fontSize="small" />
           </IconButton>
         </Tooltip>
-        <Tooltip title="More actions">
+        <Tooltip title={t("More actions")}>
           <IconButton
-            aria-label={`More actions for ${client.name}`}
+            aria-label={t("More actions for {{name}}", { name: client.name })}
             onClick={(event) => setMenuAnchor(event.currentTarget)}
             size="small"
           >
@@ -56,7 +62,7 @@ export function ClientAccountRowActions({
             await onToggleActive(client, !client.is_active);
           }}
         >
-          {client.is_active ? "Deactivate" : "Reactivate"}
+          {client.is_active ? t("Deactivate") : t("Reactivate")}
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -64,7 +70,7 @@ export function ClientAccountRowActions({
             onResetPassword(client);
           }}
         >
-          Reset Password
+          {t("Reset Password")}
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -72,7 +78,7 @@ export function ClientAccountRowActions({
             onObtainToken(client);
           }}
         >
-          Obtain Token
+          {t("Obtain Token")}
         </MenuItem>
       </Menu>
     </>

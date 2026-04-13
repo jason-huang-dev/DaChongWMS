@@ -28,6 +28,7 @@ const keyedMessages = {
     "shell.workspaceChip": "Workspace: {{label}}",
     "shell.warehouseChip": "Warehouse: {{label}}",
     "shell.warehouseContextChip": "Warehouse context: {{label}}",
+    "shell.workspaceWarehouseContext": "Workspace: {{workspace}} | Warehouse context: {{warehouse}}",
     "shell.noWorkspace": "No workspace",
     "shell.noWarehouse": "No warehouse",
     "auth.eyebrow": "DaChongWMS",
@@ -84,6 +85,7 @@ const keyedMessages = {
     "shell.workspaceChip": "工作空间：{{label}}",
     "shell.warehouseChip": "仓库：{{label}}",
     "shell.warehouseContextChip": "仓库上下文：{{label}}",
+    "shell.workspaceWarehouseContext": "工作空间：{{workspace}} | 仓库上下文：{{warehouse}}",
     "shell.noWorkspace": "暂无工作空间",
     "shell.noWarehouse": "暂无仓库",
     "auth.eyebrow": "DaChongWMS",
@@ -288,6 +290,7 @@ const supplementalRawMessages: Record<AppLocale, Record<string, TranslationValue
     "Tenant-wide memberships": "租户范围成员",
     "Tenant-wide invites": "租户范围邀请",
     "Tenant-wide resets": "租户范围重置",
+    "Tenant-wide imports": "租户范围导入",
     "Tenant-wide directory": "租户范围目录",
     "Tenant-wide audit": "租户范围审计",
     "Return order management": "退货单管理",
@@ -353,9 +356,19 @@ const supplementalRawMessages: Record<AppLocale, Record<string, TranslationValue
     "Signing number": "签收单号",
     "Open purchase orders": "未结采购订单",
     "Open ASNs": "未结 ASN",
+    "Create receipt": "创建收货单",
+    "Create warehouse receipts from purchase-order selectors instead of manually entering backend ids.":
+      "通过采购单选择器创建入库收货单，而不是手动输入后端 ID。",
+    "Purchase order": "采购单",
+    "Receipt location": "收货库位",
+    "Receipt number": "收货单号",
+    "Received qty": "收货数量",
+    "Unit cost": "单位成本",
     "PO": "采购单",
     "ASN": "ASN",
     "PO number": "采购单号",
+    "Purchase order number": "采购单号",
+    "ASN number": "ASN 单号",
     "PO-1001": "PO-1001",
     "ASN-1001": "ASN-1001",
     "RCPT-1001": "RCPT-1001",
@@ -427,6 +440,24 @@ const supplementalRawMessages: Record<AppLocale, Record<string, TranslationValue
     "Inbound document records showing planned stock-in progress.": "展示入库计划进度的入库单据记录。",
     "Event status": "事件状态",
     "File name": "文件名",
+    "Scan sign": "扫码签收",
+    "Scan an ASN or purchase order when the truck arrives to log dock sign-off before warehouse receiving starts.":
+      "车辆到达时扫描 ASN 或采购单，记录月台签收，然后再开始仓库收货。",
+    "Carrier name": "承运商名称",
+    "Vehicle plate": "车牌号",
+    "Scan receive": "扫码收货",
+    "Handheld-style receipt posting. Scan an ASN or PO, the receipt location, and the product barcode to create the receipt transaction directly against the backend workflow.":
+      "以手持终端风格完成收货过账。扫描 ASN 或采购单、收货库位和商品条码，直接按后端流程创建收货事务。",
+    "Receipt location barcode": "收货库位条码",
+    "Received quantity": "收货数量",
+    "Scan putaway": "扫码上架",
+    "Close a putaway task by scanning the task number, source location, target location, and SKU barcode.":
+      "通过扫描任务号、来源库位、目标库位和 SKU 条码来完成上架任务。",
+    Receipt: "收货单",
+    Receipts: "收货单",
+    By: "操作人",
+    Task: "任务",
+    "Putaway tasks": "上架任务",
     "Scan pick": "扫码拣货",
     "Confirm a pick by scanning the task, source bin, SKU, and staging location.":
       "通过扫描任务、来源库位、SKU 和暂存库位确认拣货。",
@@ -476,11 +507,30 @@ const supplementalRawMessages: Record<AppLocale, Record<string, TranslationValue
     "Search username": "搜索用户名",
     "Search invite email": "搜索邀请邮箱",
     "Search browser accounts": "搜索浏览器账户",
+    "Portal access": "门户访问",
+    "Edit client": "编辑客户",
+    "More actions": "更多操作",
+    "Open portal access for {{name}}": "打开 {{name}} 的门户访问",
+    "Edit client {{name}}": "编辑客户 {{name}}",
+    "More actions for {{name}}": "{{name}} 的更多操作",
+    Deactivate: "停用",
+    Reactivate: "重新启用",
+    "Reset Password": "重置密码",
+    "Obtain Token": "获取令牌",
     "Supervisor or counter": "主管或盘点员",
     "SKU-1001 or A-01-01": "SKU-1001 或 A-01-01",
     "Serial number": "序列号",
     "Bluetooth Scanner": "蓝牙扫描器",
+    "PO line {{index}}": "采购单行 {{index}}",
+    "Sales order line {{index}}": "销售单行 {{index}}",
+    "Source SKU/location {{index}}": "来源 SKU/库位 {{index}}",
+    "Line {{index}} · {{goodsCode}}": "第 {{index}} 行 · {{goodsCode}}",
+    "{{ordered}} ordered · {{received}} received": "已下单 {{ordered}} · 已收货 {{received}}",
+    "{{ordered}} ordered · {{allocated}} allocated": "已下单 {{ordered}} · 已分配 {{allocated}}",
+    "{{ordered}} ordered · {{shipped}} shipped": "已下单 {{ordered}} · 已发货 {{shipped}}",
+    "{{expected}} expected · {{received}} received": "应收 {{expected}} · 已收货 {{received}}",
     "Order line {{index}}": "订单行 {{index}}",
+    "Remove line {{index}}": "移除第 {{index}} 行",
     "WO-00001 / SO-1001": "WO-00001 / SO-1001",
     "Shift A": "A 班次",
     "Dropship rush": "一件代发加急",
@@ -759,6 +809,7 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Listing and putaway execution records after B2B receiving is posted.":
       "B2B 收货入账后的上架与入库执行记录。",
     "Inventory Information": "库存信息",
+    "Inventory information": "库存信息",
     "Inventory Movements": "库存流水",
     "Sort by": "排序字段",
     "Product Info": "商品信息",
@@ -791,6 +842,8 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Movement Types": "流水类型",
     SKU: "SKU",
     Barcode: "条码",
+    "Merchant Code": "商家编码",
+    "Product Name": "商品名称",
     "Product name": "商品名称",
     Min: "最小值",
     Max: "最大值",
@@ -804,6 +857,10 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "All fields": "全部字段",
     "Search all": "全部搜索",
     "Merchant SKU": "商家 SKU",
+    "Search SKU": "搜索 SKU",
+    "Search merchant code": "搜索商家编码",
+    "Search barcode": "搜索条码",
+    "Search product name": "搜索商品名称",
     Location: "库位",
     Reference: "参考",
     Shelf: "货架",
@@ -875,9 +932,11 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Visited inventory pages stay here until you remove them.": "已访问的库存页面会保留在这里，直到你将其移除。",
     "No quick access pages yet.": "还没有快捷访问页面。",
     "Remove from quick access": "从快捷访问中移除",
+    "Remove from quick access: {{label}}": "从快捷访问中移除：{{label}}",
     "Show hidden visited pages": "显示隐藏的访问页面",
     "Recent pages": "最近页面",
     "Remove from recent pages": "从最近页面中移除",
+    "Remove from recent pages: {{label}}": "从最近页面中移除：{{label}}",
     "Show more recent pages": "显示更多最近页面",
     "All inventory pages": "全部库存页面",
     "Open any inventory workspace page from here.": "从这里打开任意库存工作区页面。",
@@ -1216,6 +1275,14 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Loading data...": "正在加载数据…",
     "No records found.": "未找到记录。",
     "Open routes are kept here for quick return.": "这里会保留已打开的页面，方便快速返回。",
+    "Something went wrong": "出现错误",
+    "An unexpected error interrupted this view.": "当前页面发生了未预期错误。",
+    "Reload page": "重新加载页面",
+    "Error details": "错误详情",
+    "Alert {{index}}": "告警 {{index}}",
+    "Requires a finance role.": "需要财务角色。",
+    "Requires an operations role.": "需要运营角色。",
+    "No statistics available for this range.": "当前时间范围没有可用统计数据。",
     "Sign in to the operator console": "登录操作控制台",
     "Create workspace account": "创建工作空间账户",
     "Sign in with your warehouse account. The frontend uses the backend login endpoint and keeps the tenant token and operator id in browser storage for API access.":
@@ -1260,6 +1327,15 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Loading...": "加载中…",
     "Loading more...": "正在加载更多…",
     "No options": "暂无选项",
+    Enabled: "启用",
+    Disabled: "停用",
+    "Not required": "非必填",
+    Export: "导出",
+    "Export selected": "导出已选项",
+    "Primary navigation": "主导航",
+    "Open workspaces": "已打开的工作区",
+    "Workspace navigation": "工作区导航",
+    Breadcrumb: "面包屑导航",
     Manager: "经理",
     Supervisor: "主管",
     StockControl: "库存控制",
@@ -1269,6 +1345,7 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Returns operations": "退货作业",
     "Stock In": "入库",
     "Dropshipping Stock-Out": "一件代发出库",
+    Dropshipping: "一件代发",
     "Dispatch / Handover": "发运 / 交接",
     Return: "退货",
     "Work Order": "工单",
@@ -1305,6 +1382,7 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Record weight": "记录称重",
     "No shipments": "暂无发运单",
     "No waves": "暂无波次",
+    "No warehouses available": "暂无可用仓库",
     Wave: "波次",
     Shipment: "发运单",
     Package: "包裹",
@@ -1499,6 +1577,15 @@ export interface MessageDescriptor {
 
 export type TranslatableText = string | MessageDescriptor;
 
+export function isMessageDescriptor(value: unknown): value is MessageDescriptor {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "key" in value &&
+    typeof (value as { key?: unknown }).key === "string"
+  );
+}
+
 function interpolate(template: string, params?: TranslationParams): string {
   if (!params) {
     return template;
@@ -1510,14 +1597,57 @@ function interpolate(template: string, params?: TranslationParams): string {
   });
 }
 
-function getMessageTemplate(locale: AppLocale, key: string): string {
-  const message = messages[locale][key as TranslationKey];
+const missingTranslationReports = new Set<string>();
 
-  if (!message) {
-    throw new Error(`Missing translation key "${key}" for locale "${locale}".`);
+function buildMissingTranslationErrorMessage(locale: AppLocale, key: string) {
+  return `Missing translation key "${key}" for locale "${locale}".`;
+}
+
+function buildMissingTranslationFallback(key: string) {
+  return key.includes(".") ? `[missing: ${key}]` : key;
+}
+
+function isLikelyResolvedLocalizedText(key: string) {
+  return /[^\x00-\x7F]/u.test(key);
+}
+
+function reportMissingTranslation(locale: AppLocale, key: string) {
+  const reportKey = `${locale}:${key}`;
+  if (missingTranslationReports.has(reportKey)) {
+    return;
   }
 
-  return message;
+  missingTranslationReports.add(reportKey);
+  if (typeof console !== "undefined") {
+    console.error(buildMissingTranslationErrorMessage(locale, key));
+  }
+}
+
+function getMessageTemplate(locale: AppLocale, key: string, mode: "strict" | "fallback" = "fallback"): string {
+  const message = messages[locale][key as TranslationKey];
+
+  if (message) {
+    return message;
+  }
+
+  if (mode === "strict") {
+    throw new Error(buildMissingTranslationErrorMessage(locale, key));
+  }
+
+  if (isLikelyResolvedLocalizedText(key)) {
+    return key;
+  }
+
+  reportMissingTranslation(locale, key);
+  return buildMissingTranslationFallback(key);
+}
+
+export function hasTranslationKey(key: string): key is TranslationKey {
+  return Object.hasOwn(messages.en, key);
+}
+
+export function findTranslationKey(key: string): TranslationKey | null {
+  return hasTranslationKey(key) ? key : null;
 }
 
 export function msg(key: string, params?: TranslationParams): MessageDescriptor {
@@ -1528,10 +1658,22 @@ export function resolveTranslation(locale: AppLocale, key: string, params?: Tran
   return interpolate(getMessageTemplate(locale, key), params);
 }
 
+export function resolveTranslationStrict(locale: AppLocale, key: string, params?: TranslationParams): string {
+  return interpolate(getMessageTemplate(locale, key, "strict"), params);
+}
+
 export function resolveTranslatableText(locale: AppLocale, message: TranslatableText): string {
   if (typeof message === "string") {
     return resolveTranslation(locale, message);
   }
 
   return resolveTranslation(locale, message.key, message.params);
+}
+
+export function resolveTranslatableTextStrict(locale: AppLocale, message: TranslatableText): string {
+  if (typeof message === "string") {
+    return resolveTranslationStrict(locale, message);
+  }
+
+  return resolveTranslationStrict(locale, message.key, message.params);
 }

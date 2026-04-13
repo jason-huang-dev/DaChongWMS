@@ -5,6 +5,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import { Box, Button, Card, CardContent, Skeleton, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
+import { useI18n } from "@/app/ui-preferences";
 import type {
   DashboardOrderStatistics,
   DashboardOrderStatisticsBucket,
@@ -431,6 +432,7 @@ export function DashboardOrderStatisticsCard({
   timeWindow,
 }: DashboardOrderStatisticsCardProps) {
   const theme = useTheme();
+  const { t } = useI18n();
   const [draftDateFrom, setDraftDateFrom] = useState(toHourDraftValue(customDateFrom ?? data?.date_from, "start"));
   const [draftDateTo, setDraftDateTo] = useState(toHourDraftValue(customDateTo ?? data?.date_to, "end"));
   const [hasPendingCustomSync, setHasPendingCustomSync] = useState(false);
@@ -699,25 +701,25 @@ export function DashboardOrderStatisticsCard({
                 <Stack alignItems="center" direction="row" spacing={0.75}>
                   <Box sx={{ backgroundColor: theme.palette.primary.main, borderRadius: 999, height: 6, width: 6 }} />
                   <Typography color="text.secondary" sx={{ fontSize: "9px", fontWeight: 600 }}>
-                    Dropshipping
+                    {t("Dropshipping")}
                   </Typography>
                 </Stack>
                 <Stack alignItems="center" direction="row" spacing={0.75}>
                   <Box sx={{ backgroundColor: theme.palette.success.main, borderRadius: 999, height: 6, width: 6 }} />
                   <Typography color="text.secondary" sx={{ fontSize: "9px", fontWeight: 600 }}>
-                    Standard Stock-in
+                    {t("Standard Stock-in")}
                   </Typography>
                 </Stack>
               </Stack>
               {isRestricted ? (
                 <Stack alignItems="center" justifyContent="center" sx={{ color: "text.secondary", minHeight: chartHeight }}>
-                  <Typography variant="body2">Requires an operations role.</Typography>
+                  <Typography variant="body2">{t("Requires an operations role.")}</Typography>
                 </Stack>
               ) : isLoading && !data ? (
                 <Skeleton height={chartHeight} variant="rounded" />
               ) : !hasBuckets ? (
                 <Stack alignItems="center" justifyContent="center" sx={{ color: "text.secondary", minHeight: chartHeight }}>
-                  <Typography variant="body2">No statistics available for this range.</Typography>
+                  <Typography variant="body2">{t("No statistics available for this range.")}</Typography>
                 </Stack>
               ) : (
                 <Box sx={{ overflowX: "auto", width: "100%" }}>

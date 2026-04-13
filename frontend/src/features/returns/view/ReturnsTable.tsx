@@ -121,7 +121,7 @@ export function ReturnsTable({
             toolbar={
               <DataViewToolbar
                 activeFilterCount={returnOrdersView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={returnOrderFields}
                 filters={returnOrdersView.filters}
                 onChange={returnOrdersView.updateFilter}
@@ -165,7 +165,7 @@ export function ReturnsTable({
             toolbar={
               <DataViewToolbar
                 activeFilterCount={receiptsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={receiptFields}
                 filters={receiptsView.filters}
                 onChange={receiptsView.updateFilter}
@@ -209,7 +209,7 @@ export function ReturnsTable({
             toolbar={
               <DataViewToolbar
                 activeFilterCount={dispositionsView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={dispositionFields}
                 filters={dispositionsView.filters}
                 onChange={dispositionsView.updateFilter}

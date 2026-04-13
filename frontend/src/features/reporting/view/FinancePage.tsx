@@ -218,7 +218,7 @@ export function FinancePage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={exportsView.activeFilterCount}
-                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                  contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={exportFields}
                   filters={exportsView.filters}
                   onChange={exportsView.updateFilter}

@@ -1,6 +1,7 @@
 import { Chip } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
+import { getStatusLabelKey } from "@/shared/i18n/system-labels";
 import { formatStatusLabel } from "@/shared/utils/format";
 
 const colorMap: Record<string, "default" | "primary" | "secondary" | "success" | "warning" | "error"> = {
@@ -28,12 +29,13 @@ const colorMap: Record<string, "default" | "primary" | "secondary" | "success" |
 
 export function StatusChip({ status }: { status?: string | null }) {
   const key = status?.toLowerCase() ?? "";
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
+  const labelKey = getStatusLabelKey(status);
 
   return (
     <Chip
       color={colorMap[key] ?? "default"}
-      label={t(formatStatusLabel(status))}
+      label={labelKey ? translate(labelKey) : formatStatusLabel(status)}
       size="small"
       variant="outlined"
     />

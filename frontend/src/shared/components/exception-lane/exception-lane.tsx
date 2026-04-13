@@ -45,7 +45,7 @@ export function ExceptionLane<TRow>({
   emptyMessage = "No active exceptions.",
   action,
 }: ExceptionLaneProps<TRow>) {
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
 
   return (
     <ResourceTable
@@ -65,7 +65,7 @@ export function ExceptionLane<TRow>({
           spacing={1}
         >
           <Stack alignItems={{ sm: "center" }} direction={{ xs: "column", sm: "row" }} spacing={1}>
-            <Chip color={severity} label={t(severityLabel[severity])} size="small" />
+            <Chip color={severity} label={translate(severityLabel[severity])} size="small" />
             <Chip label={t("ui.itemsCount", { count: rows.length })} size="small" variant="outlined" />
           </Stack>
           {action}

@@ -61,7 +61,7 @@ export function ProductPackagingForm({
           <FormSwitchField label="Packaging active" name="is_active" />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting} type="submit" variant="contained">
-              {isSubmitting ? t("Saving...") : t(isEditing ? "Save packaging" : "Add packaging")}
+              {isSubmitting ? t("Saving...") : isEditing ? t("Save packaging") : t("Add packaging")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">

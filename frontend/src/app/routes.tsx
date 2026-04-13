@@ -5,6 +5,7 @@ import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 
 import { AppShell } from "@/app/layout/app-shell";
 import { RequireAuth, RequireRoles } from "@/features/auth/view/components/RequireAuth";
+import { RouteErrorBoundary } from "@/shared/components/route-error-boundary";
 import { RouteFallback } from "@/shared/components/route-fallback";
 
 function lazyNamedPage<TModule extends Record<string, unknown>, TKey extends keyof TModule>(
@@ -19,6 +20,14 @@ function lazyNamedPage<TModule extends Record<string, unknown>, TKey extends key
 
 function withSuspense(element: ReactElement) {
   return <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
+}
+
+function withDefaultRouteErrorElement(routes: RouteObject[]): RouteObject[] {
+  return routes.map((route) => ({
+    ...route,
+    children: route.children ? withDefaultRouteErrorElement(route.children) : undefined,
+    errorElement: route.errorElement ?? <RouteErrorBoundary />,
+  }));
 }
 
 const LoginPage = lazyNamedPage(() => import("@/features/auth/view/LoginPage"), "LoginPage");
@@ -123,7 +132,7 @@ const InvoiceDetailPage = lazyNamedPage(
   "InvoiceDetailPage",
 );
 
-export const appRoutes: RouteObject[] = [
+const baseRoutes: RouteObject[] = [
   {
     path: "/login",
     element: withSuspense(<LoginPage />),
@@ -404,6 +413,8 @@ export const appRoutes: RouteObject[] = [
     element: <Navigate replace to="/dashboard" />,
   },
 ];
+
+export const appRoutes: RouteObject[] = withDefaultRouteErrorElement(baseRoutes);
 
 export function createAppRouter() {
   return createBrowserRouter(appRoutes);

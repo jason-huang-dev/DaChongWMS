@@ -3,6 +3,7 @@ import { useTheme } from "@mui/material/styles";
 import { Controller, useFormContext } from "react-hook-form";
 import { useEffect, useRef, type UIEvent } from "react";
 
+import { isMessageDescriptor } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 import type { ReferenceOption } from "@/shared/types/options";
 
@@ -33,7 +34,7 @@ export function FormAutocomplete<TValue extends string | number>({
   ...props
 }: FormAutocompleteProps<TValue>) {
   const { control } = useFormContext();
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const theme = useTheme();
   const optionCacheRef = useRef(new Map<TValue, ReferenceOption<TValue>>());
 
@@ -69,8 +70,8 @@ export function FormAutocomplete<TValue extends string | number>({
             inputValue={searchText}
             isOptionEqualToValue={(option, value) => option.value === value.value}
             loading={loading || isLoadingMore}
-            loadingText={t(isLoadingMore ? "Loading more..." : "Loading...")}
-            noOptionsText={t(emptyText)}
+            loadingText={isLoadingMore ? t("Loading more...") : t("Loading...")}
+            noOptionsText={translate(emptyText)}
             onChange={(_event, option) => field.onChange(option?.value ?? null)}
             onInputChange={(_event, value, reason) => {
               if (!onSearchTextChange) {
@@ -86,19 +87,30 @@ export function FormAutocomplete<TValue extends string | number>({
                 {...params}
                 {...props}
                 error={fieldState.invalid}
-                helperText={fieldState.error?.message ?? (typeof helperText === "string" ? t(helperText) : helperText)}
+                helperText={
+                  fieldState.error?.message ??
+                  (typeof helperText === "string" || isMessageDescriptor(helperText) ? translate(helperText) : helperText)
+                }
                 fullWidth={props.fullWidth ?? true}
-                label={typeof props.label === "string" ? t(props.label) : props.label}
-                placeholder={typeof props.placeholder === "string" ? t(props.placeholder) : props.placeholder}
+                label={
+                  typeof props.label === "string" || isMessageDescriptor(props.label)
+                    ? translate(props.label)
+                    : props.label
+                }
+                placeholder={
+                  typeof props.placeholder === "string" || isMessageDescriptor(props.placeholder)
+                    ? translate(props.placeholder)
+                    : props.placeholder
+                }
               />
             )}
             renderOption={(optionProps, option) => (
               <li {...optionProps} key={option.value}>
                 <div>
-                  <div>{t(option.label)}</div>
+                  <div>{option.label}</div>
                   {option.description ? (
                     <div style={{ color: theme.palette.text.secondary, fontSize: "0.75rem" }}>
-                      {t(option.description)}
+                      {option.description}
                     </div>
                   ) : null}
                 </div>

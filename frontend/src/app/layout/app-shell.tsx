@@ -29,6 +29,7 @@ import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import { BrandLogo } from "@/shared/components/brand-logo";
+import { getStaffRoleLabelKey } from "@/shared/i18n/system-labels";
 import { UiPreferencesControls } from "@/shared/components/ui-preferences-controls";
 import { WorkspaceContextSwitcher } from "@/shared/components/workspace-context-switcher";
 import { hasAnyRole } from "@/shared/utils/permissions";
@@ -47,7 +48,7 @@ export function AppShell() {
   const isDark = theme.palette.mode === "dark";
   const location = useLocation();
   const navigate = useNavigate();
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const { session, logout } = useAuth();
   const { company, memberships, activeMembershipId, switchMembership, warehouses, activeWarehouseId, setActiveWarehouseId } = useTenantScope();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -163,7 +164,7 @@ export function AppShell() {
               <ListItemIcon>
                 <Icon color={selected ? "primary" : "inherit"} />
               </ListItemIcon>
-              <ListItemText primary={t(item.label)} />
+              <ListItemText primary={translate(item.label)} />
             </ListItemButton>
           );
         })}
@@ -307,7 +308,11 @@ export function AppShell() {
               <Typography sx={{ fontSize: 12 }} variant="body2">{session?.operatorName}</Typography>
               <Stack alignItems="center" direction="row" spacing={0.75}>
                 <Typography color="text.secondary" sx={{ fontSize: 10 }} variant="caption">
-                  {session?.operatorRole ? t(session.operatorRole) : session?.operatorRole}
+                  {session?.operatorRole
+                    ? getStaffRoleLabelKey(session.operatorRole)
+                      ? translate(getStaffRoleLabelKey(session.operatorRole)!)
+                      : session.operatorRole
+                    : session?.operatorRole}
                 </Typography>
                 <Box
                   sx={{

@@ -89,7 +89,7 @@ export function FinanceTable({ rows, isLoading, error, total, activeWarehouseNam
       toolbar={
         <DataViewToolbar
           activeFilterCount={dataView.activeFilterCount}
-          contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+          contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
           fields={invoiceFields}
           filters={dataView.filters}
           onChange={dataView.updateFilter}

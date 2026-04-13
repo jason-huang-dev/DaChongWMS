@@ -21,11 +21,12 @@ import {
 import { alpha, useTheme } from "@mui/material/styles";
 
 import { brandColors, brandMotion } from "@/app/brand";
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 export interface DataTableColumnDefinition<TRow, TSortKey extends string = string> {
   key: string;
-  header: string;
+  header: TranslatableText;
   align?: "left" | "right" | "center";
   minWidth?: number | string;
   sortKey?: TSortKey;
@@ -112,7 +113,7 @@ interface DataTableProps<TRow, TSortKey extends string = string> {
   getRowId: (row: TRow) => string | number;
   isLoading?: boolean;
   error?: string | null;
-  emptyMessage?: string;
+  emptyMessage?: TranslatableText;
   toolbar?: ReactNode;
   pagination?: DataTablePaginationState;
   rowSelection?: DataTableRowSelection<TRow>;
@@ -150,7 +151,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
   sorting,
 }: DataTableProps<TRow, TSortKey>) {
   const theme = useTheme();
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
@@ -492,10 +493,10 @@ export function DataTable<TRow, TSortKey extends string = string>({
                               width: "100%",
                             }}
                           >
-                            {t(column.header)}
+                            {translate(column.header)}
                           </TableSortLabel>
                         ) : (
-                          t(column.header)
+                          translate(column.header)
                         )}
                       </TableCell>
                     ))}
@@ -515,7 +516,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                     <TableRow>
                       <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
                         <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
-                          {t(emptyMessage)}
+                          {translate(emptyMessage)}
                         </Typography>
                       </TableCell>
                     </TableRow>

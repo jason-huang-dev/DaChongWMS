@@ -56,7 +56,7 @@ export function ProductMarkForm({
           <FormSwitchField label="Mark active" name="is_active" />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting} type="submit" variant="contained">
-              {isSubmitting ? t("Saving...") : t(isEditing ? "Save product mark" : "Add product mark")}
+              {isSubmitting ? t("Saving...") : isEditing ? t("Save product mark") : t("Add product mark")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">

@@ -67,7 +67,7 @@ export function AccessInviteForm({
           <FormTextField label="Expires in days" name="expires_in_days" type="number" />
           <FormSwitchField label="Company admin" name="is_company_admin" />
           <FormSwitchField label="Can manage users" name="can_manage_users" />
-          <Alert severity="info">Invites return a token so warehouse admins can distribute it through their own communication channel.</Alert>
+          <Alert severity="info">{t("Invites return a token so warehouse admins can distribute it through their own communication channel.")}</Alert>
           <Button disabled={isSubmitting} type="submit" variant="contained">
             {isSubmitting ? t("Issuing...") : t("Issue invite")}
           </Button>

@@ -5,6 +5,7 @@ import { AddOutlined, DeleteOutline } from "@mui/icons-material";
 import { Button, Divider, Grid, IconButton, Stack } from "@mui/material";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import { defaultReturnOrderCreateValues } from "@/features/returns/model/mappers";
 import type { ReturnOrderCreateValues, SalesOrderRecord } from "@/features/returns/model/types";
 import { returnOrderCreateSchema } from "@/features/returns/model/validators";
@@ -36,6 +37,7 @@ export function CreateReturnOrderPanel({
   onSubmit,
   successMessage,
 }: CreateReturnOrderPanelProps) {
+  const { t, msg } = useI18n();
   const form = useForm<ReturnOrderCreateValues>({
     defaultValues: defaultReturnOrderCreateValues,
     resolver: zodResolver(returnOrderCreateSchema),
@@ -72,11 +74,11 @@ export function CreateReturnOrderPanel({
   const lineOptions = useMemo(() => {
     return (salesOrderQuery.data?.lines ?? []).map((line) => ({
       value: line.id,
-      label: `Line ${line.line_number} · ${line.goods_code}`,
-      description: `${line.ordered_qty} ordered · ${line.shipped_qty} shipped`,
+      label: t("Line {{index}} · {{goodsCode}}", { goodsCode: line.goods_code, index: line.line_number }),
+      description: t("{{ordered}} ordered · {{shipped}} shipped", { ordered: line.ordered_qty, shipped: line.shipped_qty }),
       record: line,
     }));
-  }, [salesOrderQuery.data?.lines]);
+  }, [salesOrderQuery.data?.lines, t]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     if (!salesOrderQuery.data) {
@@ -121,7 +123,7 @@ export function CreateReturnOrderPanel({
               <Grid container spacing={1.5} key={field.id}>
                 <Grid size={{ xs: 12, md: 5 }}>
                   <FormAutocomplete
-                    label={`Sales order line ${index + 1}`}
+                    label={msg("Sales order line {{index}}", { index: index + 1 })}
                     name={`line_items.${index}.sales_order_line`}
                     options={lineOptions}
                     loading={salesOrderQuery.isLoading}
@@ -135,7 +137,7 @@ export function CreateReturnOrderPanel({
                 </Grid>
                 <Grid size={{ xs: 12, md: 1 }}>
                   <IconButton
-                    aria-label={`remove-return-line-${index + 1}`}
+                    aria-label={t("Remove line {{index}}", { index: index + 1 })}
                     disabled={fields.length === 1}
                     onClick={() => remove(index)}
                     sx={{ mt: 1 }}

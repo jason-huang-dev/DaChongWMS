@@ -4,6 +4,7 @@ import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownR
 import { ButtonBase, Chip, Menu, MenuItem, Stack, TextField, Typography } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
+import { getStaffRoleLabelKey } from "@/shared/i18n/system-labels";
 import type { CompanyContextRecord, CompanyMembershipRecord, WarehouseRecord } from "@/shared/types/domain";
 
 interface WorkspaceContextSwitcherProps {
@@ -27,7 +28,7 @@ export function WorkspaceContextSwitcher({
   onWarehouseChange,
   compact = false,
 }: WorkspaceContextSwitcherProps) {
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const workspaceFieldWidth = compact ? { md: 124, lg: 136, xl: 152 } : 240;
   const warehouseFieldWidth = compact ? { md: 112, lg: 124, xl: 140 } : 220;
   const [workspaceMenuAnchor, setWorkspaceMenuAnchor] = useState<HTMLElement | null>(null);
@@ -35,10 +36,7 @@ export function WorkspaceContextSwitcher({
     () => memberships.find((membership) => membership.id === activeMembershipId) ?? memberships[0] ?? null,
     [activeMembershipId, memberships],
   );
-  const activeWarehouse = useMemo(
-    () => warehouses.find((warehouse) => warehouse.id === activeWarehouseId) ?? warehouses[0] ?? null,
-    [activeWarehouseId, warehouses],
-  );
+  const activeWorkspaceLabel = activeMembership?.company_name ?? company?.label ?? t("shell.noWorkspace");
 
   if (compact) {
     return (
@@ -47,7 +45,7 @@ export function WorkspaceContextSwitcher({
           aria-controls={workspaceMenuAnchor ? "workspace-switcher-menu" : undefined}
           aria-expanded={workspaceMenuAnchor ? "true" : undefined}
           aria-haspopup={memberships.length > 1 ? "menu" : undefined}
-          aria-label={`${t("shell.workspaceLabel")}: ${activeMembership?.company_name ?? company?.label ?? t("shell.noWorkspace")}`}
+          aria-label={t("shell.workspaceChip", { label: activeWorkspaceLabel })}
           disabled={memberships.length <= 1}
           onClick={(event) => setWorkspaceMenuAnchor(event.currentTarget)}
           sx={{
@@ -73,7 +71,7 @@ export function WorkspaceContextSwitcher({
           }}
         >
           <Typography noWrap sx={{ color: "inherit", fontSize: 12, fontWeight: 700, lineHeight: 1.2 }}>
-            {activeMembership?.company_name ?? company?.label ?? t("shell.noWorkspace")}
+            {activeWorkspaceLabel}
           </Typography>
           {memberships.length > 1 ? (
             <KeyboardArrowDownRoundedIcon sx={{ color: "inherit", flexShrink: 0, fontSize: 18 }} />
@@ -97,7 +95,10 @@ export function WorkspaceContextSwitcher({
               <Stack>
                 <Typography variant="body2">{membership.company_name}</Typography>
                 <Typography color="text.secondary" variant="caption">
-                  {membership.staff_name} · {t(membership.staff_type)}
+                  {membership.staff_name} ·{" "}
+                  {getStaffRoleLabelKey(membership.staff_type)
+                    ? translate(getStaffRoleLabelKey(membership.staff_type)!)
+                    : membership.staff_type}
                 </Typography>
               </Stack>
             </MenuItem>
@@ -146,7 +147,10 @@ export function WorkspaceContextSwitcher({
               <Stack>
                 <Typography variant="body2">{membership.company_name}</Typography>
                 <Typography color="text.secondary" variant="caption">
-                  {membership.staff_name} · {t(membership.staff_type)}
+                  {membership.staff_name} ·{" "}
+                  {getStaffRoleLabelKey(membership.staff_type)
+                    ? translate(getStaffRoleLabelKey(membership.staff_type)!)
+                    : membership.staff_type}
                 </Typography>
               </Stack>
             </MenuItem>

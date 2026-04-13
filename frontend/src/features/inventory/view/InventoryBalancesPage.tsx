@@ -468,12 +468,12 @@ export function InventoryBalancesPage() {
           actions={
             <Stack direction="row" spacing={0.75}>
               <ActionIconButton
-                aria-label={t(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+                aria-label={selectedRows.length > 0 ? t("Export selected rows") : t("Export queried rows")}
                 disabled={!companyId || isExporting || (selectedRows.length === 0 && sortedRows.length === 0)}
                 onClick={() => {
                   void handleExportRows();
                 }}
-                title={t(selectedRows.length > 0 ? "Export selected rows" : "Export queried rows")}
+                title={selectedRows.length > 0 ? t("Export selected rows") : t("Export queried rows")}
                 tone="success"
               >
                 <FileDownloadOutlinedIcon fontSize="small" />

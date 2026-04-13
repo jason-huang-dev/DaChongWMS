@@ -1,10 +1,11 @@
+import type { TranslatableText } from "@/app/i18n";
 import type { DetailGridItem } from "@/shared/components/detail-grid";
 import { DetailCard } from "@/shared/components/detail-card";
 import { DetailGrid } from "@/shared/components/detail-grid";
 
 interface SummaryCardProps {
-  title: string;
-  description?: string;
+  title: TranslatableText;
+  description?: TranslatableText;
   items: DetailGridItem[];
 }
 

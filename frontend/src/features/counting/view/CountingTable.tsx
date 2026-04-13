@@ -87,7 +87,7 @@ export function CountingTable({
           {toolbarContent}
           <DataViewToolbar
             activeFilterCount={dataView.activeFilterCount}
-            contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : undefined}
+            contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : undefined}
             fields={approvalFields}
             filters={dataView.filters}
             onChange={dataView.updateFilter}

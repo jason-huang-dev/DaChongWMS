@@ -207,7 +207,7 @@ export function TransfersTable({
               {transferOrderToolbar}
               <DataViewToolbar
                 activeFilterCount={transferOrdersView.activeFilterCount}
-                contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+                contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
                 fields={transferOrderFields}
                 filters={transferOrdersView.filters}
                 onChange={transferOrdersView.updateFilter}
@@ -310,7 +310,7 @@ export function TransfersTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={replenishmentRulesView.activeFilterCount}
-              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+              contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={replenishmentRuleFields}
               filters={replenishmentRulesView.filters}
               onChange={replenishmentRulesView.updateFilter}
@@ -366,7 +366,7 @@ export function TransfersTable({
           toolbar={
             <DataViewToolbar
               activeFilterCount={replenishmentTasksView.activeFilterCount}
-              contextLabel={activeWarehouseName ? t("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
+              contextLabel={activeWarehouseName ? msg("shell.warehouseChip", { label: activeWarehouseName }) : t("All warehouses")}
               fields={replenishmentTaskFields}
               filters={replenishmentTasksView.filters}
               onChange={replenishmentTasksView.updateFilter}

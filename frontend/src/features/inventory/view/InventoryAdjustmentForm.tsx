@@ -80,7 +80,7 @@ export function InventoryAdjustmentForm({
             </Button>
           ) : null}
           <Button disabled={isSubmitting} type="submit" variant="contained">
-            {isSubmitting ? t("Posting...") : t(submitLabel)}
+            {isSubmitting ? t("Posting...") : translate(submitLabel)}
           </Button>
         </Stack>
       </Stack>

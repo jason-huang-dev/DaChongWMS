@@ -38,7 +38,7 @@ export function InventoryAgingPage() {
           onClick={() => generateStockAgeReportMutation.mutate()}
           variant="contained"
         >
-          {t(generateStockAgeReportMutation.isPending ? "Generating..." : "Generate stock age report")}
+          {generateStockAgeReportMutation.isPending ? t("Generating...") : t("Generate stock age report")}
         </Button>
       </Stack>
       <QueryAlert message={reportErrorMessage} />

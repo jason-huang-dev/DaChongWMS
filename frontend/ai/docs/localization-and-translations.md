@@ -37,11 +37,17 @@ The application now uses one catalog-driven translation system in `frontend/src/
 Rules:
 
 - every translatable application UI string must exist in the catalog
-- no runtime fallback from arbitrary English text is allowed
+- no runtime auto-translation from arbitrary English text is allowed
 - locale catalogs must have the same key set
 - dynamic application UI copy must use parameterized messages, not template-string concatenation
 - raw data values must never be auto-translated at runtime
 - only explicit system-owned enums, codes, and application labels may map to translated strings
+
+Runtime behavior:
+
+- missing keys must be treated as defects and logged immediately
+- the live UI should render a visible fallback instead of crashing the route
+- tests and CI should still fail hard on missing keys
 
 ## What Gets Translated
 
@@ -166,6 +172,18 @@ Incorrect:
 <Typography>{someEnglishLiteralFromBackend}</Typography>
 <Typography>{t(customerNote)}</Typography>
 ```
+
+## Persistence Rules
+
+Persist canonical translation keys or message metadata, not already-localized output.
+
+Examples:
+
+- route tabs should store a stable catalog key such as `Inventory`
+- saved view metadata may store a message descriptor key plus params
+- locale-specific rendered strings should only be produced at render time
+
+This prevents saved UI state from becoming stale, mixed-language, or impossible to re-render correctly after a locale switch or catalog update.
 
 ## System Codes Versus Raw Data
 

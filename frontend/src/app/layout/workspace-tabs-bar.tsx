@@ -3,6 +3,7 @@ import PushPinRoundedIcon from "@mui/icons-material/PushPinRounded";
 import { Box, IconButton, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
+import { hasTranslationKey } from "@/app/i18n";
 import { brandColors, brandMotion, brandShadows, brandStatusColors } from "@/app/brand";
 import { useI18n } from "@/app/ui-preferences";
 import type { WorkspaceTabPreferenceRecord } from "@/shared/types/domain";
@@ -18,12 +19,12 @@ interface WorkspaceTabsBarProps {
 
 export function WorkspaceTabsBar({ activePath, compact = true, isClosingTab = false, onActivate, onClose, tabs }: WorkspaceTabsBarProps) {
   const theme = useTheme();
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
 
   return (
     <Stack
-      aria-label="Open workspaces"
+      aria-label={t("Open workspaces")}
       direction="row"
       role="tablist"
       spacing={1}
@@ -31,10 +32,11 @@ export function WorkspaceTabsBar({ activePath, compact = true, isClosingTab = fa
     >
       {tabs.map((tab) => {
         const isActive = activePath === tab.route_path;
+        const title = hasTranslationKey(tab.title) ? translate(tab.title) : tab.title;
         return (
           <Stack
             alignItems="center"
-            aria-label={t(tab.title)}
+            aria-label={title}
             aria-selected={isActive}
             component="button"
             direction="row"
@@ -100,7 +102,7 @@ export function WorkspaceTabsBar({ activePath, compact = true, isClosingTab = fa
                 maxWidth: compact ? 150 : 180,
               }}
             >
-              {t(tab.title)}
+              {title}
             </Typography>
             {tab.route_path !== "/dashboard" ? (
               <IconButton

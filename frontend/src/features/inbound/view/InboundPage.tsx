@@ -209,7 +209,7 @@ export function InboundPage() {
       <Stack direction="row" flexWrap="wrap" gap={1}>
         {sectionLinks.map((sectionLink) => (
           <Button component="a" href={sectionLink.href} key={sectionLink.href} size="small" variant="outlined">
-            {t(sectionLink.label)}
+            {translate(sectionLink.label)}
           </Button>
         ))}
       </Stack>
@@ -220,7 +220,7 @@ export function InboundPage() {
           <Grid container spacing={2.5}>
             <Grid size={{ xs: 12, md: 3 }}>
               <MetricCard
-                helper={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                helper={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 label="Open purchase orders"
                 to="#stock-in-list-management"
                 tone="warning"
@@ -296,7 +296,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={purchaseOrdersView.activeFilterCount}
-                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={purchaseOrderFields}
                 filters={purchaseOrdersView.filters}
                 onChange={purchaseOrdersView.updateFilter}
@@ -376,7 +376,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={importBatchesView.activeFilterCount}
-                contextLabel="Tenant-wide imports"
+                contextLabel={t("Tenant-wide imports")}
                 fields={importBatchFields}
                 filters={importBatchesView.filters}
                 onChange={importBatchesView.updateFilter}
@@ -447,7 +447,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={returnOrdersView.activeFilterCount}
-                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={returnOrderFields}
                 filters={returnOrdersView.filters}
                 onChange={returnOrdersView.updateFilter}
@@ -493,7 +493,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={advanceShipmentNoticesView.activeFilterCount}
-                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={asnFields}
                 filters={advanceShipmentNoticesView.filters}
                 onChange={advanceShipmentNoticesView.updateFilter}
@@ -540,7 +540,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={signingRecordsView.activeFilterCount}
-                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={signingFields}
                 filters={signingRecordsView.filters}
                 onChange={signingRecordsView.updateFilter}
@@ -586,7 +586,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={receiptsView.activeFilterCount}
-                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={receiptFields}
                 filters={receiptsView.filters}
                 onChange={receiptsView.updateFilter}
@@ -633,7 +633,7 @@ export function InboundPage() {
             toolbar={
               <DataViewToolbar
                 activeFilterCount={putawayTasksView.activeFilterCount}
-                contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                 fields={putawayFields}
                 filters={putawayTasksView.filters}
                 onChange={putawayTasksView.updateFilter}

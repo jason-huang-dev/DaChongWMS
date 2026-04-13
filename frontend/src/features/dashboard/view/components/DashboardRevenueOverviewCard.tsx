@@ -4,6 +4,7 @@ import AccountBalanceWalletOutlinedIcon from "@mui/icons-material/AccountBalance
 import { Box, Card, CardContent, Skeleton, Stack, Typography } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
+import { useI18n } from "@/app/ui-preferences";
 import type {
   ChargeItemRecord,
   FundFlowRecord,
@@ -529,6 +530,7 @@ export function DashboardRevenueOverviewCard({
   vouchers,
 }: DashboardRevenueOverviewCardProps) {
   const theme = useTheme();
+  const { t } = useI18n();
   const [draftDateFrom, setDraftDateFrom] = useState(toDateTimeDraftValue(dateFrom, "start"));
   const [draftDateTo, setDraftDateTo] = useState(toDateTimeDraftValue(dateTo, "end"));
 
@@ -621,7 +623,7 @@ export function DashboardRevenueOverviewCard({
 
           {isRestricted ? (
             <Stack alignItems="center" justifyContent="center" sx={{ color: "text.secondary", minHeight: 164 }}>
-              <Typography variant="body2">Requires a finance role.</Typography>
+              <Typography variant="body2">{t("Requires a finance role.")}</Typography>
             </Stack>
           ) : isLoading ? (
             <Skeleton height={288} variant="rounded" />

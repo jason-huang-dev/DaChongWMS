@@ -147,7 +147,7 @@ export function StatisticsPage() {
                 onClick={() => controller.setTimeWindow(option.value)}
                 variant={controller.timeWindow === option.value ? "contained" : "outlined"}
               >
-                {t(option.label)}
+                {translate(option.label)}
               </Button>
             ))}
           </ButtonGroup>

@@ -3,10 +3,11 @@ import type { ReactNode } from "react";
 import Grid from "@mui/material/Grid";
 import { Stack, Typography } from "@mui/material";
 
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 export interface DetailGridItem {
-  label: string;
+  label: TranslatableText;
   value: ReactNode;
 }
 
@@ -15,7 +16,7 @@ interface DetailGridProps {
 }
 
 export function DetailGrid({ items }: DetailGridProps) {
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Grid container spacing={2}>
@@ -23,7 +24,7 @@ export function DetailGrid({ items }: DetailGridProps) {
         <Grid key={item.label} size={{ xs: 12, md: 6, xl: 4 }}>
           <Stack spacing={0.5}>
             <Typography color="text.secondary" variant="body2">
-              {t(item.label)}
+              {translate(item.label)}
             </Typography>
             <Typography variant="subtitle2">{item.value}</Typography>
           </Stack>

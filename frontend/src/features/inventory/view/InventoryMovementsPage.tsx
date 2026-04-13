@@ -138,7 +138,7 @@ function InventoryMovementDocumentCell({
   entries: InventoryMovementHistoryDocumentNumber[];
   fallback?: string;
 }) {
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Stack spacing={0.6} sx={{ minWidth: 0 }}>
@@ -150,7 +150,7 @@ function InventoryMovementDocumentCell({
             variant="body2"
           >
             <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
-              {t(entry.label)}:
+              {translate(entry.label)}:
             </Box>{" "}
             <Box component="span" sx={{ fontWeight: 700 }}>
               {entry.value}
@@ -169,7 +169,7 @@ function InventoryMovementDocumentCell({
 function InventoryMovementSourceDocumentCell({ row }: { row: InventoryMovementHistoryRow }) {
   const primaryValue = row.sourceDocumentNumber || row.purchaseOrderNumber || row.referenceCode || "--";
   const secondaryEntries = row.sourceDocumentNumbers.filter((entry) => entry.value && entry.value !== primaryValue);
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Stack spacing={0.5} sx={{ minWidth: 0 }}>
@@ -183,7 +183,7 @@ function InventoryMovementSourceDocumentCell({ row }: { row: InventoryMovementHi
           sx={{ lineHeight: 1.35, overflowWrap: "anywhere" }}
           variant="caption"
         >
-          {t(entry.label)}: {entry.value}
+          {translate(entry.label)}: {entry.value}
         </Typography>
       ))}
     </Stack>
@@ -244,12 +244,12 @@ function InventoryMovementMetaField({
   label: string;
   value: string;
 }) {
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Typography sx={{ lineHeight: 1.35 }} variant="body2">
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
-        {t(label)}:
+        {translate(label)}:
       </Box>{" "}
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
         {value || "--"}
@@ -514,7 +514,7 @@ export function InventoryMovementsPage() {
                     >
                       {movementSearchFieldOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
-                          {t(option.label)}
+                          {translate(option.label)}
                         </MenuItem>
                       ))}
                     </TextField>
@@ -637,7 +637,7 @@ export function InventoryMovementsPage() {
             const clientLabel = row.clientName
               ? `${row.clientName}${row.clientCode ? ` [${row.clientCode}]` : ""}`
               : "--";
-            const entryTypeLabel = t(
+            const entryTypeLabel = translate(
               row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType),
             );
 

@@ -1,17 +1,18 @@
 import { FormControlLabel, Switch } from "@mui/material";
 import { Controller, useFormContext } from "react-hook-form";
 
+import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 interface FormSwitchFieldProps {
   name: string;
-  label: string;
+  label: TranslatableText;
   disabled?: boolean;
 }
 
 export function FormSwitchField({ name, label, disabled }: FormSwitchFieldProps) {
   const { control } = useFormContext();
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Controller
@@ -27,7 +28,7 @@ export function FormSwitchField({ name, label, disabled }: FormSwitchFieldProps)
               onChange={(_event, checked) => field.onChange(checked)}
             />
           }
-          label={t(label)}
+          label={translate(label)}
         />
       )}
     />

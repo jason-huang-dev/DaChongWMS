@@ -4,21 +4,23 @@ import type { ReactNode } from "react";
 import { Link as RouterLink } from "react-router-dom";
 
 import { brandColors, brandMotion, brandShadows, brandStatusColors } from "@/app/brand";
+import type { MessageDescriptor, TranslatableText } from "@/app/i18n";
+import { isMessageDescriptor } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 
 type MetricCardTone = "neutral" | "info" | "success" | "warning" | "danger";
 
 interface MetricCardProps {
-  label: string;
+  label: TranslatableText;
   value: ReactNode;
-  helper?: ReactNode;
+  helper?: ReactNode | MessageDescriptor;
   to?: string;
   tone?: MetricCardTone;
 }
 
 export function MetricCard({ label, value, helper, to, tone = "neutral" }: MetricCardProps) {
   const theme = useTheme();
-  const { t } = useI18n();
+  const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
   const toneColor =
     tone === "success"
@@ -45,7 +47,7 @@ export function MetricCard({ label, value, helper, to, tone = "neutral" }: Metri
         <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={1}>
           <Stack alignItems="center" direction="row" spacing={0.85}>
             <Typography color="text.secondary" variant="body2">
-              {t(label)}
+              {translate(label)}
             </Typography>
             <span
               aria-hidden="true"
@@ -71,7 +73,7 @@ export function MetricCard({ label, value, helper, to, tone = "neutral" }: Metri
         </Typography>
         {helper ? (
           <Typography color="text.secondary" variant="body2">
-            {helper}
+            {isMessageDescriptor(helper) ? translate(helper) : helper}
           </Typography>
         ) : null}
       </Stack>

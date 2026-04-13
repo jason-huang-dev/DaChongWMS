@@ -5,6 +5,7 @@ import { Button, Grid, Stack } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { useI18n } from "@/app/ui-preferences";
 import { defaultReturnReceiptValues } from "@/features/returns/model/mappers";
 import { returnsApi } from "@/features/returns/model/api";
 import type { ReturnOrderRecord, ReturnReceiptCreateValues } from "@/features/returns/model/types";
@@ -48,6 +49,7 @@ export function ReturnReceiptPanel({
   onSubmit,
   successMessage,
 }: ReturnReceiptPanelProps) {
+  const { t } = useI18n();
   const form = useForm<ReturnReceiptFormValues>({
     defaultValues: {
       ...defaultReturnReceiptValues,
@@ -71,11 +73,11 @@ export function ReturnReceiptPanel({
   const lineOptions = useMemo(() => {
     return (returnOrderQuery.data?.lines ?? []).map((line) => ({
       value: line.id,
-      label: `Line ${line.line_number} · ${line.goods_code}`,
-      description: `${line.expected_qty} expected · ${line.received_qty} received`,
+      label: t("Line {{index}} · {{goodsCode}}", { goodsCode: line.goods_code, index: line.line_number }),
+      description: t("{{expected}} expected · {{received}} received", { expected: line.expected_qty, received: line.received_qty }),
       record: line,
     }));
-  }, [returnOrderQuery.data?.lines]);
+  }, [returnOrderQuery.data?.lines, t]);
 
   useEffect(() => {
     const selectedReturnOrder = returnOrders.options.find((option) => option.value === selectedReturnOrderId)?.record;

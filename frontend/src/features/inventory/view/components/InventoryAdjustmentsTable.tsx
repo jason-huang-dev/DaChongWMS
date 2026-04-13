@@ -91,12 +91,12 @@ function InventoryAdjustmentMetaField({
   label: string;
   value: string;
 }) {
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Typography sx={{ lineHeight: 1.35 }} variant="body2">
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
-        {t(label)}:
+        {translate(label)}:
       </Box>{" "}
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
         {value || "--"}
@@ -356,7 +356,7 @@ export function InventoryAdjustmentsTable({
               startIcon={<DownloadOutlinedIcon />}
               variant="outlined"
             >
-              {t(selectedCount > 0 ? "Export selected" : "Export")}
+              {selectedCount > 0 ? t("Export selected") : t("Export")}
             </Button>
             {selectedCount > 0 ? (
               <>

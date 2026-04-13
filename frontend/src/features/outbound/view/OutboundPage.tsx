@@ -197,7 +197,7 @@ export function OutboundPage() {
       <Grid container spacing={2.5}>
         <Grid size={{ xs: 12, sm: 6, xl: 3 }}>
           <MetricCard
-            helper={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+            helper={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
             label="Package queue"
             to="#package-management"
             tone="warning"
@@ -429,7 +429,7 @@ export function OutboundPage() {
                   />
                   <DataViewToolbar
                     activeFilterCount={salesOrdersView.activeFilterCount}
-                    contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                    contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                     fields={salesOrderFields}
                     filters={salesOrdersView.filters}
                     onChange={salesOrdersView.updateFilter}
@@ -518,7 +518,7 @@ export function OutboundPage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={pickTasksView.activeFilterCount}
-                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                  contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={pickTaskFields}
                   filters={pickTasksView.filters}
                   onChange={pickTasksView.updateFilter}
@@ -563,7 +563,7 @@ export function OutboundPage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={shipmentsView.activeFilterCount}
-                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                  contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={shipmentFields}
                   filters={shipmentsView.filters}
                   onChange={shipmentsView.updateFilter}
@@ -693,7 +693,7 @@ export function OutboundPage() {
               toolbar={
                 <DataViewToolbar
                   activeFilterCount={dockLoadView.activeFilterCount}
-                  contextLabel={activeWarehouse ? t("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
+                  contextLabel={activeWarehouse ? msg("shell.warehouseChip", { label: activeWarehouse.warehouse_name }) : t("All warehouses")}
                   fields={dockLoadFields}
                   filters={dockLoadView.filters}
                   onChange={dockLoadView.updateFilter}

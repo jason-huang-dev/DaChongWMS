@@ -16,20 +16,22 @@ import {
   Typography,
 } from "@mui/material";
 
+import type { MessageDescriptor, TranslatableText } from "@/app/i18n";
+import { isMessageDescriptor } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 import type { DataViewFilters } from "@/shared/hooks/use-data-view";
 import type { SavedDataView } from "@/shared/storage/data-view-storage";
 
 interface FilterOption {
-  label: string;
+  label: TranslatableText;
   value: string;
 }
 
 export interface DataViewFieldConfig<TFilters extends DataViewFilters> {
   key: keyof TFilters & string;
-  label: string;
+  label: TranslatableText;
   type?: "text" | "select" | "date";
-  placeholder?: string;
+  placeholder?: TranslatableText;
   options?: FilterOption[];
   width?: number;
 }
@@ -41,7 +43,7 @@ interface DataViewToolbarProps<TFilters extends DataViewFilters> {
   onReset: () => void;
   activeFilterCount: number;
   resultCount?: number;
-  contextLabel?: ReactNode;
+  contextLabel?: ReactNode | MessageDescriptor;
   actions?: ReactNode;
   savedViews?: {
     items: SavedDataView<TFilters>[];
@@ -65,7 +67,7 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
 }: DataViewToolbarProps<TFilters>) {
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [viewName, setViewName] = useState("");
-  const { t } = useI18n();
+  const { t, translate } = useI18n();
 
   return (
     <>
@@ -74,7 +76,13 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
           <Stack spacing={2}>
             <Stack alignItems={{ md: "center" }} direction={{ xs: "column", md: "row" }} justifyContent="space-between" spacing={1.5}>
               <Stack direction="row" flexWrap="wrap" spacing={1}>
-                {contextLabel ? <Chip color="primary" label={contextLabel} variant="outlined" /> : null}
+                {contextLabel ? (
+                  <Chip
+                    color="primary"
+                    label={isMessageDescriptor(contextLabel) ? translate(contextLabel) : contextLabel}
+                    variant="outlined"
+                  />
+                ) : null}
                 <Chip label={t("filters.activeCount", { count: activeFilterCount })} size="small" />
                 {typeof resultCount === "number" ? (
                   <Chip label={t("filters.resultCount", { count: resultCount })} size="small" variant="outlined" />
@@ -131,9 +139,9 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                 <Box key={field.key} sx={{ minWidth: field.width ?? 180 }}>
                   <TextField
                     fullWidth
-                    label={t(field.label)}
+                    label={translate(field.label)}
                     onChange={(event) => onChange(field.key, event.target.value as TFilters[typeof field.key])}
-                    placeholder={field.placeholder ? t(field.placeholder) : undefined}
+                    placeholder={field.placeholder ? translate(field.placeholder) : undefined}
                     select={field.type === "select"}
                     size="small"
                     type={field.type === "date" ? "date" : undefined}
@@ -142,10 +150,10 @@ export function DataViewToolbar<TFilters extends DataViewFilters>({
                   >
                     {field.type === "select"
                       ? [<MenuItem key="all" value="">{t("ui.all")}</MenuItem>, ...(field.options ?? []).map((option) => (
-                          <MenuItem key={option.value} value={option.value}>
-                            {t(option.label)}
-                          </MenuItem>
-                        ))]
+                        <MenuItem key={option.value} value={option.value}>
+                            {translate(option.label)}
+                        </MenuItem>
+                      ))]
                       : null}
                   </TextField>
                 </Box>

@@ -516,12 +516,12 @@ function InventoryInformationMetaField({
   label: string;
   value: string;
 }) {
-  const { t, translate, msg } = useI18n();
+  const { translate } = useI18n();
 
   return (
     <Typography sx={{ lineHeight: 1.35 }} variant="body2">
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 700 }}>
-        {t(label)}:
+        {translate(label)}:
       </Box>{" "}
       <Box component="span" sx={{ color: "text.secondary", fontWeight: 600 }}>
         {value || "--"}
@@ -769,14 +769,14 @@ function InventoryInformationToolbar({
             >
               {inventoryInformationProductSearchFieldOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
-                  {t(option.label)}
+                  {translate(option.label)}
                 </MenuItem>
               ))}
             </TextField>
             <TextField
               hiddenLabel
               onChange={(event) => dataView.updateFilter("productSearchValue", event.target.value)}
-              placeholder={t(inventoryInformationProductSearchPlaceholders[dataView.filters.productSearchField])}
+              placeholder={translate(inventoryInformationProductSearchPlaceholders[dataView.filters.productSearchField])}
               size="small"
               value={dataView.filters.productSearchValue}
               slotProps={{
@@ -825,7 +825,7 @@ function InventoryInformationToolbar({
               >
                 {inventoryInformationMetricFieldOptions.map((option) => (
                   <MenuItem key={option.value} value={option.value}>
-                    {t(option.label)}
+                    {translate(option.label)}
                   </MenuItem>
                 ))}
               </TextField>
@@ -1117,7 +1117,7 @@ export function InventoryInformationTable({
                 <InventoryInformationMetaField label="Warehouse" value={row.warehouseName || "--"} />
                 <InventoryInformationMetaField label="Client" value={buildInventoryInformationClientLabel(row)} />
                 <InventoryInformationMetaField label="Area" value={row.areaLabel || "--"} />
-                <InventoryInformationMetaField label="Status" value={t(buildInventoryInformationStatusLabel(row))} />
+                <InventoryInformationMetaField label="Status" value={translate(buildInventoryInformationStatusLabel(row))} />
               </Stack>
               <InventoryInformationMetaField label="Listed" value={buildInventoryInformationListedLabel(row.listingTime)} />
             </Stack>

@@ -1,6 +1,10 @@
 import { Button } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
+import {
+  getWorkOrderUrgencyLabelKey,
+  getWorkOrderWorkstreamLabelKey,
+} from "@/features/work-orders/model/label-keys";
 import type { WorkOrderTypeRecord } from "@/features/work-orders/model/types";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { ResourceTable } from "@/shared/components/resource-table";
@@ -59,18 +63,36 @@ export function WorkOrderTypeTable({
   dataView,
   onEdit,
 }: WorkOrderTypeTableProps) {
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
 
   return (
     <ResourceTable
       columns={[
         { header: "Type", key: "name", render: (row) => row.name },
         { header: "Code", key: "code", render: (row) => row.code },
-        { header: "Workstream", key: "workstream", render: (row) => t(row.workstream) },
-        { header: "Default urgency", key: "urgency", render: (row) => t(row.default_urgency) },
+        {
+          header: "Workstream",
+          key: "workstream",
+          render: (row) => {
+            const labelKey = getWorkOrderWorkstreamLabelKey(row.workstream);
+            return labelKey ? translate(labelKey) : row.workstream;
+          },
+        },
+        {
+          header: "Default urgency",
+          key: "urgency",
+          render: (row) => {
+            const labelKey = getWorkOrderUrgencyLabelKey(row.default_urgency);
+            return labelKey ? translate(labelKey) : row.default_urgency;
+          },
+        },
         { header: "Default priority", key: "priority", render: (row) => String(row.default_priority_score) },
         { header: "SLA hours", key: "sla", render: (row) => String(row.target_sla_hours) },
-        { header: "Status", key: "status", render: (row) => t(row.is_active ? "Active" : "Inactive") },
+        {
+          header: "Status",
+          key: "status",
+          render: (row) => (row.is_active ? t("Active") : t("Inactive")),
+        },
         {
           header: "Action",
           key: "action",
@@ -113,4 +135,3 @@ export function WorkOrderTypeTable({
     />
   );
 }
-

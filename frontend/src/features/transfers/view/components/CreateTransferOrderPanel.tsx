@@ -5,6 +5,7 @@ import { AddOutlined, DeleteOutline } from "@mui/icons-material";
 import { Button, Divider, Grid, IconButton, Stack } from "@mui/material";
 import { FormProvider, useFieldArray, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import { defaultTransferOrderCreateValues } from "@/features/transfers/model/mappers";
 import type { InventoryBalanceRecord, TransferOrderCreateValues } from "@/features/transfers/model/types";
 import { transferOrderCreateSchema } from "@/features/transfers/model/validators";
@@ -36,6 +37,7 @@ export function CreateTransferOrderPanel({
   onSubmit,
   successMessage,
 }: CreateTransferOrderPanelProps) {
+  const { t, msg } = useI18n();
   const form = useForm<TransferOrderCreateValues>({
     defaultValues: defaultTransferOrderCreateValues,
     resolver: zodResolver(transferOrderCreateSchema),
@@ -98,7 +100,7 @@ export function CreateTransferOrderPanel({
               <Grid container spacing={1.5} key={field.id}>
                 <Grid size={{ xs: 12, md: 5 }}>
                   <ReferenceAutocompleteField
-                    label={`Source SKU/location ${index + 1}`}
+                    label={msg("Source SKU/location {{index}}", { index: index + 1 })}
                     name={`line_items.${index}.source_balance`}
                     reference={balances}
                   />
@@ -115,7 +117,7 @@ export function CreateTransferOrderPanel({
                 </Grid>
                 <Grid size={{ xs: 12, md: 1 }}>
                   <IconButton
-                    aria-label={`remove-transfer-line-${index + 1}`}
+                    aria-label={t("Remove line {{index}}", { index: index + 1 })}
                     disabled={fields.length === 1}
                     onClick={() => remove(index)}
                     sx={{ mt: 1 }}

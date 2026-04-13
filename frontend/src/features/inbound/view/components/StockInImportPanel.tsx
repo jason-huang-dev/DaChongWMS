@@ -70,7 +70,7 @@ export function StockInImportPanel({
       description="Bulk receive stock-in rows from a CSV manifest. Each row is processed through the same scan-receive validation used by handheld intake."
       errorMessage={errorMessage ?? localError}
       successMessage={successMessage}
-      title="Import to stock-in"
+      title="Import to Stock-in"
     >
       <Stack spacing={2}>
         <Alert severity="info">

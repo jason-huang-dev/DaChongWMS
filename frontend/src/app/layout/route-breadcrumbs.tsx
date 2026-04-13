@@ -84,7 +84,7 @@ function useSessionRouteBreadcrumbHistory(currentEntry: SessionRouteBreadcrumbEn
 export function RouteBreadcrumbs() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
-  const { t, translate, msg } = useI18n();
+  const { t, translate } = useI18n();
   const location = useLocation();
   const matches = useMatches();
   const currentLabelKey = buildRouteLabelKey(matches);
@@ -104,9 +104,9 @@ export function RouteBreadcrumbs() {
       historyEntries.map((entry) => ({
         ...entry,
         isCurrent: currentEntry != null && entry.href === currentEntry.href,
-        label: t(entry.labelKey),
+        label: translate(entry.labelKey),
       })),
-    [currentEntry?.href, historyEntries, t],
+    [currentEntry?.href, historyEntries, translate],
   );
   const measurementKey = useMemo(() => buildMeasurementKey(renderedEntries), [renderedEntries]);
   const overflowCounts = useMemo(
@@ -242,7 +242,7 @@ export function RouteBreadcrumbs() {
         </Link>
         {!entry.isCurrent ? (
           <IconButton
-            aria-label={`${t("Remove from quick access")}: ${entry.label}`}
+            aria-label={t("Remove from quick access: {{label}}", { label: entry.label })}
             className="breadcrumb-remove"
             onClick={(event) => {
               event.preventDefault();
@@ -359,7 +359,7 @@ export function RouteBreadcrumbs() {
   return (
     <Stack alignItems="center" direction="row" spacing={1} sx={{ maxWidth: "100%", minWidth: 0, width: "100%" }}>
       <Box
-        aria-label="breadcrumb"
+        aria-label={t("Breadcrumb")}
         component="nav"
         ref={containerRef}
         sx={{
@@ -453,7 +453,7 @@ export function RouteBreadcrumbs() {
             </MenuItem>
             {!entry.isCurrent ? (
               <IconButton
-                aria-label={`${t("Remove from recent pages")}: ${entry.label}`}
+                aria-label={t("Remove from recent pages: {{label}}", { label: entry.label })}
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();

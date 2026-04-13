@@ -710,7 +710,7 @@ export function InventoryLabelPrintDialog({ open, rows, onClose }: InventoryLabe
           startIcon={<LocalPrintshopOutlinedIcon />}
           variant="contained"
         >
-          {t(isGeneratingPdf ? "Generating Print..." : "Print")}
+          {isGeneratingPdf ? t("Generating Print...") : t("Print")}
         </Button>
       </DialogActions>
     </Dialog>

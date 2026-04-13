@@ -192,7 +192,7 @@ export function DashboardPage() {
     },
     {
       key: "outbound-interception",
-      label: "Order Interception",
+      label: "Order interception",
       tone: "danger",
       value: canViewOps ? formatNumber(queueMetrics.outbound.orderInterception) : "Restricted",
       to: canViewOps ? buildDashboardLink("/outbound", { salesOrderException: "ORDER_INTERCEPTION" }, "interception-manage") : undefined,
@@ -240,7 +240,7 @@ export function DashboardPage() {
   const returnMetrics: DashboardQueueMetric[] = [
     {
       key: "return-pending-stock-in",
-      label: "Pending Stock-in",
+      label: "Pending Stock In",
       tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.returns.pendingStockIn) : "Restricted",
       to: canViewOps ? buildDashboardLink("/returns", { returnOrderStatuses: "OPEN,PARTIAL_RECEIVED" }, "return-orders") : undefined,

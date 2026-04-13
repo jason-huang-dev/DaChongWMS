@@ -122,7 +122,7 @@ export function PackageExecutionPanel({
             </Grid>
           </Grid>
           <Button disabled={mutation.isPending} type="submit" variant="contained">
-            {mutation.isPending ? t("Submitting...") : t(submitLabel)}
+            {mutation.isPending ? t("Submitting...") : translate(submitLabel)}
           </Button>
         </Stack>
       </FormProvider>

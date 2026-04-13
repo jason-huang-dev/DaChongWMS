@@ -70,7 +70,9 @@ export function DistributionProductForm({
             <Button disabled={isSubmitting || customerAccounts.length === 0} type="submit" variant="contained">
               {isSubmitting
                 ? t("Saving...")
-                : t(isEditing ? "Save distribution product" : "Add distribution product")}
+                : isEditing
+                  ? t("Save distribution product")
+                  : t("Add distribution product")}
             </Button>
             {isEditing ? (
               <Button color="inherit" onClick={onCancelEdit} type="button">
