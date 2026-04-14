@@ -11,11 +11,12 @@ from apps.common.api_compat import (
     empty_compat_response,
     get_compat_membership,
     get_optional_int,
+    get_query_values,
     iso_date,
     iso_datetime,
     paginate_compat_list,
 )
-from apps.inbound.models import PurchaseOrder, PurchaseOrderLine, PutawayTask
+from apps.inbound.models import AdvanceShipmentNotice, PurchaseOrder, PurchaseOrderLine, PutawayTask
 
 
 def _serialize_purchase_order_line(line: PurchaseOrderLine) -> dict[str, object]:
@@ -90,6 +91,27 @@ def _serialize_putaway_task(task: PutawayTask) -> dict[str, object]:
         "notes": task.notes,
         "create_time": iso_datetime(task.create_time),
         "update_time": iso_datetime(task.update_time),
+    }
+
+
+def _serialize_advance_shipment_notice(asn: AdvanceShipmentNotice) -> dict[str, object]:
+    return {
+        "id": asn.id,
+        "purchase_order": asn.purchase_order_id,
+        "purchase_order_number": asn.purchase_order.po_number,
+        "warehouse": asn.warehouse_id,
+        "warehouse_name": asn.warehouse.name,
+        "supplier": asn.customer_account_id,
+        "supplier_name": asn.purchase_order.supplier_name,
+        "order_type": asn.order_type,
+        "asn_number": asn.asn_number,
+        "expected_arrival_date": iso_date(asn.expected_arrival_date),
+        "status": asn.status,
+        "reference_code": asn.reference_code,
+        "notes": asn.notes,
+        "creator": "",
+        "create_time": iso_datetime(asn.create_time),
+        "update_time": iso_datetime(asn.update_time),
     }
 
 
@@ -171,4 +193,45 @@ class CompatibilityPutawayTaskListAPIView(APIView):
             view=self,
             records=queryset,
             serializer=_serialize_putaway_task,
+        )
+
+
+class CompatibilityAdvanceShipmentNoticeListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        membership = get_compat_membership(request)
+        if membership is None:
+            return empty_compat_response(request=request, view=self)
+
+        warehouse_id = get_optional_int(request, "warehouse", "warehouse_id")
+        purchase_order_id = get_optional_int(request, "purchase_order", "purchase_order_id")
+        order_type = request.query_params.get("order_type")
+        status_value = request.query_params.get("status")
+        status_values = get_query_values(request, "status__in")
+        asn_number_filter = str(request.query_params.get("asn_number__icontains") or "").strip()
+
+        queryset = (
+            AdvanceShipmentNotice.objects.select_related("warehouse", "purchase_order", "customer_account")
+            .filter(organization_id=membership.organization_id)
+            .order_by("-create_time", "-id")
+        )
+        if warehouse_id is not None:
+            queryset = queryset.filter(warehouse_id=warehouse_id)
+        if purchase_order_id is not None:
+            queryset = queryset.filter(purchase_order_id=purchase_order_id)
+        if isinstance(order_type, str) and order_type.strip():
+            queryset = queryset.filter(order_type=order_type.strip().upper())
+        if isinstance(status_value, str) and status_value.strip():
+            queryset = queryset.filter(status=status_value.strip().upper())
+        if status_values:
+            queryset = queryset.filter(status__in=[value.upper() for value in status_values])
+        if asn_number_filter:
+            queryset = queryset.filter(asn_number__icontains=asn_number_filter)
+
+        return paginate_compat_list(
+            request=request,
+            view=self,
+            records=queryset,
+            serializer=_serialize_advance_shipment_notice,
         )

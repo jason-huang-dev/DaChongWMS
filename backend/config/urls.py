@@ -18,6 +18,8 @@ urlpatterns = [
     path("api/", include("apps.inventory.api.compat_urls")),
     path("api/", include("apps.inbound.api.compat_urls")),
     path("api/", include("apps.outbound.api.compat_urls")),
+    path("api/", include("apps.returns.api.compat_urls")),
+    path("api/", include("apps.counting.api.compat_urls")),
     path("api/v1/auth/", include("apps.accounts.api.urls")),
     path("api/v1/", include("apps.organizations.api.urls")),
     path("api/v1/", include("apps.products.api.urls")),

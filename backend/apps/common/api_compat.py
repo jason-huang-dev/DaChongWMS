@@ -32,6 +32,13 @@ def get_query_value(request: Request, *keys: str) -> str | None:
     return None
 
 
+def get_query_values(request: Request, *keys: str) -> list[str]:
+    value = get_query_value(request, *keys)
+    if value is None:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
 def get_optional_int(request: Request, *keys: str) -> int | None:
     value = get_query_value(request, *keys)
     if value is None:

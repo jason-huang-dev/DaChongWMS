@@ -57,7 +57,7 @@ const exportFields: DataViewFieldConfig<{ status: string }>[] = [
 
 export function FinancePage() {
   const [searchParams] = useSearchParams();
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
 
   useScrollToHash();
 

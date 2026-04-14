@@ -47,7 +47,7 @@ export function MfaChallengePage() {
 
   return (
     <AuthShell
-      description={t("auth.challengeDescription", { username: pendingChallenge.username })}
+      description={msg("auth.challengeDescription", { username: pendingChallenge.username })}
       heroPoints={["Time-bound challenge", "Recovery-code fallback", "Session issued only after verification"]}
       heroSummary="MFA challenges stay outside the authenticated route tree and use the same industrial surface language as login and signup."
       heroTitle="Step-up verification before warehouse access"

@@ -11,11 +11,12 @@ from apps.common.api_compat import (
     empty_compat_response,
     get_compat_membership,
     get_optional_int,
+    get_query_values,
     iso_date,
     iso_datetime,
     paginate_compat_list,
 )
-from apps.outbound.models import SalesOrder, SalesOrderLine
+from apps.outbound.models import PickTask, SalesOrder, SalesOrderLine
 
 
 def _serialize_sales_order_line(line: SalesOrderLine) -> dict[str, object]:
@@ -88,6 +89,45 @@ def _serialize_sales_order(order: SalesOrder) -> dict[str, object]:
     }
 
 
+def _serialize_pick_task(task: PickTask) -> dict[str, object]:
+    assigned_to_name = ""
+    if task.assigned_membership_id is not None:
+        assigned_to_name = task.assigned_membership.user.display_name
+
+    to_location_code = task.to_location.code if task.to_location_id is not None else None
+
+    return {
+        "id": task.id,
+        "sales_order_line": task.sales_order_line_id,
+        "order_number": task.sales_order_line.sales_order.order_number,
+        "order_type": task.sales_order_line.sales_order.order_type,
+        "warehouse": task.warehouse_id,
+        "warehouse_name": task.warehouse.name,
+        "goods": task.sales_order_line.product_id,
+        "goods_code": task.sales_order_line.product.sku,
+        "task_number": task.task_number,
+        "from_location": task.from_location_id,
+        "from_location_code": task.from_location.code,
+        "to_location": task.to_location_id,
+        "to_location_code": to_location_code,
+        "quantity": decimal_to_string(task.quantity),
+        "stock_status": task.stock_status,
+        "lot_number": task.lot_number,
+        "serial_number": task.serial_number,
+        "status": task.status,
+        "assigned_to": task.assigned_membership_id,
+        "assigned_to_name": assigned_to_name,
+        "completed_by": task.completed_by,
+        "completed_at": iso_datetime(task.completed_at),
+        "inventory_movement": task.inventory_movement_id,
+        "license_plate": None,
+        "license_plate_code": "",
+        "notes": task.notes,
+        "create_time": iso_datetime(task.create_time),
+        "update_time": iso_datetime(task.update_time),
+    }
+
+
 class CompatibilitySalesOrderListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -126,4 +166,52 @@ class CompatibilitySalesOrderListAPIView(APIView):
             view=self,
             records=queryset,
             serializer=_serialize_sales_order,
+        )
+
+
+class CompatibilityPickTaskListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request: Request) -> Response:
+        membership = get_compat_membership(request)
+        if membership is None:
+            return empty_compat_response(request=request, view=self)
+
+        warehouse_id = get_optional_int(request, "warehouse", "warehouse_id")
+        assigned_membership_id = get_optional_int(request, "assigned_to", "assigned_membership_id")
+        order_type = request.query_params.get("order_type")
+        status_value = request.query_params.get("status")
+        status_values = get_query_values(request, "status__in")
+        task_number_filter = str(request.query_params.get("task_number__icontains") or "").strip()
+
+        queryset = (
+            PickTask.objects.select_related(
+                "warehouse",
+                "from_location",
+                "to_location",
+                "assigned_membership__user",
+                "sales_order_line__product",
+                "sales_order_line__sales_order",
+            )
+            .filter(organization_id=membership.organization_id)
+            .order_by("status", "create_time", "id")
+        )
+        if warehouse_id is not None:
+            queryset = queryset.filter(warehouse_id=warehouse_id)
+        if assigned_membership_id is not None:
+            queryset = queryset.filter(assigned_membership_id=assigned_membership_id)
+        if isinstance(order_type, str) and order_type.strip():
+            queryset = queryset.filter(sales_order_line__sales_order__order_type=order_type.strip().upper())
+        if isinstance(status_value, str) and status_value.strip():
+            queryset = queryset.filter(status=status_value.strip().upper())
+        if status_values:
+            queryset = queryset.filter(status__in=[value.upper() for value in status_values])
+        if task_number_filter:
+            queryset = queryset.filter(task_number__icontains=task_number_filter)
+
+        return paginate_compat_list(
+            request=request,
+            view=self,
+            records=queryset,
+            serializer=_serialize_pick_task,
         )

@@ -31,7 +31,7 @@ const keyedMessages = {
     "shell.workspaceWarehouseContext": "Workspace: {{workspace}} | Warehouse context: {{warehouse}}",
     "shell.noWorkspace": "No workspace",
     "shell.noWarehouse": "No warehouse",
-    "auth.eyebrow": "DaChongWMS",
+    "auth.eyebrow": "大虫WMS",
     "auth.challengeDescription": "Enter the current code from your authenticator app or one of your recovery codes for {{username}}.",
     "auth.challengeExpiresAt": "This challenge expires at {{value}}.",
     "mfa.statusEnabled": "MFA is already enabled with {{label}}. Recovery codes remaining: {{count}}.",
@@ -88,7 +88,7 @@ const keyedMessages = {
     "shell.workspaceWarehouseContext": "工作空间：{{workspace}} | 仓库上下文：{{warehouse}}",
     "shell.noWorkspace": "暂无工作空间",
     "shell.noWarehouse": "暂无仓库",
-    "auth.eyebrow": "DaChongWMS",
+    "auth.eyebrow": "大虫WMS",
     "auth.challengeDescription": "请输入 {{username}} 的认证器当前验证码，或输入一组恢复代码。",
     "auth.challengeExpiresAt": "本次验证将在 {{value}} 到期。",
     "mfa.statusEnabled": "MFA 已通过 {{label}} 启用。剩余恢复代码：{{count}}。",
@@ -1301,6 +1301,12 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
       "操作界面现采用工业化的表面层级、克制的黄色重点以及更清晰的层次结构，替代通用仪表盘式默认风格。",
     "The signup flow now follows the same industrial kinetic system as the operator shell, with cleaner surfaces and a tighter operational hierarchy.":
       "注册流程现已与操作台使用同一套工业动态设计系统，具备更干净的表面层次和更紧凑的业务层级。",
+    "Step-up verification before warehouse access": "在进入仓库系统前进行二次验证",
+    "MFA challenges stay outside the authenticated route tree and use the same industrial surface language as login and signup.":
+      "MFA 挑战流程位于已认证路由树之外，并沿用与登录和注册相同的工业化界面语言。",
+    "Time-bound challenge": "限时验证",
+    "Recovery-code fallback": "恢复代码兜底",
+    "Session issued only after verification": "仅在验证通过后签发会话",
     "Surface layering, restrained accent highlights, and industrial typography now shape the operator shell and sign-in flows.":
       "表面层级、克制的强调色和工业化字体共同构成了当前的操作台与登录流程。",
     "Warehouse control with precision-first operator surfaces": "以精密优先操作界面实现仓储控制",

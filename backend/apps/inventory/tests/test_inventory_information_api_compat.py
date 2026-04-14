@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 
 from apps.accounts.services.session_service import issue_session_token
 from apps.common.operation_types import OperationOrderType
-from apps.inbound.models import PurchaseOrder, PurchaseOrderLine, PutawayTask, Receipt, ReceiptLine
+from apps.inbound.models import AdvanceShipmentNotice, AdvanceShipmentNoticeLine, PurchaseOrder, PurchaseOrderLine, PutawayTask, Receipt, ReceiptLine
 from apps.inventory.models import InventoryBalance, InventoryStatus
 from apps.locations.models import ZoneUsage
 from apps.locations.services.location_service import (
@@ -21,7 +21,7 @@ from apps.locations.services.location_service import (
     create_zone,
 )
 from apps.organizations.tests.test_factories import add_membership, make_customer_account, make_organization, make_user
-from apps.outbound.models import SalesOrder, SalesOrderLine
+from apps.outbound.models import PickTask, SalesOrder, SalesOrderLine
 from apps.products.models import Product
 from apps.warehouse.models import Warehouse
 
@@ -151,7 +151,7 @@ class InventoryInformationCompatibilityAPITests(TestCase):
             supplier_contact_phone="555-0100",
             status="OPEN",
         )
-        purchase_order_line = PurchaseOrderLine.objects.create(
+        self.purchase_order_line = PurchaseOrderLine.objects.create(
             organization=self.organization,
             purchase_order=self.purchase_order,
             line_number=1,
@@ -161,6 +161,30 @@ class InventoryInformationCompatibilityAPITests(TestCase):
             unit_cost=Decimal("4.5000"),
             stock_status=InventoryStatus.AVAILABLE,
             status="OPEN",
+        )
+        self.advance_shipment_notice = AdvanceShipmentNotice.objects.create(
+            organization=self.organization,
+            purchase_order=self.purchase_order,
+            warehouse=self.warehouse,
+            customer_account=self.customer_account,
+            order_type=OperationOrderType.STANDARD,
+            asn_number="ASN-100",
+            expected_arrival_date=self.purchase_order.expected_arrival_date,
+            status="OPEN",
+            reference_code="ASN-REF-100",
+            notes="Dock booking confirmed",
+        )
+        AdvanceShipmentNoticeLine.objects.create(
+            organization=self.organization,
+            asn=self.advance_shipment_notice,
+            line_number=1,
+            purchase_order_line=self.purchase_order_line,
+            product=self.product,
+            expected_qty=Decimal("6.0000"),
+            received_qty=Decimal("2.0000"),
+            stock_status=InventoryStatus.AVAILABLE,
+            expected_lpn_code="LPN-100",
+            notes="First delivery wave",
         )
         receipt = Receipt.objects.create(
             organization=self.organization,
@@ -173,7 +197,7 @@ class InventoryInformationCompatibilityAPITests(TestCase):
         receipt_line = ReceiptLine.objects.create(
             organization=self.organization,
             receipt=receipt,
-            purchase_order_line=purchase_order_line,
+            purchase_order_line=self.purchase_order_line,
             product=self.product,
             receipt_location=self.receiving_location,
             received_qty=Decimal("4.0000"),
@@ -207,7 +231,7 @@ class InventoryInformationCompatibilityAPITests(TestCase):
             fulfillment_stage="GET_TRACKING_NO",
             exception_state="NORMAL",
         )
-        SalesOrderLine.objects.create(
+        self.sales_order_line = SalesOrderLine.objects.create(
             organization=self.organization,
             sales_order=sales_order,
             line_number=1,
@@ -219,6 +243,19 @@ class InventoryInformationCompatibilityAPITests(TestCase):
             unit_price=Decimal("9.9900"),
             stock_status=InventoryStatus.AVAILABLE,
             status="ALLOCATED",
+        )
+        PickTask.objects.create(
+            organization=self.organization,
+            sales_order_line=self.sales_order_line,
+            warehouse=self.warehouse,
+            from_location=self.storage_location,
+            to_location=self.staging_location,
+            task_number="PK-100",
+            quantity=Decimal("3.0000"),
+            stock_status=InventoryStatus.AVAILABLE,
+            lot_number="LOT-100",
+            status="ASSIGNED",
+            assigned_membership=self.membership,
         )
 
         token = issue_session_token(membership=self.membership)
@@ -241,6 +278,10 @@ class InventoryInformationCompatibilityAPITests(TestCase):
             reverse("compat-purchase-order-list"),
             {"warehouse": self.warehouse.id, "page_size": 100},
         )
+        asns_response = self.client.get(
+            reverse("compat-advance-shipment-notice-list"),
+            {"warehouse": self.warehouse.id, "page_size": 100},
+        )
         putaway_tasks_response = self.client.get(
             reverse("compat-putaway-task-list"),
             {"warehouse": self.warehouse.id, "page_size": 100},
@@ -249,12 +290,18 @@ class InventoryInformationCompatibilityAPITests(TestCase):
             reverse("compat-sales-order-list"),
             {"warehouse": self.warehouse.id, "page_size": 100},
         )
+        pick_tasks_response = self.client.get(
+            reverse("compat-pick-task-list"),
+            {"warehouse": self.warehouse.id, "page_size": 100},
+        )
 
         self.assertEqual(balances_response.status_code, status.HTTP_200_OK)
         self.assertEqual(locations_response.status_code, status.HTTP_200_OK)
         self.assertEqual(purchase_orders_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(asns_response.status_code, status.HTTP_200_OK)
         self.assertEqual(putaway_tasks_response.status_code, status.HTTP_200_OK)
         self.assertEqual(sales_orders_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(pick_tasks_response.status_code, status.HTTP_200_OK)
 
         balance = balances_response.data["results"][0]
         self.assertEqual(balance["goods_code"], "SKU-100")
@@ -276,6 +323,12 @@ class InventoryInformationCompatibilityAPITests(TestCase):
         self.assertEqual(purchase_order["customer_code"], "INV-CLIENT")
         self.assertEqual(purchase_order["lines"][0]["goods_code"], "SKU-100")
 
+        asn = asns_response.data["results"][0]
+        self.assertEqual(asn["asn_number"], "ASN-100")
+        self.assertEqual(asn["purchase_order_number"], "PO-100")
+        self.assertEqual(asn["supplier_name"], "Supplier 100")
+        self.assertEqual(asn["reference_code"], "ASN-REF-100")
+
         putaway_task = putaway_tasks_response.data["results"][0]
         self.assertEqual(putaway_task["task_number"], "PT-100")
         self.assertEqual(putaway_task["receipt_number"], "RCT-100")
@@ -289,3 +342,11 @@ class InventoryInformationCompatibilityAPITests(TestCase):
         self.assertEqual(sales_order["staging_location_code"], "STG-01")
         self.assertEqual(sales_order["lines"][0]["goods_code"], "SKU-100")
         self.assertEqual(sales_order["lines"][0]["allocated_qty"], "3.0000")
+
+        pick_task = pick_tasks_response.data["results"][0]
+        self.assertEqual(pick_task["task_number"], "PK-100")
+        self.assertEqual(pick_task["order_number"], "SO-100")
+        self.assertEqual(pick_task["goods_code"], "SKU-100")
+        self.assertEqual(pick_task["from_location_code"], "STO-01")
+        self.assertEqual(pick_task["to_location_code"], "STG-01")
+        self.assertEqual(pick_task["assigned_to_name"], self.user.display_name)

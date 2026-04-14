@@ -20,7 +20,7 @@ import { hasAnyRole } from "@/shared/utils/permissions";
 
 export function SecurityPage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
   const { session } = useAuth();
   const {
     company,

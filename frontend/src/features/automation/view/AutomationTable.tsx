@@ -119,7 +119,7 @@ export function AutomationTable({
   workerHeartbeatsQuery,
   workerHeartbeatsView,
 }: AutomationTableProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
   const scheduledTaskRowSelection: ResourceTableRowSelection<ScheduledTaskRecord> = {
     selectedRowIds: scheduledTaskSelection.selectedIds,
     onToggleAll: (rows) => scheduledTaskSelection.toggleMany(rows.map((row) => row.id)),

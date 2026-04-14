@@ -137,7 +137,7 @@ function formatExceptionState(exceptionState?: string) {
 
 export function OutboundPage() {
   const [searchParams] = useSearchParams();
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
   useScrollToHash();
 
   const createShipment = useCreateShipmentController();

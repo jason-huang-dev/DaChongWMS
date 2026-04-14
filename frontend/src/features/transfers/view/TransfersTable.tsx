@@ -145,7 +145,7 @@ export function TransfersTable({
   onCompleteTask,
   transferOrderSelection,
 }: TransfersTableProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
   const transferOrderRowSelection: ResourceTableRowSelection<TransferOrderRecord> = {
     selectedRowIds: transferOrderSelection.selectedIds,
     onToggleAll: (rows) => transferOrderSelection.toggleMany(rows.map((row) => row.id)),

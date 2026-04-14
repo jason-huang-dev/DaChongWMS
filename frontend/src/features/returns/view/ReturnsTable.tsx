@@ -80,7 +80,7 @@ export function ReturnsTable({
   dispositionsQuery,
   dispositionsView,
 }: ReturnsTableProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
 
   return (
     <Grid container spacing={2.5}>

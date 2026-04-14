@@ -47,7 +47,7 @@ export function ProductTable({
   dataView,
   onEdit,
 }: ProductTableProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
 
   return (
     <ResourceTable

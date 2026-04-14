@@ -174,7 +174,7 @@ export function IntegrationTable({
   webhooksQuery,
   webhooksView,
 }: IntegrationTableProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
   const jobRowSelection: ResourceTableRowSelection<IntegrationJobRecord> = {
     selectedRowIds: jobsBulkSelection.selectedIds,
     onToggleAll: (rows) => jobsBulkSelection.toggleMany(rows.map((row) => row.id)),

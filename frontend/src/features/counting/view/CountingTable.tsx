@@ -51,7 +51,7 @@ export function CountingTable({
   rowSelection,
   toolbarContent,
 }: CountingTableProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
 
   return (
     <ResourceTable

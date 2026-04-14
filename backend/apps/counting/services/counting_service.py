@@ -893,8 +893,10 @@ def reject_count_approval(
     return approval
 
 
-def build_approval_summary(*, organization: Organization) -> dict[str, object]:
+def build_approval_summary(*, organization: Organization, warehouse_id: int | None = None) -> dict[str, object]:
     base_queryset = CountApproval.objects.filter(organization=organization)
+    if warehouse_id is not None:
+        base_queryset = base_queryset.filter(cycle_count_line__cycle_count__warehouse_id=warehouse_id)
     pending_queryset = base_queryset.filter(status=CountApprovalStatus.PENDING)
     rejected_queryset = base_queryset.filter(status=CountApprovalStatus.REJECTED)
     return {

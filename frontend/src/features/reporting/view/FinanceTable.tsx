@@ -43,7 +43,7 @@ interface FinanceTableProps {
 }
 
 export function FinanceTable({ rows, isLoading, error, total, activeWarehouseName, dataView }: FinanceTableProps) {
-  const { t } = useI18n();
+  const { t, msg } = useI18n();
 
   return (
     <ResourceTable

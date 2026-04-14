@@ -29,7 +29,7 @@ const defaultHeroPoints: TranslatableText[] = [
 export function AuthShell({
   children,
   description,
-  eyebrow = "DaChongWMS",
+  eyebrow = "auth.eyebrow",
   heroPoints = defaultHeroPoints,
   heroSummary = "Surface layering, restrained accent highlights, and industrial typography now shape the operator shell and sign-in flows.",
   heroTitle = "Warehouse control with precision-first operator surfaces",
