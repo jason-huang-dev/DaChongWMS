@@ -142,53 +142,60 @@ function renderClientCodeNameCell(row: ClientAccountRecord) {
   );
 }
 
-function renderClientInformationCell(row: ClientAccountRecord) {
+function ClientInformationCell({ row }: { row: ClientAccountRecord }) {
+  const { t } = useI18n();
   const companyName = resolveClientCompanyName(row);
   const contactEmail = row.contact_email?.trim() || "--";
   const contactPhone = row.contact_phone?.trim() || "--";
 
   return renderFieldStack([
-    { label: "Company Name", value: companyName, wrap: true },
-    { label: "Email", value: contactEmail, wrap: true },
-    { label: "Phone", value: contactPhone },
+    { label: t("Company Name"), value: companyName, wrap: true },
+    { label: t("Email"), value: contactEmail, wrap: true },
+    { label: t("Phone"), value: contactPhone },
   ]);
 }
 
-function renderClientContactPersonCell(row: ClientAccountRecord) {
+function ClientContactPersonCell({ row }: { row: ClientAccountRecord }) {
+  const { t } = useI18n();
   const contacts = listClientContactPeople(row);
   const contactName = row.contact_name?.trim() || contacts[0]?.name?.trim() || "--";
 
   return renderFieldStack([
-    { label: "Name", value: contactName, wrap: true },
+    { label: t("Name"), value: contactName, wrap: true },
   ]);
 }
 
-function renderClientFinanceCell(row: ClientAccountRecord) {
+function ClientFinanceCell({ row }: { row: ClientAccountRecord }) {
+  const { t } = useI18n();
   const settlementCurrency = resolveClientSettlementCurrency(row);
 
   return renderFieldStack([
-    { label: "Currency", value: settlementCurrency || "--" },
-    { label: "Available Balance", value: formatClientFinanceValue(row.total_available_balance, settlementCurrency), emphasize: true },
+    { label: t("Currency"), value: settlementCurrency || "--" },
+    { label: t("Available Balance"), value: formatClientFinanceValue(row.total_available_balance, settlementCurrency), emphasize: true },
     {
-      label: "Credit",
+      label: t("Credit"),
       value: `${formatClientFinanceValue(row.credit_limit, settlementCurrency)} / ${formatClientFinanceValue(row.credit_used, settlementCurrency)}`,
     },
-    { label: "Authorized Qty", value: formatNumber(row.authorized_order_quantity ?? 0) },
-    { label: "Limit Balance", value: row.limit_balance_documents ? "Enabled" : "Disabled" },
+    { label: t("Authorized Qty"), value: formatNumber(row.authorized_order_quantity ?? 0) },
+    { label: t("Limit Balance"), value: row.limit_balance_documents ? t("Enabled") : t("Disabled") },
   ]);
 }
 
-function renderClientSetupCell(row: ClientAccountRecord) {
+function ClientSetupCell({ row }: { row: ClientAccountRecord }) {
+  const { t } = useI18n();
+
   return renderFieldStack([
-    { label: "Charging Template", value: row.charging_template_name || "Not assigned", wrap: true },
-    { label: "Permissions", value: buildClientPermissionCode(row) },
+    { label: t("Charging Template"), value: row.charging_template_name || t("Not assigned"), wrap: true },
+    { label: t("Permissions"), value: buildClientPermissionCode(row) },
   ]);
 }
 
-function renderClientTimeCell(row: ClientAccountRecord) {
+function ClientTimeCell({ row }: { row: ClientAccountRecord }) {
+  const { t } = useI18n();
+
   return renderFieldStack([
-    { label: "Create", value: formatDateTime(row.create_time) },
-    { label: "Update", value: formatDateTime(row.update_time) },
+    { label: t("Create"), value: formatDateTime(row.create_time) },
+    { label: t("Update"), value: formatDateTime(row.update_time) },
   ]);
 }
 
@@ -230,7 +237,7 @@ export function ClientAccountTable({
       dataView.filters.timeStart ||
       dataView.filters.timeEnd,
   );
-  const { t } = useI18n();
+  const { t, translate, msg } = useI18n();
   const pageChrome = useCollapsibleTablePageChrome();
   const tableToolbar = (
     <Stack
@@ -276,7 +283,7 @@ export function ClientAccountTable({
               spacing={0.5}
             >
               <Button color="inherit" onClick={onClearSelection} size="small">
-                Clear selection
+                {t("Clear selection")}
               </Button>
               <Button
                 color="inherit"
@@ -285,7 +292,7 @@ export function ClientAccountTable({
                 size="small"
                 variant="outlined"
               >
-                Deactivate selected
+                {t("Deactivate selected")}
               </Button>
               <Button
                 disabled={!hasInactiveSelection}
@@ -293,14 +300,14 @@ export function ClientAccountTable({
                 size="small"
                 variant="outlined"
               >
-                Reactivate selected
+                {t("Reactivate selected")}
               </Button>
               <Button
                 onClick={() => downloadClientAccountsCsv(selectedClients, "client-accounts-selected")}
                 size="small"
                 variant="contained"
               >
-                Export selected
+                {t("Export selected")}
               </Button>
             </Stack>
           </Stack>
@@ -322,10 +329,10 @@ export function ClientAccountTable({
         })}
       >
         <Button disabled={!isWorkspaceReady} onClick={onOpenCreate} size="small" variant="contained">
-          Open account
+          {t("Open account")}
         </Button>
         <Button color="inherit" disabled onClick={onOpenBatchAssign} size="small" variant="outlined">
-          Batch Assign Charging Templates
+          {t("Batch Assign Charging Templates")}
         </Button>
         <Button
           color="inherit"
@@ -334,7 +341,7 @@ export function ClientAccountTable({
           size="small"
           variant="outlined"
         >
-          Set Distribution Permission
+          {t("Set Distribution Permission")}
         </Button>
         <Button
           color="inherit"
@@ -349,14 +356,14 @@ export function ClientAccountTable({
           size="small"
           variant="outlined"
         >
-          Export
+          {t("Export")}
         </Button>
         <ActionIconButton
-          aria-label="Clear all filters"
+          aria-label={t("Clear all filters")}
           disabled={!hasFilterOverrides}
           onClick={onResetFilters}
           sx={{ flex: "0 0 auto" }}
-          title="Clear all filters"
+          title={t("Clear all filters")}
         >
           <RestartAltRoundedIcon fontSize="small" />
         </ActionIconButton>
@@ -383,10 +390,10 @@ export function ClientAccountTable({
               }}
               header={
                 <PageTabs
-                  ariaLabel="Client lifecycle subpages"
+                  ariaLabel={t("Client lifecycle subpages")}
                   items={clientLifecycleOrder.map((status) => ({
                     count: lifecycleCounts[status],
-                    label: clientLifecycleLabels[status],
+                    label: translate(clientLifecycleLabels[status]),
                     value: status,
                   }))}
                   onChange={onLifecycleBucketChange}
@@ -403,49 +410,49 @@ export function ClientAccountTable({
         <DataTable
           columns={[
             {
-              header: "Customer Code/Name",
+              header: t("Customer Code/Name"),
               key: "customerCodeName",
               minWidth: 170,
               render: renderClientCodeNameCell,
               width: 176,
             },
             {
-              header: "Customer Information",
+              header: t("Customer Information"),
               key: "customerInformation",
               minWidth: 228,
-              render: renderClientInformationCell,
+              render: (row) => <ClientInformationCell row={row} />,
               width: 244,
             },
             {
-              header: "Contact Person",
+              header: t("Contact Person"),
               key: "contactPerson",
               minWidth: 152,
-              render: renderClientContactPersonCell,
+              render: (row) => <ClientContactPersonCell row={row} />,
               width: 160,
             },
             {
-              header: "Finance",
+              header: t("Finance"),
               key: "finance",
               minWidth: 236,
-              render: renderClientFinanceCell,
+              render: (row) => <ClientFinanceCell row={row} />,
               width: 248,
             },
             {
-              header: "Account Setup",
+              header: t("Account Setup"),
               key: "setup",
               minWidth: 184,
-              render: renderClientSetupCell,
+              render: (row) => <ClientSetupCell row={row} />,
               width: 192,
             },
             {
-              header: "Time",
+              header: t("Time"),
               key: "time",
               minWidth: 168,
-              render: renderClientTimeCell,
+              render: (row) => <ClientTimeCell row={row} />,
               width: 176,
             },
             {
-              header: "Operations",
+              header: t("Operations"),
               key: "action",
               minWidth: 140,
               render: (row) => (
@@ -462,7 +469,9 @@ export function ClientAccountTable({
               width: 148,
             },
           ]}
-          emptyMessage={`No ${clientLifecycleLabels[lifecycleBucket].toLowerCase()} client accounts found.`}
+          emptyMessage={msg("No client accounts found for {{status}}.", {
+            status: translate(clientLifecycleLabels[lifecycleBucket]),
+          })}
           error={error}
           fillHeight
           getRowId={(row) => row.id}

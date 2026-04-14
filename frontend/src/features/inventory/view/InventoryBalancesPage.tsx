@@ -187,12 +187,15 @@ function filterInventoryInformationRows(
   });
 }
 
-function buildAreaTabs(rows: InventoryInformationRow[]): InventoryInformationAreaTabItem[] {
+function buildAreaTabs(
+  rows: InventoryInformationRow[],
+  translateLabel: (key: string) => string,
+): InventoryInformationAreaTabItem[] {
   return [
-    { count: rows.length, label: "All areas", value: "all" },
-    { count: rows.filter((row) => row.areaKey === "storage").length, label: "Storage area", value: "storage" },
-    { count: rows.filter((row) => row.areaKey === "picking").length, label: "Picking area", value: "picking" },
-    { count: rows.filter((row) => row.areaKey === "defect").length, label: "Defective area", value: "defect" },
+    { count: rows.length, label: translateLabel("All areas"), value: "all" },
+    { count: rows.filter((row) => row.areaKey === "storage").length, label: translateLabel("Storage area"), value: "storage" },
+    { count: rows.filter((row) => row.areaKey === "picking").length, label: translateLabel("Picking area"), value: "picking" },
+    { count: rows.filter((row) => row.areaKey === "defect").length, label: translateLabel("Defective area"), value: "defect" },
   ];
 }
 
@@ -327,7 +330,7 @@ export function InventoryBalancesPage() {
     () => filterInventoryInformationRows(allRows, inventoryView.filters, { includeArea: false }),
     [allRows, inventoryView.filters],
   );
-  const areaTabs = useMemo(() => buildAreaTabs(filteredRowsWithoutArea), [filteredRowsWithoutArea]);
+  const areaTabs = useMemo(() => buildAreaTabs(filteredRowsWithoutArea, t), [filteredRowsWithoutArea, t]);
   const filteredRows = useMemo(
     () => filterInventoryInformationRows(filteredRowsWithoutArea, inventoryView.filters),
     [filteredRowsWithoutArea, inventoryView.filters],

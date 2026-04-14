@@ -34,16 +34,16 @@ interface DashboardOrderStatisticsCardProps {
 type SeriesKey = "dropshipping_orders" | "stock_in_quantity";
 type ChartPoint = { x: number; y: number };
 
-const WINDOW_OPTIONS: { label: string; value: Exclude<DashboardTimeWindow, "CUSTOM"> }[] = [
-  { label: "This Week", value: "WEEK" },
-  { label: "This Month", value: "MONTH" },
-  { label: "This Year", value: "YEAR" },
+const WINDOW_OPTIONS: { labelKey: string; value: Exclude<DashboardTimeWindow, "CUSTOM"> }[] = [
+  { labelKey: "This Week", value: "WEEK" },
+  { labelKey: "This Month", value: "MONTH" },
+  { labelKey: "This Year", value: "YEAR" },
 ];
 
 const STORAGE_BREAKDOWN = [
-  { color: "#1C63E5", label: "Product Inventory", value: 0 },
-  { color: "#22A7A5", label: "B2B Inventory", value: 0 },
-  { color: "#97D816", label: "FBA Return Stock", value: 0 },
+  { color: "#1C63E5", labelKey: "Product Inventory", value: 0 },
+  { color: "#22A7A5", labelKey: "B2B Inventory", value: 0 },
+  { color: "#97D816", labelKey: "FBA Return Stock", value: 0 },
 ] as const;
 
 function parseLocalDate(value: string) {
@@ -275,6 +275,8 @@ function SummaryCard({
 }
 
 function StorageCapacityCard() {
+  const { t } = useI18n();
+
   return (
     <Card
       sx={{
@@ -296,7 +298,7 @@ function StorageCapacityCard() {
                 letterSpacing: "-0.03em",
               }}
             >
-              Storage Capacity
+              {t("Storage Capacity")}
             </Typography>
             <Button
               endIcon={<KeyboardArrowDownRoundedIcon />}
@@ -315,7 +317,7 @@ function StorageCapacityCard() {
               type="button"
               variant="outlined"
             >
-              SKU Qty
+              {t("SKU Qty")}
             </Button>
           </Stack>
 
@@ -336,7 +338,7 @@ function StorageCapacityCard() {
                   letterSpacing: "-0.03em",
                 }}
               >
-                Total number in stock
+                {t("Total number in stock")}
               </Typography>
               <Typography
                 sx={{
@@ -359,7 +361,7 @@ function StorageCapacityCard() {
                 }}
               >
                 {STORAGE_BREAKDOWN.map((item) => (
-                  <Box key={item.label} sx={{ backgroundColor: item.color, flex: 1 }} />
+                  <Box key={item.labelKey} sx={{ backgroundColor: item.color, flex: 1 }} />
                 ))}
               </Stack>
 
@@ -369,7 +371,7 @@ function StorageCapacityCard() {
                     alignItems="center"
                     direction="row"
                     justifyContent="space-between"
-                    key={item.label}
+                    key={item.labelKey}
                     spacing={1.5}
                     sx={{
                       backgroundColor: alpha(item.color, 0.08),
@@ -394,7 +396,7 @@ function StorageCapacityCard() {
                           fontWeight: 600,
                         }}
                       >
-                        {item.label}
+                        {t(item.labelKey)}
                       </Typography>
                     </Stack>
                     <Typography
@@ -559,7 +561,7 @@ export function DashboardOrderStatisticsCard({
                   lineHeight: 1.1,
                 }}
               >
-                Order Qty statistics
+                {t("Order Qty statistics")}
               </Typography>
             </Stack>
 
@@ -619,7 +621,7 @@ export function DashboardOrderStatisticsCard({
                       type="button"
                       variant="text"
                     >
-                      {option.label}
+                      {t(option.labelKey)}
                     </Button>
                   );
                 })}
@@ -628,7 +630,7 @@ export function DashboardOrderStatisticsCard({
               <RangePicker
                 active={timeWindow === "CUSTOM"}
                 disabled={isRestricted}
-                endAriaLabel="Range end"
+                endAriaLabel={t("Range end")}
                 endValue={draftDateTo}
                 error={isInvalidCustomRange}
                 inputType="datetime-local"
@@ -640,7 +642,7 @@ export function DashboardOrderStatisticsCard({
                   setDraftDateFrom(value);
                   setHasPendingCustomSync(true);
                 }}
-                startAriaLabel="Range start"
+                startAriaLabel={t("Range start")}
                 startValue={draftDateFrom}
                 step={3600}
               />
@@ -667,7 +669,7 @@ export function DashboardOrderStatisticsCard({
                 type="button"
                 variant="outlined"
               >
-                Export
+                {t("Export")}
               </Button>
             </Stack>
             </Stack>
@@ -675,13 +677,13 @@ export function DashboardOrderStatisticsCard({
           <Stack direction={{ xs: "column", md: "row" }} flexWrap="wrap" spacing={1.5} useFlexGap>
             <SummaryCard
               accentColor={theme.palette.primary.main}
-              label="Dropshipping"
-              value={isRestricted ? "Restricted" : isLoading && !data ? "--" : formatNumber(data?.summary.dropshipping_orders ?? 0)}
+              label={t("Dropshipping")}
+              value={isRestricted ? t("Restricted") : isLoading && !data ? "--" : formatNumber(data?.summary.dropshipping_orders ?? 0)}
             />
             <SummaryCard
               accentColor={theme.palette.success.main}
-              label="Standard Stock-in"
-              value={isRestricted ? "Restricted" : isLoading && !data ? "--" : formatNumber(data?.summary.stock_in_quantity ?? 0)}
+              label={t("Standard Stock-in")}
+              value={isRestricted ? t("Restricted") : isLoading && !data ? "--" : formatNumber(data?.summary.stock_in_quantity ?? 0)}
             />
           </Stack>
 

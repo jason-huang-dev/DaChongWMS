@@ -110,8 +110,8 @@ function renderValue(value: string) {
   return value || "--";
 }
 
-function buildProductThumbnailLabel(row: InventoryInformationRow) {
-  const source = row.productName || row.merchantSku || row.merchantCode || "Product";
+function buildProductThumbnailLabel(row: InventoryInformationRow, fallbackSource: string) {
+  const source = row.productName || row.merchantSku || row.merchantCode || fallbackSource;
   const tokens = source
     .split(/[\s_-]+/u)
     .map((token) => token.trim())
@@ -262,7 +262,7 @@ function InventoryProductInfoCell({ row }: { row: InventoryInformationRow }) {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const copyResetTimeoutRef = useRef<number | null>(null);
   const primaryMerchantCode = row.merchantCode;
-  const thumbnailLabel = buildProductThumbnailLabel(row);
+  const thumbnailLabel = buildProductThumbnailLabel(row, t("Product"));
   const detailSeparator = locale === "zh-CN" ? "：" : ":";
   const defaultCopyTooltipLabel = t("Click to copy");
 
@@ -530,10 +530,10 @@ function InventoryInformationMetaField({
   );
 }
 
-function buildInventoryInformationColumns(): InventoryInformationColumnDefinition[] {
+function buildInventoryInformationColumns(t: (key: string) => string): InventoryInformationColumnDefinition[] {
   return [
     {
-      header: "Product Info",
+      header: t("Product Info"),
       key: "productInfo",
       minWidth: 260,
       sortKey: "merchantSku",
@@ -541,7 +541,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
       render: (row) => <InventoryProductInfoCell row={row} />,
     },
     {
-      header: "Shelf",
+      header: t("Shelf"),
       key: "shelf",
       minWidth: 116,
       width: "12%",
@@ -549,7 +549,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
     },
     {
       align: "center",
-      header: "In Transit",
+      header: t("In Transit"),
       key: "inTransit",
       minWidth: 86,
       sortKey: "inTransit",
@@ -558,7 +558,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
     },
     {
       align: "center",
-      header: "Pending Receival",
+      header: t("Pending Receival"),
       key: "pendingReceival",
       minWidth: 108,
       sortKey: "pendingReceival",
@@ -567,7 +567,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
     },
     {
       align: "center",
-      header: "To List",
+      header: t("To List"),
       key: "toList",
       minWidth: 84,
       sortKey: "toList",
@@ -576,7 +576,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
     },
     {
       align: "center",
-      header: "Order Allocated",
+      header: t("Order Allocated"),
       key: "orderAllocated",
       minWidth: 110,
       sortKey: "orderAllocated",
@@ -585,7 +585,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
     },
     {
       align: "center",
-      header: "Available Stock",
+      header: t("Available Stock"),
       key: "availableStock",
       minWidth: 108,
       sortKey: "availableStock",
@@ -594,7 +594,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
     },
     {
       align: "center",
-      header: "Defective Products",
+      header: t("Defective Products"),
       key: "defectiveProducts",
       minWidth: 118,
       sortKey: "defectiveProducts",
@@ -603,7 +603,7 @@ function buildInventoryInformationColumns(): InventoryInformationColumnDefinitio
     },
     {
       align: "center",
-      header: "Total Inventory",
+      header: t("Total Inventory"),
       key: "totalInventory",
       minWidth: 110,
       sortKey: "totalInventory",
@@ -1065,7 +1065,7 @@ export function InventoryInformationTable({
   onSortChange,
 }: InventoryInformationTableProps) {
   const { t, translate, msg } = useI18n();
-  const columns = useMemo(() => buildInventoryInformationColumns(), []);
+  const columns = useMemo(() => buildInventoryInformationColumns(t), [t]);
   const pageChrome = useCollapsibleTablePageChrome();
 
   return (
@@ -1095,7 +1095,7 @@ export function InventoryInformationTable({
       table={
         <DataTable
           columns={columns}
-          emptyMessage="No inventory information matches the current filters."
+          emptyMessage={t("No inventory information matches the current filters.")}
           error={error}
           fillHeight
           getRowId={(row) => row.id}

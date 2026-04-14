@@ -256,7 +256,12 @@ function buildRechargeSignals({
   dateFrom,
   dateTo,
   fundFlows,
-}: Pick<DashboardRevenueOverviewSourceData, "fundFlows"> & { dateFrom?: string | null; dateTo?: string | null }) {
+  buildMeta,
+}: Pick<DashboardRevenueOverviewSourceData, "fundFlows"> & {
+  dateFrom?: string | null;
+  dateTo?: string | null;
+  buildMeta: (count: number) => string;
+}) {
   const rangeStart = parseBoundary(dateFrom, "start");
   const rangeEnd = parseBoundary(dateTo, "end");
   const grouped = new Map<number, { amount: number; count: number; currencies: Set<string>; customerName: string }>();
@@ -298,13 +303,18 @@ function buildRechargeSignals({
       currency: value.currencies.size === 1 ? [...value.currencies][0] : "Mixed",
       customerId,
       customerName: value.customerName,
-      meta: `${formatNumber(value.count)}x recharge`,
+      meta: buildMeta(value.count),
     }))
     .sort((left, right) => right.amount - left.amount)
     .slice(0, MAX_CLIENT_SIGNALS);
 }
 
-function buildLowFundSignals({ vouchers }: Pick<DashboardRevenueOverviewSourceData, "vouchers">) {
+function buildLowFundSignals({
+  vouchers,
+  buildMeta,
+}: Pick<DashboardRevenueOverviewSourceData, "vouchers"> & {
+  buildMeta: (percent: number) => string;
+}) {
   const grouped = new Map<number, { currencies: Set<string>; face: number; name: string; remaining: number }>();
 
   vouchers.forEach((record) => {
@@ -345,7 +355,7 @@ function buildLowFundSignals({ vouchers }: Pick<DashboardRevenueOverviewSourceDa
         currency: value.currencies.size === 1 ? [...value.currencies][0] : "Mixed",
         customerId,
         customerName: value.name,
-        meta: `${formatNumber(roundAmount(remainingRatio * 100))}% left`,
+        meta: buildMeta(roundAmount(remainingRatio * 100)),
         remainingRatio,
       };
     })
@@ -443,6 +453,8 @@ function ClientSignalList({
   items: ClientFinanceSignal[];
   title: string;
 }) {
+  const { t } = useI18n();
+
   return (
     <Stack
       spacing={1}
@@ -504,7 +516,7 @@ function ClientSignalList({
                 {formatNumber(item.amount)}
               </Typography>
               <Typography color="text.secondary" sx={{ fontSize: "10px", fontWeight: 700, lineHeight: 1 }}>
-                {item.currency}
+                {item.currency === "Mixed" ? t("Mixed") : item.currency}
               </Typography>
             </Stack>
           </Stack>
@@ -552,10 +564,24 @@ export function DashboardRevenueOverviewCard({
     [chargeItems, effectiveDateFrom, effectiveDateTo, fundFlows, manualCharges, rentDetails, vouchers],
   );
   const rechargeSignals = useMemo(
-    () => buildRechargeSignals({ dateFrom: effectiveDateFrom, dateTo: effectiveDateTo, fundFlows }),
-    [effectiveDateFrom, effectiveDateTo, fundFlows],
+    () =>
+      buildRechargeSignals({
+        dateFrom: effectiveDateFrom,
+        dateTo: effectiveDateTo,
+        fundFlows,
+        buildMeta: (count) => t("{{count}}x recharge", { count: formatNumber(count) }),
+      }),
+    [effectiveDateFrom, effectiveDateTo, fundFlows, t],
   );
-  const lowFundSignals = useMemo(() => buildLowFundSignals({ vouchers }), [vouchers]);
+  const lowFundSignals = useMemo(
+    () =>
+      buildLowFundSignals({
+        vouchers,
+        buildMeta: (percent) => t("{{percent}}% left", { percent: formatNumber(percent) }),
+      }),
+    [t, vouchers],
+  );
+  const renderCurrencyLabel = (currency: string) => (currency === "Mixed" ? t("Mixed") : currency);
 
   return (
     <Card
@@ -600,20 +626,20 @@ export function DashboardRevenueOverviewCard({
                   lineHeight: 1.1,
                 }}
               >
-                Generated Revenue
+                {t("Generated Revenue")}
               </Typography>
             </Stack>
 
             {!isRestricted ? (
               <Stack spacing={1} sx={{ width: { xs: "100%", md: "auto" } }}>
                 <RangePicker
-                  endAriaLabel="Revenue range end"
+                  endAriaLabel={t("Revenue range end")}
                   endValue={draftDateTo}
                   error={isInvalidRange}
                   inputType="datetime-local"
                   onEndChange={setDraftDateTo}
                   onStartChange={setDraftDateFrom}
-                  startAriaLabel="Revenue range start"
+                  startAriaLabel={t("Revenue range start")}
                   startValue={draftDateFrom}
                   step={3600}
                 />
@@ -642,7 +668,7 @@ export function DashboardRevenueOverviewCard({
                   }}
                 >
                   <Typography color="text.secondary" sx={{ fontSize: "10px", fontWeight: 800, textTransform: "uppercase" }}>
-                    Revenue
+                    {t("Revenue")}
                   </Typography>
                   <Stack alignItems="baseline" direction="row" flexWrap="wrap" gap={1}>
                     <Typography
@@ -665,7 +691,7 @@ export function DashboardRevenueOverviewCard({
                       }}
                     >
                       <Typography sx={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.04em" }}>
-                        {revenueOverview.currency}
+                        {renderCurrencyLabel(revenueOverview.currency)}
                       </Typography>
                     </Box>
                   </Stack>
@@ -676,17 +702,17 @@ export function DashboardRevenueOverviewCard({
                       gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
                     }}
                   >
-                    <OverviewMetric label="Clients" value={formatNumber(revenueOverview.customerCount)} />
-                    <OverviewMetric label="Fees" value={formatNumber(revenueOverview.feeItemCount)} />
+                    <OverviewMetric label={t("Clients")} value={formatNumber(revenueOverview.customerCount)} />
+                    <OverviewMetric label={t("Fees")} value={formatNumber(revenueOverview.feeItemCount)} />
                   </Box>
                   {revenueOverview.feeItemCount === 0 ? (
                     <Typography color="text.secondary" sx={{ fontSize: "11px", fontWeight: 600, lineHeight: 1.35 }}>
-                      No fees in range.
+                      {t("No fees in range.")}
                     </Typography>
                   ) : null}
                   <Stack direction="row" flexWrap="wrap" gap={0.75} useFlexGap>
-                    {isInvalidRange ? <NoticePill label="Invalid range" tone="error" /> : null}
-                    {revenueOverview.hasMultipleCurrencies ? <NoticePill label="Mixed currencies" tone="warning" /> : null}
+                    {isInvalidRange ? <NoticePill label={t("Invalid range")} tone="error" /> : null}
+                    {revenueOverview.hasMultipleCurrencies ? <NoticePill label={t("Mixed currencies")} tone="warning" /> : null}
                   </Stack>
                 </Stack>
 
@@ -769,7 +795,7 @@ export function DashboardRevenueOverviewCard({
                             minWidth: 0,
                           }}
                         >
-                          {item.label}
+                          {t(item.label)}
                         </Typography>
                         <Typography color="text.secondary" sx={{ fontSize: "10px", fontWeight: 700, lineHeight: 1 }}>
                           {formatNumber(item.share * 100)}%
@@ -794,14 +820,14 @@ export function DashboardRevenueOverviewCard({
                 }}
               >
                 <ClientSignalList
-                  emptyMessage="No recharge activity."
+                  emptyMessage={t("No recharge activity.")}
                   items={rechargeSignals}
-                  title="Recharged"
+                  title={t("Recharged")}
                 />
                 <ClientSignalList
-                  emptyMessage="No low-balance clients."
+                  emptyMessage={t("No low-balance clients.")}
                   items={lowFundSignals}
-                  title="Low Balance"
+                  title={t("Low Balance")}
                 />
               </Box>
             </Stack>

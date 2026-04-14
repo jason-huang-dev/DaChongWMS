@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Alert, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
+import { useI18n } from "@/app/ui-preferences";
 import { useClientsController } from "@/features/clients/controller/useClientsController";
 import {
   buildClientLifecyclePath,
@@ -20,6 +21,7 @@ interface ClientsPageProps {
 
 export function ClientsPage({ lifecycleBucket }: ClientsPageProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const {
     clientView,
     clientsQuery,
@@ -57,7 +59,7 @@ export function ClientsPage({ lifecycleBucket }: ClientsPageProps) {
     <Stack spacing={2} sx={{ height: "100%", minHeight: 0, overflow: "hidden" }}>
       {!company ? (
         <Alert severity="info">
-          Select an active workspace membership before managing client accounts.
+          {t("Select an active workspace membership before managing client accounts.")}
         </Alert>
       ) : null}
       {!isEditorOpen && errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
@@ -71,22 +73,22 @@ export function ClientsPage({ lifecycleBucket }: ClientsPageProps) {
         lifecycleBucket={lifecycleBucket}
         lifecycleCounts={lifecycleCounts}
         onOpenBatchAssign={() => {
-          setInfoMessage("Batch charging-template assignment is planned but is not wired to the backend yet.");
+          setInfoMessage(t("Batch charging-template assignment is planned but is not wired to the backend yet."));
         }}
         onEdit={openEditEditor}
         onLifecycleBucketChange={(nextBucket) => navigate(buildClientLifecyclePath(nextBucket))}
         onOpenCreate={openCreateEditor}
         onOpenDistributionPermissions={() => {
-          setInfoMessage("Distribution permission updates will be enabled once the client permission APIs are available.");
+          setInfoMessage(t("Distribution permission updates will be enabled once the client permission APIs are available."));
         }}
         onOpenPortalAccess={() => {
-          setInfoMessage("Client-scoped portal access management is planned but not yet wired to the IAM API.");
+          setInfoMessage(t("Client-scoped portal access management is planned but not yet wired to the IAM API."));
         }}
         onResetPassword={(client) => {
-          setInfoMessage(`Password reset for ${client.name} will be enabled once the client IAM API is available.`);
+          setInfoMessage(t("Password reset for {{name}} will be enabled once the client IAM API is available.", { name: client.name }));
         }}
         onObtainToken={(client) => {
-          setInfoMessage(`Token issuance for ${client.name} will be enabled once the client IAM API is available.`);
+          setInfoMessage(t("Token issuance for {{name}} will be enabled once the client IAM API is available.", { name: client.name }));
         }}
         onResetFilters={resetClientFilters}
         onToggleActive={async (client, nextActive) => {

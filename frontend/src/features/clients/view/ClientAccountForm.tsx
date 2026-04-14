@@ -19,6 +19,7 @@ import {
 } from "@mui/material";
 import { FormProvider, useForm } from "react-hook-form";
 
+import { useI18n } from "@/app/ui-preferences";
 import type { ClientAccountFormValues, ClientAccountRecord } from "@/features/clients/model/types";
 import { clientAccountFormSchema } from "@/features/clients/model/validators";
 import {
@@ -56,6 +57,7 @@ export function ClientAccountForm({
   onSubmit,
   onClose,
 }: ClientAccountFormProps) {
+  const { t, translate } = useI18n();
   const [activeTab, setActiveTab] = useState("basic");
   const form = useForm<ClientAccountFormValues>({
     defaultValues,
@@ -79,10 +81,10 @@ export function ClientAccountForm({
           <DialogTitle sx={{ pb: 1.5 }}>
             <Stack alignItems="center" direction="row" justifyContent="space-between" spacing={2}>
               <Stack direction="row" spacing={1.5}>
-                <Typography variant="h6">{isEditing ? "Edit client account" : "Create client account"}</Typography>
+                <Typography variant="h6">{isEditing ? t("Edit client account") : t("Create client account")}</Typography>
                 {lifecycleStatus ? <StatusChip status={lifecycleStatus} /> : null}
               </Stack>
-              <IconButton aria-label="Close client account dialog" onClick={onClose}>
+              <IconButton aria-label={t("Close client account dialog")} onClick={onClose}>
                 <CloseIcon />
               </IconButton>
             </Stack>
@@ -90,8 +92,8 @@ export function ClientAccountForm({
           <DialogContent dividers>
             <Stack spacing={2.5}>
               <Tabs onChange={(_event, nextValue) => setActiveTab(nextValue)} value={activeTab}>
-                <Tab label="Basic data" value="basic" />
-                <Tab label="Assignments and portal" value="assignments" />
+                <Tab label={t("Basic data")} value="basic" />
+                <Tab label={t("Assignments and portal")} value="assignments" />
               </Tabs>
 
               {successMessage ? <Alert severity="success">{successMessage}</Alert> : null}
@@ -100,78 +102,80 @@ export function ClientAccountForm({
               {activeTab === "basic" ? (
                 <Stack spacing={2.5}>
                   <Alert severity="info">
-                    Core create and update flows are wired today. The second tab stages warehouse assignments, charging templates, and portal access details as the backend contract expands.
+                    {t(
+                      "Core create and update flows are wired today. The second tab stages warehouse assignments, charging templates, and portal access details as the backend contract expands.",
+                    )}
                   </Alert>
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormTextField label="Client code" name="code" />
+                      <FormTextField label={t("Client code")} name="code" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormTextField label="Client name" name="name" />
+                      <FormTextField label={t("Client name")} name="name" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
                       <TextField
                         disabled
-                        helperText="Read from the extended client master record when available"
+                        helperText={t("Read from the extended client master record when available")}
                         fullWidth
-                        label="Company name"
+                        label={t("Company name")}
                         value={client?.company_name ?? client?.name ?? ""}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormTextField label="Contact name" name="contact_name" />
+                      <FormTextField label={t("Contact name")} name="contact_name" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormTextField label="Contact email" name="contact_email" />
+                      <FormTextField label={t("Contact email")} name="contact_email" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormTextField label="Contact phone" name="contact_phone" />
+                      <FormTextField label={t("Contact phone")} name="contact_phone" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormTextField label="Billing email" name="billing_email" />
+                      <FormTextField label={t("Billing email")} name="billing_email" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
                       <TextField
                         disabled
                         fullWidth
-                        label="Settlement currency"
-                        value={client?.settlement_currency ?? "Pending backend support"}
+                        label={t("Settlement currency")}
+                        value={client?.settlement_currency ?? t("Pending backend support")}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
                       <TextField
                         disabled
                         fullWidth
-                        label="Distribution"
-                        value={client?.distribution_mode ? formatStatusLabel(client.distribution_mode) : "Pending backend support"}
+                        label={t("Distribution")}
+                        value={client?.distribution_mode ? translate(formatStatusLabel(client.distribution_mode)) : t("Pending backend support")}
                       />
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
-                      <FormTextField label="Default shipping method" name="shipping_method" />
+                      <FormTextField label={t("Default shipping method")} name="shipping_method" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 6 }}>
                       <TextField
                         disabled
                         fullWidth
-                        label="Serial number management"
+                        label={t("Serial number management")}
                         value={
                           client?.serial_number_management
-                            ? formatStatusLabel(client.serial_number_management)
-                            : "Pending backend support"
+                            ? translate(formatStatusLabel(client.serial_number_management))
+                            : t("Pending backend support")
                         }
                       />
                     </Grid>
                     <Grid size={{ xs: 12 }}>
-                      <FormTextField label="Operational notes" minRows={4} multiline name="notes" />
+                      <FormTextField label={t("Operational notes")} minRows={4} multiline name="notes" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormSwitchField label="Allow dropshipping orders" name="allow_dropshipping_orders" />
+                      <FormSwitchField label={t("Allow dropshipping orders")} name="allow_dropshipping_orders" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormSwitchField label="Allow inbound goods" name="allow_inbound_goods" />
+                      <FormSwitchField label={t("Allow inbound goods")} name="allow_inbound_goods" />
                     </Grid>
                     <Grid size={{ xs: 12, md: 4 }}>
-                      <FormSwitchField label="Client account active" name="is_active" />
+                      <FormSwitchField label={t("Client account active")} name="is_active" />
                     </Grid>
                   </Grid>
                 </Stack>
@@ -183,19 +187,19 @@ export function ClientAccountForm({
                       items={[
                         {
                           label: "Warehouses",
-                          value: client?.warehouse_assignments?.join(", ") || "Not assigned",
+                          value: client?.warehouse_assignments?.join(", ") || t("Not assigned"),
                         },
                         {
                           label: "Charging template",
-                          value: client?.charging_template_name || "Not assigned",
+                          value: client?.charging_template_name || t("Not assigned"),
                         },
                         {
                           label: "Settlement currency",
-                          value: client?.settlement_currency || "Pending backend support",
+                          value: client?.settlement_currency || t("Pending backend support"),
                         },
                         {
                           label: "Distribution",
-                          value: client?.distribution_mode ? formatStatusLabel(client.distribution_mode) : "Pending backend support",
+                          value: client?.distribution_mode ? translate(formatStatusLabel(client.distribution_mode)) : t("Pending backend support"),
                         },
                       ]}
                       title="Warehouse and charging"
@@ -217,16 +221,16 @@ export function ClientAccountForm({
                     <SummaryCard
                       description="Current portal-facing readiness."
                       items={[
-                        { label: "Lifecycle", value: lifecycleStatus ? clientLifecycleLabels[lifecycleStatus] : "Draft" },
+                        { label: "Lifecycle", value: lifecycleStatus ? translate(clientLifecycleLabels[lifecycleStatus]) : t("Draft") },
                         {
                           label: "Serial number management",
                           value: client?.serial_number_management
-                            ? formatStatusLabel(client.serial_number_management)
-                            : "Pending backend support",
+                            ? translate(formatStatusLabel(client.serial_number_management))
+                            : t("Pending backend support"),
                         },
                         {
                           label: "Limited document balance",
-                          value: client?.limit_balance_documents ? "Enabled" : "Disabled",
+                          value: client?.limit_balance_documents ? t("Enabled") : t("Disabled"),
                         },
                       ]}
                       title="Portal readiness"
@@ -236,20 +240,22 @@ export function ClientAccountForm({
                     <SummaryCard
                       description="Current contact scope exposed on the account."
                       items={[
-                        { label: "Primary contact", value: client?.contact_name || "Not assigned" },
+                        { label: "Primary contact", value: client?.contact_name || t("Not assigned") },
                         {
                           label: "Additional contacts",
                           value: contacts.length > 1 ? `${contacts.length - 1}` : "0",
                         },
-                        { label: "Billing email", value: client?.billing_email || "Not assigned" },
-                        { label: "Country / region", value: client?.country_region || "Pending backend support" },
+                        { label: "Billing email", value: client?.billing_email || t("Not assigned") },
+                        { label: "Country / region", value: client?.country_region || t("Pending backend support") },
                       ]}
                       title="Contact scope"
                     />
                   </Grid>
                   <Grid size={{ xs: 12 }}>
                     <Alert severity="info">
-                      The warehouse-assignment, charging-template, and portal-token panels are scaffolded here so the page layout is ready before the remaining backend endpoints land.
+                      {t(
+                        "The warehouse-assignment, charging-template, and portal-token panels are scaffolded here so the page layout is ready before the remaining backend endpoints land.",
+                      )}
                     </Alert>
                   </Grid>
                 </Grid>
@@ -258,10 +264,10 @@ export function ClientAccountForm({
           </DialogContent>
           <DialogActions sx={{ px: 3, py: 2 }}>
             <Button color="inherit" onClick={onClose}>
-              Cancel
+              {t("Cancel")}
             </Button>
             <Button disabled={isSubmitting} type="submit" variant="contained">
-              {isSubmitting ? "Saving..." : isEditing ? "Save client account" : "Create client account"}
+              {isSubmitting ? t("Saving...") : isEditing ? t("Save client account") : t("Create client account")}
             </Button>
           </DialogActions>
         </Box>
