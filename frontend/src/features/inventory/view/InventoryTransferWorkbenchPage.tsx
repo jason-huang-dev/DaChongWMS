@@ -4,6 +4,7 @@ import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import { Alert, Button, Dialog, DialogContent, DialogTitle, Divider, Stack } from "@mui/material";
+import { RecordLink } from "@/shared/components/record-link";
 
 import { useI18n } from "@/app/ui-preferences";
 import { useInventoryTransferWorkbenchController } from "@/features/inventory/controller/useInventoryCrossWarehouseController";
@@ -28,7 +29,6 @@ export function InventoryTransferWorkbenchPage({ scope }: InventoryTransferWorkb
   const { t } = useI18n();
   const {
     activeBucket,
-    allowCreation,
     bucketItems,
     columnVisibilityStorageKey,
     createErrorMessage,
@@ -54,11 +54,28 @@ export function InventoryTransferWorkbenchPage({ scope }: InventoryTransferWorkb
     warehouses,
   } = useInventoryTransferWorkbenchController(scope);
   const isInternalMove = scope === "internal";
+  const createButtonLabel = isInternalMove ? t("New Internal Move") : t("New Inter-warehouse Transfer");
+  const createDialogTitle = isInternalMove ? t("Create internal move") : t("Create inter-warehouse transfer");
+  const createDescription = isInternalMove
+    ? t("Plan same-warehouse inventory relocations from source balances to destination locations.")
+    : t("Plan cross-warehouse transfers from source balances to destination locations in other warehouses.");
+  const creatingLabel = isInternalMove ? t("Creating internal move...") : t("Creating inter-warehouse transfer...");
+  const operationLabel = t("Edit");
 
   const columns = useMemo<Array<ResourceTableColumnDefinition<InterwarehouseTransferRow>>>(
     () => {
       const baseColumns: Array<ResourceTableColumnDefinition<InterwarehouseTransferRow>> = [
-        { header: "Transfer No.", key: "transferNumber", minWidth: 140, nowrap: true, render: (row) => row.transferNumber },
+        {
+          header: "Transfer No.",
+          key: "transferNumber",
+          minWidth: 140,
+          nowrap: true,
+          render: (row) => (
+            <RecordLink to={`/transfers/transfer-orders/${row.id}`}>
+              {row.transferNumber}
+            </RecordLink>
+          ),
+        },
         { header: "Status", key: "status", minWidth: 120, render: (row) => <StatusChip status={row.status} /> },
         {
           header: isInternalMove ? "Warehouse" : "From Warehouse",
@@ -112,27 +129,29 @@ export function InventoryTransferWorkbenchPage({ scope }: InventoryTransferWorkb
           render: (row) => formatDateTime(row.cancelTime),
           sortKey: "cancelTime",
         },
-        { header: "Operation", key: "operation", minWidth: 96, render: () => "--" },
+        {
+          header: "Operation",
+          key: "operation",
+          minWidth: 96,
+          render: (row) => (
+            <RecordLink to={`/transfers/transfer-orders/${row.id}`}>
+              {operationLabel}
+            </RecordLink>
+          ),
+        },
       );
 
       return baseColumns;
     },
-    [isInternalMove, t],
+    [isInternalMove, operationLabel, t],
   );
 
   return (
     <>
       <Stack spacing={isInternalMove ? 1.5 : 2.5}>
-        {!isInternalMove ? (
-          <Alert severity="info">
-            {t(
-              "Inter-warehouse Transfer is a visibility-only workspace and shows only movements whose destination warehouse differs from the source warehouse.",
-            )}
-          </Alert>
-        ) : null}
         <QueryAlert message={queryError} />
-        {allowCreation && createSuccessMessage ? <Alert severity="success">{createSuccessMessage}</Alert> : null}
-        {allowCreation ? <QueryAlert message={createErrorMessage} /> : null}
+        {createSuccessMessage ? <Alert severity="success">{createSuccessMessage}</Alert> : null}
+        <QueryAlert message={createErrorMessage} />
         <Stack spacing={isInternalMove ? 1.5 : 2.5} sx={{ minWidth: 0 }}>
           <InterwarehouseTransferFilters
             activeBucket={activeBucket}
@@ -172,11 +191,9 @@ export function InventoryTransferWorkbenchPage({ scope }: InventoryTransferWorkb
             }}
             toolbar={
               <Stack direction="row" spacing={1}>
-                {allowCreation ? (
-                  <Button onClick={openCreateDialog} startIcon={<AddRoundedIcon />} variant="contained">
-                    {t("New Internal Move")}
-                  </Button>
-                ) : null}
+                <Button onClick={openCreateDialog} startIcon={<AddRoundedIcon />} variant="contained">
+                  {createButtonLabel}
+                </Button>
                 <Button onClick={exportVisibleRows} startIcon={<DownloadRoundedIcon />} variant="outlined">
                   {t("Export")}
                 </Button>
@@ -190,26 +207,24 @@ export function InventoryTransferWorkbenchPage({ scope }: InventoryTransferWorkb
           />
         </Stack>
       </Stack>
-      {allowCreation ? (
-        <Dialog fullWidth maxWidth="lg" onClose={closeCreateDialog} open={isCreateDialogOpen}>
-          <DialogTitle>{t("New Internal Move")}</DialogTitle>
-          <Divider />
-          <DialogContent sx={{ pt: 3 }}>
-            <CreateTransferOrderPanel
-              description={t("Plan same-warehouse inventory relocations from source balances to destination locations.")}
-              errorMessage={createErrorMessage}
-              isPending={createTransferOrderMutation.isPending}
-              onSubmit={(values, balancesById) =>
-                createTransferOrderMutation.mutateAsync({ balancesById, values })
-              }
-              submitLabel={t("Create internal move")}
-              submittingLabel={t("Creating internal move...")}
-              successMessage={null}
-              title={t("Create internal move")}
-            />
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      <Dialog fullWidth maxWidth="lg" onClose={closeCreateDialog} open={isCreateDialogOpen}>
+        <DialogTitle>{createDialogTitle}</DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          <CreateTransferOrderPanel
+            description={createDescription}
+            errorMessage={createErrorMessage}
+            isPending={createTransferOrderMutation.isPending}
+            onSubmit={(values, balancesById) =>
+              createTransferOrderMutation.mutateAsync({ balancesById, values })
+            }
+            submitLabel={createDialogTitle}
+            submittingLabel={creatingLabel}
+            successMessage={null}
+            title={createDialogTitle}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

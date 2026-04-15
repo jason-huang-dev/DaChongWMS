@@ -147,7 +147,7 @@ export function useInventoryTransferWorkbenchController(scope: InventoryTransfer
   } as const;
 
   return {
-    allowCreation: scope === "internal",
+    allowCreation: true,
     activeBucket,
     bucketItems: interwarehouseTransferBucketItems.map((item) => ({
       ...item,

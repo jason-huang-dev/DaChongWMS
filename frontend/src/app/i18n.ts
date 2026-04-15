@@ -197,6 +197,11 @@ const supplementalRawMessages: TranslationCatalog = mergeLocaleMessageGroups(sto
   en: {
     Export: "Export",
     "Operational queues": "Operational queues",
+    "New Inter-warehouse Transfer": "New Inter-warehouse Transfer",
+    "Create inter-warehouse transfer": "Create inter-warehouse transfer",
+    "Creating inter-warehouse transfer...": "Creating inter-warehouse transfer...",
+    "Plan cross-warehouse transfers from source balances to destination locations in other warehouses.":
+      "Plan cross-warehouse transfers from source balances to destination locations in other warehouses.",
   },
   "zh-CN": {
     Export: "导出",
@@ -1044,8 +1049,13 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "New Internal Move": "新建库内移动",
     "Create internal move": "创建库内移动",
     "Creating internal move...": "正在创建库内移动...",
+    "New Inter-warehouse Transfer": "新建跨仓调拨",
+    "Create inter-warehouse transfer": "创建跨仓调拨",
+    "Creating inter-warehouse transfer...": "正在创建跨仓调拨...",
     "Plan same-warehouse inventory relocations from source balances to destination locations.":
       "根据源库存和目标库位规划同仓内的库存移动。",
+    "Plan cross-warehouse transfers from source balances to destination locations in other warehouses.":
+      "根据源库存与其他仓库目标库位规划跨仓调拨。",
     "Internal Move shows same-warehouse transfer orders that relocate stock between locations inside a warehouse.":
       "库内移动页面展示同一仓库内不同库位之间的库存移动调拨单。",
     "Inter-warehouse Transfer is a visibility-only workspace and shows only movements whose destination warehouse differs from the source warehouse.":
