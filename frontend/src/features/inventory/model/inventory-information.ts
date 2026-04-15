@@ -16,6 +16,7 @@ import type {
   PutawayTaskRecord,
   SalesOrderRecord,
 } from "@/shared/types/domain";
+import { downloadCsvFile, escapeCsvValue } from "@/shared/utils/csv";
 
 function normalizeText(value: unknown) {
   if (value === null || value === undefined) {
@@ -748,12 +749,6 @@ export function decodeInventoryInformationMultiValue(value: string) {
   }
 }
 
-function escapeInventoryInformationCsvValue(value: string | number) {
-  const rawValue = String(value ?? "");
-  const sanitizedValue = /^[=+\-@]/u.test(rawValue) ? `'${rawValue}` : rawValue;
-  return `"${sanitizedValue.replace(/"/g, '""')}"`;
-}
-
 export function buildInventoryInformationCsvContent(rows: InventoryInformationRow[]) {
   const header = [
     "merchant_sku",
@@ -781,7 +776,7 @@ export function buildInventoryInformationCsvContent(rows: InventoryInformationRo
   ];
 
   return [
-    header.map(escapeInventoryInformationCsvValue).join(","),
+    header.map((value) => escapeCsvValue(value)).join(","),
     ...rows.map((row) =>
       [
         row.merchantSku,
@@ -807,24 +802,18 @@ export function buildInventoryInformationCsvContent(rows: InventoryInformationRo
         row.measurementUnit,
         row.source,
       ]
-        .map(escapeInventoryInformationCsvValue)
+        .map((value) => escapeCsvValue(value))
         .join(","),
     ),
   ].join("\n");
 }
 
 export function downloadInventoryInformationRowsCsv(rows: InventoryInformationRow[], filenamePrefix: string) {
-  if (rows.length === 0 || typeof document === "undefined" || typeof URL.createObjectURL !== "function") {
+  if (rows.length === 0) {
     return;
   }
 
-  const blob = new Blob([buildInventoryInformationCsvContent(rows)], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${filenamePrefix}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadCsvFile(buildInventoryInformationCsvContent(rows), `${filenamePrefix}.csv`);
 }
 
 function getInventoryInformationClientLabel(row: InventoryInformationRow) {

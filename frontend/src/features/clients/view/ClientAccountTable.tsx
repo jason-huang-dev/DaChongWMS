@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import RestartAltRoundedIcon from "@mui/icons-material/RestartAltRounded";
 import KeyboardArrowDownOutlinedIcon from "@mui/icons-material/KeyboardArrowDownOutlined";
 import { Box, Button, Chip, Stack, Typography } from "@mui/material";
@@ -14,7 +16,7 @@ import type { ClientAccountRecord, ClientLifecycleStatus } from "@/features/clie
 import { ClientAccountFilters } from "@/features/clients/view/components/ClientAccountFilters";
 import { ClientAccountRowActions } from "@/features/clients/view/components/ClientAccountRowActions";
 import { ActionIconButton } from "@/shared/components/action-icon-button";
-import { DataTable, type DataTableRowSelection } from "@/shared/components/data-table";
+import { DataTable, type DataTableColumnDefinition, type DataTableRowSelection } from "@/shared/components/data-table";
 import { FilterCard } from "@/shared/components/filter-card";
 import { PageTabs } from "@/shared/components/page-tabs";
 import { useCollapsibleTablePageChrome } from "@/shared/hooks/use-collapsible-table-page-chrome";
@@ -57,14 +59,16 @@ interface ClientFieldRow {
   wrap?: boolean;
 }
 
+type ClientAccountColumnDefinition = DataTableColumnDefinition<ClientAccountRecord>;
+
 const clientTableFieldFontSize = "0.75rem";
 const clientTableFieldLineHeight = 1.35;
 
 function renderFieldStack(items: ClientFieldRow[]) {
   return (
     <Stack spacing={0.45}>
-      {items.map((item) => (
-        <Stack direction="row" key={`${item.label}-${item.value}`} spacing={0.8} sx={{ minWidth: 0 }}>
+      {items.map((item, index) => (
+        <Stack direction="row" key={`${item.label}-${item.value}-${index}`} spacing={0.8} sx={{ minWidth: 0 }}>
           <Typography
             color="text.secondary"
             sx={{
@@ -199,6 +203,81 @@ function ClientTimeCell({ row }: { row: ClientAccountRecord }) {
   ]);
 }
 
+interface ClientAccountColumnCallbacks {
+  onEdit: (client: ClientAccountRecord) => void;
+  onToggleActive: (client: ClientAccountRecord, nextActive: boolean) => Promise<void> | void;
+  onOpenPortalAccess: (client: ClientAccountRecord) => void;
+  onResetPassword: (client: ClientAccountRecord) => void;
+  onObtainToken: (client: ClientAccountRecord) => void;
+}
+
+function buildClientAccountColumns(
+  t: (key: string, params?: Record<string, string | number | null | undefined>) => string,
+  callbacks: ClientAccountColumnCallbacks,
+): ClientAccountColumnDefinition[] {
+  return [
+    {
+      header: t("Customer Code/Name"),
+      key: "customerCodeName",
+      minWidth: 170,
+      render: renderClientCodeNameCell,
+      width: 176,
+    },
+    {
+      header: t("Customer Information"),
+      key: "customerInformation",
+      minWidth: 228,
+      render: (row) => <ClientInformationCell row={row} />,
+      width: 244,
+    },
+    {
+      header: t("Contact Person"),
+      key: "contactPerson",
+      minWidth: 152,
+      render: (row) => <ClientContactPersonCell row={row} />,
+      width: 160,
+    },
+    {
+      header: t("Finance"),
+      key: "finance",
+      minWidth: 236,
+      render: (row) => <ClientFinanceCell row={row} />,
+      width: 248,
+    },
+    {
+      header: t("Account Setup"),
+      key: "setup",
+      minWidth: 184,
+      render: (row) => <ClientSetupCell row={row} />,
+      width: 192,
+    },
+    {
+      header: t("Time"),
+      key: "time",
+      minWidth: 168,
+      render: (row) => <ClientTimeCell row={row} />,
+      width: 176,
+    },
+    {
+      header: t("Operations"),
+      key: "action",
+      minWidth: 140,
+      render: (row) => (
+        <ClientAccountRowActions
+          client={row}
+          onEdit={callbacks.onEdit}
+          onObtainToken={callbacks.onObtainToken}
+          onOpenPortalAccess={callbacks.onOpenPortalAccess}
+          onResetPassword={callbacks.onResetPassword}
+          onToggleActive={callbacks.onToggleActive}
+        />
+      ),
+      sticky: "right",
+      width: 148,
+    },
+  ];
+}
+
 export function ClientAccountTable({
   clients,
   exportRows,
@@ -226,6 +305,18 @@ export function ClientAccountTable({
   onResetPassword,
   onObtainToken,
 }: ClientAccountTableProps) {
+  const { t, translate, msg } = useI18n();
+  const columns = useMemo(
+    () =>
+      buildClientAccountColumns(t, {
+        onEdit,
+        onObtainToken,
+        onOpenPortalAccess,
+        onResetPassword,
+        onToggleActive,
+      }),
+    [onEdit, onObtainToken, onOpenPortalAccess, onResetPassword, onToggleActive, t],
+  );
   const hasActiveSelection = selectedClients.some((client) => client.is_active);
   const hasInactiveSelection = selectedClients.some((client) => !client.is_active);
   const hasFilterOverrides = Boolean(
@@ -237,7 +328,6 @@ export function ClientAccountTable({
       dataView.filters.timeStart ||
       dataView.filters.timeEnd,
   );
-  const { t, translate, msg } = useI18n();
   const pageChrome = useCollapsibleTablePageChrome();
   const tableToolbar = (
     <Stack
@@ -408,67 +498,7 @@ export function ClientAccountTable({
       }
       table={
         <DataTable
-          columns={[
-            {
-              header: t("Customer Code/Name"),
-              key: "customerCodeName",
-              minWidth: 170,
-              render: renderClientCodeNameCell,
-              width: 176,
-            },
-            {
-              header: t("Customer Information"),
-              key: "customerInformation",
-              minWidth: 228,
-              render: (row) => <ClientInformationCell row={row} />,
-              width: 244,
-            },
-            {
-              header: t("Contact Person"),
-              key: "contactPerson",
-              minWidth: 152,
-              render: (row) => <ClientContactPersonCell row={row} />,
-              width: 160,
-            },
-            {
-              header: t("Finance"),
-              key: "finance",
-              minWidth: 236,
-              render: (row) => <ClientFinanceCell row={row} />,
-              width: 248,
-            },
-            {
-              header: t("Account Setup"),
-              key: "setup",
-              minWidth: 184,
-              render: (row) => <ClientSetupCell row={row} />,
-              width: 192,
-            },
-            {
-              header: t("Time"),
-              key: "time",
-              minWidth: 168,
-              render: (row) => <ClientTimeCell row={row} />,
-              width: 176,
-            },
-            {
-              header: t("Operations"),
-              key: "action",
-              minWidth: 140,
-              render: (row) => (
-                <ClientAccountRowActions
-                  client={row}
-                  onEdit={onEdit}
-                  onObtainToken={onObtainToken}
-                  onOpenPortalAccess={onOpenPortalAccess}
-                  onResetPassword={onResetPassword}
-                  onToggleActive={onToggleActive}
-                />
-              ),
-              sticky: "right",
-              width: 148,
-            },
-          ]}
+          columns={columns}
           emptyMessage={msg("No client accounts found for {{status}}.", {
             status: translate(clientLifecycleLabels[lifecycleBucket]),
           })}

@@ -14,6 +14,7 @@ import type {
 import type { DashboardRevenueOverviewSourceData } from "@/features/dashboard/view/components/DashboardRevenueOverviewCard";
 import { DashboardRevenueOverviewCard } from "@/features/dashboard/view/components/DashboardRevenueOverviewCard";
 import { RangePicker } from "@/shared/components/range-picker";
+import { downloadCsvFile } from "@/shared/utils/csv";
 import { formatNumber } from "@/shared/utils/format";
 
 interface DashboardOrderStatisticsCardProps {
@@ -33,6 +34,7 @@ interface DashboardOrderStatisticsCardProps {
 
 type SeriesKey = "dropshipping_orders" | "stock_in_quantity";
 type ChartPoint = { x: number; y: number };
+type ChartGridLine = { key: string; value: number; y: number };
 
 const WINDOW_OPTIONS: { labelKey: string; value: Exclude<DashboardTimeWindow, "CUSTOM"> }[] = [
   { labelKey: "This Week", value: "WEEK" },
@@ -194,8 +196,21 @@ function buildCurvedSeriesPath(points: ChartPoint[]) {
   }, "");
 }
 
+function buildChartGridLines(yMax: number, gridLineCount: number, chartPaddingTop: number, innerHeight: number): ChartGridLine[] {
+  return Array.from({ length: gridLineCount + 1 }, (_, index) => {
+    const value = (yMax / gridLineCount) * (gridLineCount - index);
+    const y = chartPaddingTop + (innerHeight / gridLineCount) * index;
+
+    return {
+      key: `grid-${index}-${value}`,
+      value,
+      y,
+    };
+  });
+}
+
 function downloadStatisticsCsv(data?: DashboardOrderStatistics) {
-  if (!data || typeof document === "undefined" || typeof URL.createObjectURL !== "function") {
+  if (!data) {
     return;
   }
 
@@ -203,13 +218,7 @@ function downloadStatisticsCsv(data?: DashboardOrderStatistics) {
     ["date", "dropshipping_orders", "stock_in_quantity"].join(","),
     ...data.buckets.map((bucket) => [bucket.date, String(bucket.dropshipping_orders), String(bucket.stock_in_quantity)].join(",")),
   ].join("\n");
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `order-qty-statistics-${data.date_from}-to-${data.date_to}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadCsvFile(csvContent, `order-qty-statistics-${data.date_from}-to-${data.date_to}.csv`);
 }
 
 function SummaryCard({
@@ -275,7 +284,7 @@ function SummaryCard({
 }
 
 function StorageCapacityCard() {
-  const { t } = useI18n();
+  const { t, translate } = useI18n();
 
   return (
     <Card
@@ -396,7 +405,7 @@ function StorageCapacityCard() {
                           fontWeight: 600,
                         }}
                       >
-                        {t(item.labelKey)}
+                        {translate(item.labelKey)}
                       </Typography>
                     </Stack>
                     <Typography
@@ -434,7 +443,7 @@ export function DashboardOrderStatisticsCard({
   timeWindow,
 }: DashboardOrderStatisticsCardProps) {
   const theme = useTheme();
-  const { t } = useI18n();
+  const { t, translate } = useI18n();
   const [draftDateFrom, setDraftDateFrom] = useState(toHourDraftValue(customDateFrom ?? data?.date_from, "start"));
   const [draftDateTo, setDraftDateTo] = useState(toHourDraftValue(customDateTo ?? data?.date_to, "end"));
   const [hasPendingCustomSync, setHasPendingCustomSync] = useState(false);
@@ -452,6 +461,7 @@ export function DashboardOrderStatisticsCard({
   );
   const yMax = buildNiceMax(maxSeriesValue);
   const gridLineCount = 5;
+  const gridLines = buildChartGridLines(yMax, gridLineCount, chartPaddingTop, innerHeight);
   const xLabelStep = Math.max(1, Math.ceil(buckets.length / 4));
   const dropshippingPoints = buildSeriesPoints(buckets, "dropshipping_orders", innerWidth, innerHeight, yMax);
   const stockInPoints = buildSeriesPoints(buckets, "stock_in_quantity", innerWidth, innerHeight, yMax);
@@ -621,7 +631,7 @@ export function DashboardOrderStatisticsCard({
                       type="button"
                       variant="text"
                     >
-                      {t(option.labelKey)}
+                      {translate(option.labelKey)}
                     </Button>
                   );
                 })}
@@ -727,19 +737,16 @@ export function DashboardOrderStatisticsCard({
                 <Box sx={{ overflowX: "auto", width: "100%" }}>
                   <Box sx={{ minWidth: { xs: 640, md: "100%" } }}>
                     <svg preserveAspectRatio="none" viewBox={`0 0 ${chartWidth} ${chartHeight}`} width="100%">
-                      {Array.from({ length: gridLineCount + 1 }, (_, index) => {
-                        const value = (yMax / gridLineCount) * (gridLineCount - index);
-                        const y = chartPaddingTop + (innerHeight / gridLineCount) * index;
-                        return (
-                          <g key={`grid-${value}`}>
+                      {gridLines.map((gridLine) => (
+                          <g key={gridLine.key}>
                             <line
                               stroke={alpha(theme.palette.divider, 0.95)}
                               strokeDasharray="8 8"
                               strokeWidth="1"
                               x1={yAxisWidth}
                               x2={chartWidth - 8}
-                              y1={y}
-                              y2={y}
+                              y1={gridLine.y}
+                              y2={gridLine.y}
                             />
                             <text
                               fill={theme.palette.text.secondary}
@@ -747,13 +754,12 @@ export function DashboardOrderStatisticsCard({
                               fontSize="8"
                               textAnchor="end"
                               x={yAxisWidth - 10}
-                              y={y + 3}
+                              y={gridLine.y + 3}
                             >
-                              {formatNumber(value)}
+                              {formatNumber(gridLine.value)}
                             </text>
                           </g>
-                        );
-                      })}
+                      ))}
 
                       <g transform={`translate(${yAxisWidth}, ${chartPaddingTop})`}>
                         <path

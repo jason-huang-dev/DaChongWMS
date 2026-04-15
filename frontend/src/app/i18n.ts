@@ -1,6 +1,14 @@
 import type { AppLocale } from "@/app/ui-preferences-storage";
 
 type TranslationValue = string;
+type TranslationCatalog = Record<AppLocale, Record<string, TranslationValue>>;
+
+function mergeLocaleMessageGroups(...groups: TranslationCatalog[]): TranslationCatalog {
+  return {
+    en: Object.assign({}, ...groups.map((group) => group.en)),
+    "zh-CN": Object.assign({}, ...groups.map((group) => group["zh-CN"])),
+  };
+}
 
 const keyedMessages = {
   en: {
@@ -59,6 +67,8 @@ const keyedMessages = {
     "inventory.removeProductFor": "Remove {{goodsCode}}",
     "bulk.selectedCount": "{{count}} selected",
     "table.paginationDisplayedRows": "{{from}}-{{to}} of {{count}}",
+    "dashboard.metricLinkLabel": "{{section}}: {{label}}",
+    "dashboard.cellsCount": "{{count}} cells",
   },
   "zh-CN": {
     "ui.language": "语言",
@@ -115,12 +125,82 @@ const keyedMessages = {
     "inventory.removeProductFor": "移除 {{goodsCode}}",
     "bulk.selectedCount": "已选择 {{count}} 项",
     "table.paginationDisplayedRows": "{{from}}-{{to}}, 共 {{count}}",
+    "dashboard.metricLinkLabel": "{{section}}：{{label}}",
+    "dashboard.cellsCount": "{{count}}个单元",
   },
-} as const satisfies Record<AppLocale, Record<string, TranslationValue>>;
+} as const satisfies TranslationCatalog;
 
-const supplementalRawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
-  en: {},
+const stockAgeSupplementalMessages = {
+  en: {
+    "Stock age report": "Stock age report",
+    "Stock age summary": "Stock age summary",
+    "Collapse stock age summary": "Collapse stock age summary",
+    "Expand stock age summary": "Expand stock age summary",
+    breadcrumb: "breadcrumb",
+    "Standard Stock Age": "Standard Stock Age",
+    "Segmented Stock Age": "Segmented Stock Age",
+    "Stock age views": "Stock age views",
+    "All Warehouses": "All Warehouses",
+    "All Clients": "All Clients",
+    "Search merchant SKU": "Search merchant SKU",
+    "Product Size": "Product Size",
+    "Storage Date": "Storage Date",
+    "Stock Age (Day)": "Stock Age (Day)",
+    "Update Time": "Update Time",
+    "Age Band": "Age Band",
+    "No stock age rows match the current filters.": "No stock age rows match the current filters.",
+    "Inventory adjustment": "Inventory adjustment",
+    "Inter-warehouse transfer": "Inter-warehouse transfer",
+    "Adjustment No.": "Adjustment No.",
+    "Operator": "Operator",
+    "Operation": "Operation",
+    "Latest Time": "Latest Time",
+    "Stock Status": "Stock Status",
+    "Product Information/Box Information": "Product Information/Box Information",
+    "No inventory adjustments match the current filters.": "No inventory adjustments match the current filters.",
+    "stockAge.skuCountCompact": "{{count}} SKUs",
+    "stockAge.quantityCountCompact": "{{count}} qty",
+  },
   "zh-CN": {
+    "Stock age report": "库龄报表",
+    "Stock age summary": "库龄汇总",
+    "Collapse stock age summary": "收起库龄汇总",
+    "Expand stock age summary": "展开库龄汇总",
+    breadcrumb: "面包屑",
+    "Standard Stock Age": "标准库龄",
+    "Segmented Stock Age": "分段库龄",
+    "Stock age views": "库龄视图",
+    "All Warehouses": "全部仓库",
+    "All Clients": "全部客户",
+    "Search merchant SKU": "搜索商家 SKU",
+    "Product Size": "产品尺寸",
+    "Storage Date": "入库日期",
+    "Stock Age (Day)": "库龄(天)",
+    "Update Time": "更新时间",
+    "Age Band": "库龄分段",
+    "No stock age rows match the current filters.": "没有符合当前筛选条件的库龄记录。",
+    "Inventory adjustment": "库存调整",
+    "Inter-warehouse transfer": "跨仓调拨",
+    "Adjustment No.": "调整单号",
+    "Operator": "操作人",
+    "Operation": "操作",
+    "Latest Time": "最新时间",
+    "Stock Status": "库存状态",
+    "Product Information/Box Information": "商品信息/箱唛信息",
+    "No inventory adjustments match the current filters.": "没有符合当前筛选条件的库存调整记录。",
+    "stockAge.skuCountCompact": "{{count}}个SKU",
+    "stockAge.quantityCountCompact": "{{count}}库存",
+  },
+} as const satisfies TranslationCatalog;
+
+const supplementalRawMessages: TranslationCatalog = mergeLocaleMessageGroups(stockAgeSupplementalMessages, {
+  en: {
+    Export: "Export",
+    "Operational queues": "Operational queues",
+  },
+  "zh-CN": {
+    Export: "导出",
+    "Operational queues": "运营队列",
     "Current filters": "当前筛选",
     "Save view": "保存视图",
     Delete: "删除",
@@ -677,7 +757,7 @@ const supplementalRawMessages: Record<AppLocale, Record<string, TranslationValue
     "Action needed": "需要处理",
     "Dock exceptions": "月台异常",
   },
-};
+});
 
 const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
   en: {},
@@ -1803,7 +1883,7 @@ function getMessageTemplate(locale: AppLocale, key: string, mode: "strict" | "fa
 }
 
 export function hasTranslationKey(key: string): key is TranslationKey {
-  return Object.hasOwn(messages.en, key);
+  return Object.prototype.hasOwnProperty.call(messages.en, key);
 }
 
 export function findTranslationKey(key: string): TranslationKey | null {

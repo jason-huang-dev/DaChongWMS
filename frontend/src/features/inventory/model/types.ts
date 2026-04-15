@@ -28,8 +28,10 @@ export type {
   WarehouseRecord,
 };
 
+export type StockAgeBucketLabel = "<30" | "31-60" | "61-90" | "90+";
+
 export interface StockAgeBucket {
-  label: string;
+  label: StockAgeBucketLabel;
   count: number;
   quantity: number;
 }
@@ -42,7 +44,9 @@ export interface StockAgeRow {
   on_hand_qty: string;
   available_qty: string;
   age_days: number;
+  storage_date: string | null;
   last_activity: string | null;
+  update_time: string | null;
 }
 
 export interface CrossWarehouseTransferCandidate {

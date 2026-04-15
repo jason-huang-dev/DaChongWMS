@@ -7,8 +7,10 @@ import type {
   InventoryMovementHistoryRow,
   InventoryMovementRecord,
   StockAgeBucket,
+  StockAgeBucketLabel,
   StockAgeRow,
 } from "@/features/inventory/model/types";
+import { downloadCsvFile, escapeCsvValue } from "@/shared/utils/csv";
 
 export const defaultInventoryAdjustmentValues: InventoryAdjustmentValues = {
   balance_id: 0,
@@ -23,7 +25,13 @@ function numeric(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function ageInDays(value: string | null | undefined) {
+export const stockAgeBucketLabels = ["<30", "31-60", "61-90", "90+"] as const satisfies readonly StockAgeBucketLabel[];
+
+const stockAgeBucketOrder = new Map<StockAgeBucketLabel, number>(
+  stockAgeBucketLabels.map((label, index) => [label, index]),
+);
+
+export function calculateStockAgeDays(value: string | null | undefined) {
   if (!value) {
     return 0;
   }
@@ -33,6 +41,27 @@ function ageInDays(value: string | null | undefined) {
   }
   const ageMs = Date.now() - parsed.getTime();
   return Math.max(Math.floor(ageMs / (1000 * 60 * 60 * 24)), 0);
+}
+
+export function resolveStockAgeBucketLabel(ageDays: number): StockAgeBucketLabel {
+  if (ageDays <= 30) {
+    return "<30";
+  }
+  if (ageDays <= 60) {
+    return "31-60";
+  }
+  if (ageDays <= 90) {
+    return "61-90";
+  }
+  return "90+";
+}
+
+export function compareStockAgeBucketLabels(left: StockAgeBucketLabel, right: StockAgeBucketLabel) {
+  return (stockAgeBucketOrder.get(left) ?? 0) - (stockAgeBucketOrder.get(right) ?? 0);
+}
+
+export function sumStockAgeQuantity<T extends Pick<StockAgeRow, "on_hand_qty">>(rows: T[]) {
+  return rows.reduce((total, row) => total + numeric(row.on_hand_qty), 0);
 }
 
 export function sumVisibleQuantity(
@@ -51,30 +80,150 @@ export function buildStockAgeRows(balances: InventoryBalanceRecord[]): StockAgeR
       warehouse_name: balance.warehouse_name,
       on_hand_qty: balance.on_hand_qty,
       available_qty: balance.available_qty,
-      age_days: ageInDays(balance.last_movement_at ?? balance.update_time),
+      age_days: calculateStockAgeDays(balance.create_time),
+      storage_date: balance.create_time ?? null,
       last_activity: balance.last_movement_at ?? balance.update_time,
+      update_time: balance.update_time ?? null,
     }))
     .sort((left, right) => right.age_days - left.age_days);
 }
 
-export function buildStockAgeBuckets(rows: StockAgeRow[]): StockAgeBucket[] {
-  const buckets = [
-    { label: "0-30 days", count: 0, quantity: 0, predicate: (age: number) => age <= 30 },
-    { label: "31-60 days", count: 0, quantity: 0, predicate: (age: number) => age >= 31 && age <= 60 },
-    { label: "61-90 days", count: 0, quantity: 0, predicate: (age: number) => age >= 61 && age <= 90 },
-    { label: "90+ days", count: 0, quantity: 0, predicate: (age: number) => age >= 91 },
-  ];
+export function buildStockAgeBuckets<T extends Pick<StockAgeRow, "age_days" | "goods_code" | "on_hand_qty">>(
+  rows: T[],
+): StockAgeBucket[] {
+  const buckets = new Map<StockAgeBucketLabel, { quantity: number; skus: Set<string> }>(
+    stockAgeBucketLabels.map((label) => [label, { quantity: 0, skus: new Set<string>() }]),
+  );
 
   rows.forEach((row) => {
-    const bucket = buckets.find((candidate) => candidate.predicate(row.age_days));
-    if (!bucket) {
-      return;
+    const bucket = buckets.get(resolveStockAgeBucketLabel(row.age_days));
+    bucket?.skus.add(row.goods_code);
+    if (bucket) {
+      bucket.quantity += numeric(row.on_hand_qty);
     }
-    bucket.count += 1;
-    bucket.quantity += numeric(row.on_hand_qty);
   });
 
-  return buckets.map(({ predicate: _predicate, ...bucket }) => bucket);
+  return stockAgeBucketLabels.map((label) => ({
+    label,
+    count: buckets.get(label)?.skus.size ?? 0,
+    quantity: buckets.get(label)?.quantity ?? 0,
+  }));
+}
+
+function buildCsvLine(values: Array<string | number | boolean | null | undefined>) {
+  return values
+    .map((value) => escapeCsvValue(value))
+    .join(",");
+}
+
+export function buildStockAgeCsvContent(rows: Array<{
+  merchantCode: string;
+  merchantSku: string;
+  productBarcode: string;
+  productName: string;
+  sizeLabel: string;
+  warehouseName: string;
+  clientLabel: string;
+  location_code: string;
+  storageDate: string | null;
+  on_hand_qty: string;
+  available_qty: string;
+  age_days: number;
+  updateTime: string | null;
+}>) {
+  const header = [
+    "Merchant Code",
+    "Merchant SKU",
+    "Barcode",
+    "Product Name",
+    "Product Size",
+    "Warehouse",
+    "Client",
+    "Location",
+    "Storage Date",
+    "Qty",
+    "Available",
+    "Stock Age (Day)",
+    "Update Time",
+  ];
+
+  return [
+    buildCsvLine(header),
+    ...rows.map((row) =>
+      buildCsvLine([
+        row.merchantCode,
+        row.merchantSku,
+        row.productBarcode,
+        row.productName,
+        row.sizeLabel,
+        row.warehouseName,
+        row.clientLabel,
+        row.location_code,
+        row.storageDate ?? "",
+        row.on_hand_qty,
+        row.available_qty,
+        row.age_days,
+        row.updateTime ?? "",
+      ]),
+    ),
+  ].join("\n");
+}
+
+export function downloadStockAgeRowsCsv(
+  rows: Parameters<typeof buildStockAgeCsvContent>[0],
+  filenamePrefix: string,
+) {
+  if (rows.length === 0) {
+    return;
+  }
+
+  downloadCsvFile(buildStockAgeCsvContent(rows), `${filenamePrefix}.csv`);
+}
+
+function buildInventoryAdjustmentGroupCsvLine(group: InventoryAdjustmentGroupRow, item: InventoryAdjustmentGroupItem) {
+  return buildCsvLine([
+    group.adjustmentNumber,
+    group.warehouseName,
+    group.note,
+    item.goodsCode,
+    item.productName,
+    item.lotNumber,
+    item.serialNumber,
+    item.adjustmentTypeLabel,
+    item.shelfCode,
+    item.signedQuantity,
+    item.performedBy,
+    item.occurredAt,
+  ]);
+}
+
+export function buildInventoryAdjustmentCsvContent(groups: InventoryAdjustmentGroupRow[]) {
+  const header = [
+    "Adjustment No.",
+    "Warehouse",
+    "Note",
+    "SKU",
+    "Product Name",
+    "Lot Number",
+    "Serial Number",
+    "Adjustment Type",
+    "Shelf",
+    "Adjustment Qty",
+    "Operator",
+    "Time",
+  ];
+
+  const lines = groups.flatMap((group) => group.items.map((item) => buildInventoryAdjustmentGroupCsvLine(group, item)));
+
+  return [buildCsvLine(header), ...lines].join("\n");
+}
+
+export function downloadInventoryAdjustmentGroupsCsv(groups: InventoryAdjustmentGroupRow[], filenamePrefix: string) {
+  if (groups.length === 0) {
+    return;
+  }
+
+  downloadCsvFile(buildInventoryAdjustmentCsvContent(groups), `${filenamePrefix}.csv`);
 }
 
 export function buildRecentAdjustments(
@@ -169,71 +318,6 @@ export function buildInventoryAdjustmentGroups(rows: InventoryMovementHistoryRow
       ),
     }))
     .sort((left, right) => new Date(right.latestOccurredAt).getTime() - new Date(left.latestOccurredAt).getTime());
-}
-
-function escapeCsvValue(value: string | number) {
-  const normalizedValue = String(value ?? "");
-  if (!/[",\n]/.test(normalizedValue)) {
-    return normalizedValue;
-  }
-
-  return `"${normalizedValue.replace(/"/g, '""')}"`;
-}
-
-export function buildInventoryAdjustmentCsvContent(groups: InventoryAdjustmentGroupRow[]) {
-  const header = [
-    "Adjustment No.",
-    "Warehouse",
-    "Note",
-    "SKU",
-    "Product Name",
-    "Lot Number",
-    "Serial Number",
-    "Adjustment Type",
-    "Shelf",
-    "Adjustment Qty",
-    "Operator",
-    "Time",
-  ];
-
-  const lines = groups.flatMap((group) =>
-    group.items.map((item) =>
-      [
-        group.adjustmentNumber,
-        group.warehouseName,
-        group.note,
-        item.goodsCode,
-        item.productName,
-        item.lotNumber,
-        item.serialNumber,
-        item.adjustmentTypeLabel,
-        item.shelfCode,
-        item.signedQuantity,
-        item.performedBy,
-        item.occurredAt,
-      ]
-        .map((value) => escapeCsvValue(value))
-        .join(","),
-    ),
-  );
-
-  return [header.join(","), ...lines].join("\n");
-}
-
-export function downloadInventoryAdjustmentGroupsCsv(groups: InventoryAdjustmentGroupRow[], filenamePrefix: string) {
-  if (groups.length === 0 || typeof document === "undefined" || typeof URL.createObjectURL !== "function") {
-    return;
-  }
-
-  const blob = new Blob([buildInventoryAdjustmentCsvContent(groups)], {
-    type: "text/csv;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${filenamePrefix}.csv`;
-  link.click();
-  URL.revokeObjectURL(url);
 }
 
 export function buildCrossWarehouseTransferCandidates(

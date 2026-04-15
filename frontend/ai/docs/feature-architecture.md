@@ -2,6 +2,8 @@
 
 The frontend uses a consistent MVC+T feature structure. The chosen layout is lower-case `model/`, `controller/`, `view/`, and `test/` directories under each feature.
 
+The minimum quality bar for changes across those layers lives in `frontend/ai/docs/change-quality.md`.
+
 ## Chosen Structure
 
 ```text
@@ -107,6 +109,7 @@ Rules:
 - Route modules must import from `features/<feature>/view/*`.
 - Server mutations and query invalidation belong in controller hooks, not in views.
 - API payload mapping belongs in `model/mappers.ts` or `model/api.ts`, not in JSX files.
+- Cross-feature utilities such as CSV export, escaping, formatting, and permission helpers belong in `shared/` once more than one feature needs them.
 - New tests should live under `features/<feature>/test/` and mirror the owning layer in filename and folder shape.
 - If a legacy `*.test.tsx` file still lives under `view/`, `controller/`, or `model/`, move it into the feature `test/` tree when you touch that feature.
 

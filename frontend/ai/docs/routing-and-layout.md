@@ -44,6 +44,8 @@ The frontend now uses a guarded application shell that separates login from auth
 
 Route configuration lives in `frontend/src/app/routes.tsx`.
 
+The quality standard for future routing changes lives in `frontend/ai/docs/change-quality.md`.
+
 ## Module Notes
 
 - `/inbound` is now a stock-in workbench rather than a single receipt table. It includes anchored sections for standard stock-in, stock-in list management, scan-to-sign, scan-to-receive, scan-to-list, import-to-stock-in, import management, returns-to-stock, return order management, and the inbound record queues.
@@ -127,6 +129,22 @@ Each routed domain packages code using the feature architecture contract in `fro
 - `test/` for feature-local route, table, dialog, and model coverage
 
 Routes must lazy-load page modules from `features/<domain>/view/*`. Shared layout logic stays in `app/layout/`; tables, cards, and formatting that are cross-domain stay in `shared/`.
+
+## Routing Growth Plan
+
+`src/app/routes.tsx` is already large enough that new route work should prefer extraction over more in-place expansion.
+
+Recommended next split:
+
+- `src/app/routing/lazy-pages.ts` for `lazyNamedPage(...)` definitions
+- `src/app/routing/guards.tsx` for route wrappers and shared route helpers
+- `src/app/routing/routes.tsx` for the composed route tree only
+
+Rules:
+
+- do not add new feature-specific helper logic directly into the route tree if it can live beside the tree as data or a helper
+- keep `handle.crumb` and route metadata stable; presentation belongs in layout/breadcrumb components
+- when a new module adds multiple detail routes, group them as a route family instead of sprinkling them through unrelated blocks
 
 Scan-first action panels and selector-driven create panels are packaged as route-local view components under the matching domain, for example `features/inbound/view/components/ScanReceivePanel.tsx` and `features/transfers/view/components/CreateTransferOrderPanel.tsx`.
 

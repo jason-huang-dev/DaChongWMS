@@ -47,7 +47,7 @@ export function DashboardQueueCard({
   sections,
 }: DashboardQueueCardProps) {
   const theme = useTheme();
-  const { translate } = useI18n();
+  const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
 
   function getToneColor(tone: DashboardQueueMetricTone | undefined) {
@@ -156,7 +156,8 @@ export function DashboardQueueCard({
                       rowGap: 1.25,
                     }}
                   >
-                    {section.metrics.map((metric, metricIndex) => {
+                    {section.metrics.map((metric) => {
+                      const translatedSectionTitle = translate(section.title);
                       const translatedLabel = translate(metric.label);
                       const valueColor = getMetricValueColor(metric);
                       const metricToneColor =
@@ -205,7 +206,10 @@ export function DashboardQueueCard({
                           </Typography>
                           {metric.to ? (
                             <Link
-                              aria-label={translatedLabel}
+                              aria-label={t("dashboard.metricLinkLabel", {
+                                label: translatedLabel,
+                                section: translatedSectionTitle,
+                              })}
                               color="inherit"
                               component={RouterLink}
                               sx={{

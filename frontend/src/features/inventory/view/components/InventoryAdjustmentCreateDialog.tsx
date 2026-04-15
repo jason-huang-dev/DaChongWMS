@@ -590,10 +590,7 @@ export function InventoryAdjustmentCreateDialog({
                       select
                       size="small"
                       value={warehouseId ?? ""}
-                      SelectProps={{
-                        displayEmpty: true,
-                        SelectDisplayProps: { "aria-label": t("Warehouse") },
-                      }}
+                      SelectProps={{ displayEmpty: true }}
                     >
                       {warehouses.map((warehouse) => (
                         <MenuItem key={warehouse.id} value={warehouse.id}>
@@ -610,10 +607,7 @@ export function InventoryAdjustmentCreateDialog({
                       select
                       size="small"
                       value={adjustmentType}
-                      SelectProps={{
-                        displayEmpty: true,
-                        SelectDisplayProps: { "aria-label": t("Adjustment Type") },
-                      }}
+                      SelectProps={{ displayEmpty: true }}
                     >
                       {adjustmentTypeOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>

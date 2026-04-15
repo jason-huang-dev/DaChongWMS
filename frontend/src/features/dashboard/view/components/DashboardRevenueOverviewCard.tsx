@@ -542,7 +542,7 @@ export function DashboardRevenueOverviewCard({
   vouchers,
 }: DashboardRevenueOverviewCardProps) {
   const theme = useTheme();
-  const { t } = useI18n();
+  const { t, translate } = useI18n();
   const [draftDateFrom, setDraftDateFrom] = useState(toDateTimeDraftValue(dateFrom, "start"));
   const [draftDateTo, setDraftDateTo] = useState(toDateTimeDraftValue(dateTo, "end"));
 
@@ -795,7 +795,7 @@ export function DashboardRevenueOverviewCard({
                             minWidth: 0,
                           }}
                         >
-                          {t(item.label)}
+                          {translate(item.label)}
                         </Typography>
                         <Typography color="text.secondary" sx={{ fontSize: "10px", fontWeight: 700, lineHeight: 1 }}>
                           {formatNumber(item.share * 100)}%

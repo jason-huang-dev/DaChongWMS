@@ -239,13 +239,13 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
   expect(screen.queryByText("Operations workbench")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Customize dashboard" })).toBeInTheDocument();
 
-  const stockInLink = screen.getByRole("link", { name: /Pending Stock In/i });
+  const stockInLink = screen.getByRole("link", { name: "Stock In: Pending Stock In" });
   expect(stockInLink).toHaveAttribute("href", "/inbound?poStatuses=OPEN%2CPARTIAL#purchase-orders");
 
-  const financeLink = screen.getByRole("link", { name: /Quota pending review/i });
+  const financeLink = screen.getByRole("link", { name: "Finance: Quota pending review" });
   expect(financeLink).toHaveAttribute("href", "/finance#voucher-management");
 
-  const toPickLink = screen.getByRole("link", { name: /To Pick/i });
+  const toPickLink = screen.getByRole("link", { name: "Dropshipping Stock-Out: To Pick" });
   expect(toPickLink).toHaveAttribute("href", "/outbound?pickTaskStatuses=OPEN%2CASSIGNED#secondary-picking");
 
   const abnormalLink = screen.getByRole("link", { name: /Abnormal/i });
@@ -260,7 +260,7 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
   await user.click(screen.getByRole("button", { name: "Customize dashboard" }));
 
   const customizeDialog = screen.getByRole("dialog", { name: "Customize dashboard" });
-  const pendingStockInCheckbox = within(customizeDialog).getByRole("checkbox", { name: "Pending Stock In" });
+  const pendingStockInCheckbox = within(customizeDialog).getByRole("checkbox", { name: "Stock In: Pending Stock In" });
   const stockInCheckbox = within(customizeDialog).getByRole("checkbox", { name: "Stock In" });
   await user.click(pendingStockInCheckbox);
   await user.click(stockInCheckbox);

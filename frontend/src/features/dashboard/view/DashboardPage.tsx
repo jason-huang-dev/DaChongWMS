@@ -563,7 +563,7 @@ export function DashboardPage() {
 
             <Stack spacing={1.5}>
               <Typography sx={{ fontWeight: 700 }} variant="subtitle2">
-                Operational queues
+                {t("Operational queues")}
               </Typography>
               <Stack spacing={2}>
                 {queueSections.map((section) => {
@@ -604,7 +604,7 @@ export function DashboardPage() {
                             sx={{ mr: 0 }}
                           />
                           <Chip
-                            label={`${section.metrics.length} cells`}
+                            label={t("dashboard.cellsCount", { count: section.metrics.length })}
                             size="small"
                             variant={sectionHidden ? "outlined" : "filled"}
                           />
@@ -633,7 +633,10 @@ export function DashboardPage() {
                                 />
                               }
                               key={metric.key}
-                              label={metric.label}
+                              label={t("dashboard.metricLinkLabel", {
+                                label: translate(metric.label),
+                                section: translate(section.title),
+                              })}
                               sx={{
                                 flex: {
                                   xs: "1 1 100%",

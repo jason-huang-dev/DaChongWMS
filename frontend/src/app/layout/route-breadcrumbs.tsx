@@ -359,7 +359,7 @@ export function RouteBreadcrumbs() {
   return (
     <Stack alignItems="center" direction="row" spacing={1} sx={{ maxWidth: "100%", minWidth: 0, width: "100%" }}>
       <Box
-        aria-label={t("Breadcrumb")}
+        aria-label={t("breadcrumb")}
         component="nav"
         ref={containerRef}
         sx={{

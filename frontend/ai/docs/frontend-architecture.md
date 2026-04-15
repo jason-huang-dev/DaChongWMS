@@ -6,6 +6,8 @@ The current product audit and UX gap list live in `frontend/ai/docs/wms-product-
 
 The external reference model for the next implementation phase lives in `frontend/ai/docs/jf-wms-reference.md`. Codex should use it to emulate the functional posture of JF WMS — dense operator workbenches, broad domain navigation, advanced queue filters, status-bucket navigation, and strong bulk-action tooling — while still following our own architecture and branding.
 
+The quality bar for future edits lives in `frontend/ai/docs/change-quality.md`. Use it as the default review checklist before adding new page-local helpers, route config, or localization entries.
+
 ## Current Stack
 
 - **Tooling**: Vite 6, TypeScript, npm.
@@ -65,6 +67,45 @@ frontend/
 
 Feature roots no longer contain compatibility shims. Imports should target the owning layer directly.
 
+## `src/app` Growth Plan
+
+The current `src/app/` layout is serviceable, but it is too flat for long-term growth. As `routes.tsx`, `i18n.ts`, and provider setup continue to expand, new work should push the app layer toward composition boundaries instead of adding more top-level files.
+
+Recommended steady-state structure:
+
+```text
+frontend/src/app/
+  bootstrap/
+    App.tsx
+  providers/
+    app-providers.tsx
+  routing/
+    routes.tsx
+    lazy-pages.ts
+    guards.tsx
+  layout/
+    ...
+  i18n/
+    index.ts
+    catalog.ts
+    message-groups/
+  theme/
+    index.ts
+    brand.ts
+  preferences/
+    ui-preferences.tsx
+    ui-preferences-storage.ts
+    workspace-preferences.ts
+  scope/
+    scope-context.tsx
+```
+
+Migration rule:
+
+- do not mass-move `src/app` just for aesthetics
+- when touching a large app-level module, extract one real boundary instead of extending the flat file
+- update the owning doc when a new boundary becomes part of the expected architecture
+
 ## Architectural Decisions
 
 - Authentication is based on the backend's legacy login contract, not JWT. The SPA stores the returned profile token, active company membership, and `user_id`, then sends them back as `TOKEN` and `OPERATOR` headers on each API request.
@@ -84,6 +125,7 @@ Feature roots no longer contain compatibility shims. Imports should target the o
 - Repeated table filtering and saved views use shared modules (`useDataView`, `DataViewToolbar`, `ResourceTable`, and the denser inventory-style `DataTable`) instead of per-page one-off controls.
 - Repeated branding usage goes through reusable modules: raw logo files live in `src/assets/logo/`, and the live UI consumes them through shared components such as `BrandLogo` and `AuthShell`.
 - JF-style shell state now lives in shared app modules: `src/app/workspace-preferences.ts` owns workspace-tab and workbench-preference queries, while `app/layout/*` owns the horizontal module nav and workspace-tab strip.
+- Cross-feature infrastructure such as CSV export, permission checks, and formatting should move into `src/shared/utils/` rather than being duplicated inside individual features.
 
 ## Current Screen Set
 

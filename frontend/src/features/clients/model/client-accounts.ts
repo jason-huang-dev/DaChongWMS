@@ -3,6 +3,7 @@ import type {
   ClientContactPerson,
   ClientLifecycleStatus,
 } from "@/features/clients/model/types";
+import { downloadCsvFile, escapeCsvValue } from "@/shared/utils/csv";
 import { formatDateTime, formatNumber, formatStatusLabel } from "@/shared/utils/format";
 
 export type ClientSearchField =
@@ -139,11 +140,6 @@ function uniqueSortedValues(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])).sort((left, right) =>
     left.localeCompare(right),
   );
-}
-
-function sanitizeCsvValue(rawValue: string) {
-  const escapedValue = /^[=+\-@]/u.test(rawValue) ? `'${rawValue}` : rawValue;
-  return `"${escapedValue.replace(/"/g, "\"\"")}"`;
 }
 
 function matchesExactQueryValue(fieldValue: string, queryValue: string) {
@@ -510,25 +506,17 @@ export function buildClientAccountsCsvContent(rows: ClientAccountRecord[]) {
       row.is_active ? "Yes" : "No",
       row.notes,
     ]
-      .map((value) => sanitizeCsvValue(String(value ?? "")))
+      .map((value) => escapeCsvValue(value))
       .join(",");
   });
 
-  return [header.map(sanitizeCsvValue).join(","), ...lines].join("\n");
+  return [header.map((value) => escapeCsvValue(value)).join(","), ...lines].join("\n");
 }
 
 export function downloadClientAccountsCsv(rows: ClientAccountRecord[], filenamePrefix: string) {
-  if (rows.length === 0 || typeof document === "undefined" || typeof URL.createObjectURL !== "function") {
+  if (rows.length === 0) {
     return;
   }
 
-  const blob = new Blob([buildClientAccountsCsvContent(rows)], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${filenamePrefix}.csv`;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
+  downloadCsvFile(buildClientAccountsCsvContent(rows), `${filenamePrefix}.csv`);
 }

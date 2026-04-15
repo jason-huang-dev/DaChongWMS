@@ -4,6 +4,7 @@ import { Alert, Button, Stack, Typography } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
 import { MutationCard } from "@/shared/components/mutation-card";
+import { downloadCsvFile } from "@/shared/utils/csv";
 
 const templateHeaders = [
   "purchase_order_number",
@@ -31,13 +32,7 @@ interface StockInImportPanelProps {
 
 function downloadTemplate() {
   const csvContent = `${templateHeaders.join(",")}\nPO-1001,,RCPT-1001,RCV-01,SKU-1001,1.0000,AVAILABLE,0,,,LPN-1001,,IMPORT-1001,`;
-  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = "stock-in-import-template.csv";
-  link.click();
-  URL.revokeObjectURL(url);
+  downloadCsvFile(csvContent, "stock-in-import-template.csv");
 }
 
 export function StockInImportPanel({

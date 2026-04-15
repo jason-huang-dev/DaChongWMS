@@ -34,6 +34,8 @@ The result was predictable: the codebase accumulated a large amount of UI text t
 
 The application now uses one catalog-driven translation system in `frontend/src/app/i18n.ts`.
 
+The change-quality checklist for localization work lives in `frontend/ai/docs/change-quality.md`.
+
 Rules:
 
 - every translatable application UI string must exist in the catalog
@@ -232,6 +234,23 @@ The catalog currently supports both:
 This is intentional during migration. The important rule is that all application copy must be explicitly present in the catalog. The runtime no longer treats an arbitrary string as translatable just because it happens to be English.
 
 Long term, prefer semantic, feature-scoped keys for stable product copy.
+
+## Catalog Maintenance Rules
+
+`src/app/i18n.ts` should not keep growing through ad hoc edits.
+
+When adding a new slice of application copy:
+
+- group related messages together instead of scattering them through the file
+- keep runtime helpers separate from catalog data
+- prefer a named message group for feature- or workflow-specific additions
+- if a new area adds enough copy to be meaningful, document the group in the architecture notes and plan to move it under `src/app/i18n/message-groups/` when the catalog is split
+
+Examples of good maintenance moves:
+
+- adding a stock-age message group rather than mixing those strings into unrelated auth or dashboard entries
+- extracting repeated shared labels into keyed messages instead of repeating source-text literals
+- documenting a new catalog pattern when it changes how future features should add copy
 
 ## Backend Contract
 
