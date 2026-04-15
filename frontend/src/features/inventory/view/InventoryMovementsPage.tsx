@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
+import { findTranslationKey } from "@/app/i18n";
 import { useTenantScope } from "@/app/scope-context";
 import { useI18n } from "@/app/ui-preferences";
 import { inventoryApi } from "@/features/inventory/model/api";
@@ -256,6 +257,19 @@ function InventoryMovementMetaField({
       </Box>
     </Typography>
   );
+}
+
+function resolveTranslatedInventoryMovementLabel(
+  row: InventoryMovementHistoryRow,
+  translate: (key: string) => string,
+) {
+  const label =
+    row.entryTypeLabel?.trim()
+    || row.movementTypeLabel?.trim()
+    || formatStatusLabel(row.movementType);
+  const translationKey = findTranslationKey(label);
+
+  return translationKey ? translate(translationKey) : label;
 }
 
 export function InventoryMovementsPage() {
@@ -637,9 +651,7 @@ export function InventoryMovementsPage() {
             const clientLabel = row.clientName
               ? `${row.clientName}${row.clientCode ? ` [${row.clientCode}]` : ""}`
               : "--";
-            const entryTypeLabel = translate(
-              row.entryTypeLabel || row.movementTypeLabel || formatStatusLabel(row.movementType),
-            );
+            const entryTypeLabel = resolveTranslatedInventoryMovementLabel(row, translate);
 
             return (
               <Stack

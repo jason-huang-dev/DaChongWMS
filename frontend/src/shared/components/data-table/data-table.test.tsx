@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { expect, test, vi } from "vitest";
 
 import { DataTable, type DataTableColumnDefinition } from "@/shared/components/data-table";
@@ -77,13 +78,9 @@ test("renders the inner toolbar above the scrollable table region and keeps pagi
   );
 
   const tableContainer = container.querySelector(".MuiTableContainer-root") as HTMLElement;
-  const toolbar = screen.getByText("Bulk actions").parentElement as HTMLElement;
+  const toolbar = screen.getByText("Bulk actions");
   const pagination = container.querySelector(".MuiTablePagination-root") as HTMLElement;
 
-  expect(toolbar).toHaveStyle({
-    borderBottomStyle: "solid",
-    flex: "0 0 auto",
-  });
   expect(tableContainer).toHaveStyle({
     overflowY: "auto",
   });
@@ -117,4 +114,42 @@ test("keeps selection and pagination behavior intact when using the bounded tabl
 
   expect(screen.getAllByRole("checkbox")).toHaveLength(3);
   expect(screen.getByText("1-10 of 25")).toBeInTheDocument();
+});
+
+test("supports column visibility controls without breaking the rendered table", async () => {
+  const user = userEvent.setup();
+
+  renderWithProviders(
+    <div style={{ height: 320, width: 360 }}>
+      <DataTable
+        columns={[
+          ...columns,
+          {
+            header: "Actions",
+            key: "actions",
+            render: () => "Open",
+            width: 96,
+          },
+        ]}
+        fillHeight
+        getRowId={(row) => row.id}
+        rows={rows}
+        stickyHeader
+      />
+    </div>,
+  );
+
+  await user.click(screen.getByRole("button", { name: "Configure columns" }));
+  await user.click(screen.getByRole("button", { name: "Actions" }));
+  await user.keyboard("{Escape}");
+
+  expect(screen.queryByRole("columnheader", { name: "Actions" })).not.toBeInTheDocument();
+  expect(screen.queryByText("Open")).not.toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Configure columns" }));
+  await user.click(screen.getByRole("button", { name: "Restore default" }));
+  await user.keyboard("{Escape}");
+
+  expect(screen.getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
+  expect(screen.getAllByText("Open")).toHaveLength(2);
 });

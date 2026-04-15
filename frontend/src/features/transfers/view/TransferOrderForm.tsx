@@ -37,7 +37,7 @@ export function TransferOrderForm({
           onSubmit={form.handleSubmit((values) => onSubmit(values))}
           spacing={2}
         >
-          <DocumentHeaderFields dateLabel="Requested date" dateName="requested_date" />
+          <DocumentHeaderFields dateInputType="date" dateLabel="Requested date" dateName="requested_date" />
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting} type="submit" variant="contained">
               {isSubmitting ? "Saving..." : "Save changes"}

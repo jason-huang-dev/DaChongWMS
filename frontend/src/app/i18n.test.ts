@@ -179,6 +179,15 @@ describe("i18n", () => {
     expect(resolveTranslation("zh-CN", "Success")).toBe("成功");
   });
 
+  test("resolves newly added inventory transfer literals", () => {
+    expect(resolveTranslation("en", "Opening")).toBe("Opening");
+    expect(resolveTranslation("zh-CN", "Opening")).toBe("期初");
+    expect(resolveTranslation("en", "Transfer No.")).toBe("Transfer No.");
+    expect(resolveTranslation("zh-CN", "Transfer No.")).toBe("调拨单号");
+    expect(resolveTranslation("en", "Column configuration")).toBe("Column configuration");
+    expect(resolveTranslation("zh-CN", "Column configuration")).toBe("列配置");
+  });
+
   test("renders a safe fallback for unknown translation keys", () => {
     expect(resolveTranslation("zh-CN", "Order Interception")).toBe("Order Interception");
     expect(resolveTranslation("zh-CN", "shell.missingTranslation")).toBe("[missing: shell.missingTranslation]");

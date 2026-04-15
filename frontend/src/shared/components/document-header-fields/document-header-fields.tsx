@@ -5,6 +5,7 @@ import { FormTextField } from "@/shared/components/form-text-field";
 interface DocumentHeaderFieldsProps {
   dateLabel: string;
   dateName: string;
+  dateInputType?: "date" | "datetime-local";
   notesLabel?: string;
   notesName?: string;
   referenceLabel?: string;
@@ -14,6 +15,7 @@ interface DocumentHeaderFieldsProps {
 export function DocumentHeaderFields({
   dateLabel,
   dateName,
+  dateInputType = "datetime-local",
   notesLabel = "Notes",
   notesName = "notes",
   referenceLabel = "Reference code",
@@ -26,7 +28,7 @@ export function DocumentHeaderFields({
           InputLabelProps={{ shrink: true }}
           label={dateLabel}
           name={dateName}
-          type="datetime-local"
+          type={dateInputType}
         />
       </Grid>
       <Grid size={{ xs: 12, md: 4 }}>

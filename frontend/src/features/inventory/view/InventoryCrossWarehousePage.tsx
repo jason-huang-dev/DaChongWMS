@@ -1,101 +1,186 @@
-import Grid from "@mui/material/Grid";
-import { Alert, Button, Stack, Typography } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useMemo } from "react";
+
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import DownloadRoundedIcon from "@mui/icons-material/DownloadRounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import UploadFileRoundedIcon from "@mui/icons-material/UploadFileRounded";
+import {
+  Alert,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Stack,
+} from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
-import { useInventoryController } from "@/features/inventory/controller/useInventoryController";
-import { buildCrossWarehouseTransferCandidates } from "@/features/inventory/model/mappers";
-import { MetricCard } from "@/shared/components/metric-card";
-import { ResourceTable } from "@/shared/components/resource-table";
-import { formatNumber } from "@/shared/utils/format";
-import { parseApiError } from "@/shared/utils/parse-api-error";
+import { useInventoryCrossWarehouseController } from "@/features/inventory/controller/useInventoryCrossWarehouseController";
+import {
+  formatTransferTypeLabel,
+  type InterwarehouseTransferRow,
+} from "@/features/inventory/model/interwarehouse-transfer";
+import { InterwarehouseTransferFilters } from "@/features/inventory/view/components/InterwarehouseTransferFilters";
+import { CreateTransferOrderPanel } from "@/features/transfers/view/components/CreateTransferOrderPanel";
+import { ActionIconButton } from "@/shared/components/action-icon-button/action-icon-button";
+import { QueryAlert } from "@/shared/components/query-alert/query-alert";
+import { ResourceTable, type ResourceTableColumnDefinition } from "@/shared/components/resource-table";
+import { StatusChip } from "@/shared/components/status-chip";
+import { formatDateTime } from "@/shared/utils/format";
 
 export function InventoryCrossWarehousePage() {
-  const navigate = useNavigate();
-  const { t, translate, msg } = useI18n();
-  const { activeWarehouse, activeWarehouseId, crossWarehouseBalancesQuery, warehouses } = useInventoryController({
-    page: "crossWarehouse",
-  });
-
-  const crossWarehouseCandidates = buildCrossWarehouseTransferCandidates(
-    crossWarehouseBalancesQuery.data?.results ?? [],
-    activeWarehouseId,
+  const { t } = useI18n();
+  const {
+    activeBucket,
+    bucketItems,
+    columnVisibilityStorageKey,
+    createErrorMessage,
+    createSuccessMessage,
+    createTransferOrderMutation,
+    dataView,
+    exportVisibleRows,
+    filterOptions,
+    hasActiveFilters,
+    isCreateDialogOpen,
+    openCreateDialog,
+    closeCreateDialog,
+    locationsQuery,
+    pagination,
+    queryError,
+    refetch,
+    resetFilters,
+    rows,
+    setActiveBucket,
+    setSort,
+    sorting,
+    transferOrdersQuery,
+    warehouses,
+  } = useInventoryCrossWarehouseController();
+  const columns = useMemo<Array<ResourceTableColumnDefinition<InterwarehouseTransferRow>>>(
+    () => [
+      { header: "Transfer No.", key: "transferNumber", minWidth: 140, nowrap: true, render: (row) => row.transferNumber },
+      { header: "Status", key: "status", minWidth: 120, render: (row) => <StatusChip status={row.status} /> },
+      { header: "From Warehouse", key: "fromWarehouse", minWidth: 146, render: (row) => row.fromWarehouseName },
+      { header: "To Warehouse", key: "toWarehouse", minWidth: 146, render: (row) => row.toWarehouseName },
+      {
+        header: "Transfer Type",
+        key: "transferType",
+        minWidth: 148,
+        render: (row) => t(formatTransferTypeLabel(row.transferType)),
+      },
+      { header: "Transfer Details", key: "transferDetails", minWidth: 172, render: (row) => row.transferDetails },
+      { header: "Note", key: "note", minWidth: 148, render: (row) => row.raw.notes || "--" },
+      { header: "Appendix", key: "appendix", minWidth: 130, render: (row) => row.raw.reference_code || "--" },
+      { header: "Creator", key: "creator", minWidth: 100, render: () => "--" },
+      {
+        header: "Create Time",
+        key: "createTime",
+        minWidth: 166,
+        render: (row) => formatDateTime(row.createTime),
+        sortKey: "createTime",
+      },
+      {
+        header: "Stock-Out Time",
+        key: "stockOutTime",
+        minWidth: 166,
+        render: (row) => formatDateTime(row.stockOutTime),
+        sortKey: "stockOutTime",
+      },
+      {
+        header: "Stock In Time",
+        key: "stockInTime",
+        minWidth: 166,
+        render: (row) => formatDateTime(row.stockInTime),
+        sortKey: "stockInTime",
+      },
+      {
+        header: "Cancel Time",
+        key: "cancelTime",
+        minWidth: 166,
+        render: (row) => formatDateTime(row.cancelTime),
+        sortKey: "cancelTime",
+      },
+      { header: "Operation", key: "operation", minWidth: 96, render: () => "--" },
+    ],
+    [t],
   );
 
   return (
-    <Stack spacing={2.5}>
-      <Stack
-        alignItems={{ md: "center" }}
-        direction={{ xs: "column", md: "row" }}
-        justifyContent="space-between"
-        spacing={1.5}
-      >
-        <Typography variant="h5">{t("Inter-warehouse Transfer")}</Typography>
-        <Button onClick={() => navigate("/transfers")} variant="contained">
-          {t("Open internal move workbench")}
-        </Button>
-      </Stack>
-      <Alert severity="info">
-        {t(
-          "Planning view only. The backend still supports same-warehouse transfer orders and replenishment tasks; dedicated warehouse-to-warehouse transfer requests are not yet implemented.",
-        )}
-      </Alert>
-      {warehouses.length < 2 ? (
-        <Alert severity="warning">
-          {t("Add at least one more warehouse to compare stock and plan inter-warehouse moves.")}
+    <>
+      <Stack spacing={2.5}>
+        <Alert severity="info">
+          {t(
+            "Destination warehouses are inferred from destination locations for now. The page matches the new queue-style workspace while the backend is still converging on a dedicated cross-warehouse transfer object.",
+          )}
         </Alert>
-      ) : (
-        <>
-          <Grid container spacing={2.5}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard
-                helper={activeWarehouse ? msg("shell.warehouseContextChip", { label: activeWarehouse.warehouse_name }) : t("No warehouse selected")}
-                label="Warehouse comparisons"
-                tone="info"
-                value={warehouses.length}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard label="Transfer candidate SKUs" tone="warning" value={crossWarehouseCandidates.length} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <MetricCard
-                label="Other-warehouse available qty"
-                tone="success"
-                value={formatNumber(crossWarehouseCandidates.reduce((total, row) => total + row.other_warehouse_qty, 0))}
-              />
-            </Grid>
-          </Grid>
-          <ResourceTable
-            columns={[
-              { header: "SKU", key: "sku", render: (row) => row.goods_code },
-              {
-                header: activeWarehouse ? `${activeWarehouse.warehouse_name} available` : "Active warehouse available",
-                key: "activeWarehouseQty",
-                align: "right",
-                render: (row) => formatNumber(row.active_warehouse_qty),
-              },
-              {
-                header: "Other warehouses available",
-                key: "otherWarehouseQty",
-                align: "right",
-                render: (row) => formatNumber(row.other_warehouse_qty),
-              },
-              {
-                header: "Other warehouses",
-                key: "otherWarehouses",
-                render: (row) => row.other_warehouses.join(", "),
-              },
-            ]}
-            error={crossWarehouseBalancesQuery.error ? parseApiError(crossWarehouseBalancesQuery.error) : null}
-            getRowId={(row) => row.goods_code}
-            isLoading={crossWarehouseBalancesQuery.isLoading}
-            rows={crossWarehouseCandidates}
-            subtitle="Cross-warehouse stock visibility to plan future warehouse-to-warehouse handoffs."
-            title="Cross-warehouse stock comparison"
+        <QueryAlert message={queryError} />
+        {createSuccessMessage ? <Alert severity="success">{createSuccessMessage}</Alert> : null}
+        <QueryAlert message={createErrorMessage} />
+        <Stack spacing={2.5} sx={{ minWidth: 0 }}>
+          <InterwarehouseTransferFilters
+            activeBucket={activeBucket}
+            activeFilterCount={dataView.activeFilterCount}
+            bucketItems={bucketItems}
+            filters={dataView.filters}
+            hasActiveFilters={hasActiveFilters}
+            onBucketChange={(value) => setActiveBucket(value)}
+            onChange={(key, value) => dataView.updateFilter(key, String(value))}
+            onReset={resetFilters}
+            transferTypes={filterOptions.transferTypes}
+            warehouses={warehouses}
           />
-        </>
-      )}
-    </Stack>
+          <ResourceTable
+            allowHorizontalScroll
+            columnVisibility={{ storageKey: columnVisibilityStorageKey }}
+            columns={columns}
+            compact
+            emptyMessage="No transfer orders match the current workspace filters."
+            getRowId={(row) => row.id}
+            isLoading={transferOrdersQuery.isLoading || locationsQuery.isLoading}
+            pagination={pagination}
+            preserveHeaderCase
+            rows={rows}
+            sorting={{
+              direction: sorting.direction,
+              onSortChange: (sortKey) =>
+                setSort(sortKey as "createTime" | "stockOutTime" | "stockInTime" | "cancelTime"),
+              sortKey: sorting.sortKey,
+            }}
+            toolbar={
+              <Stack direction="row" spacing={1.5}>
+                <Button onClick={openCreateDialog} startIcon={<AddRoundedIcon />} variant="contained">
+                  {t("New Transfer")}
+                </Button>
+                <Button disabled startIcon={<UploadFileRoundedIcon />} variant="outlined">
+                  {t("Import")}
+                </Button>
+                <Button onClick={exportVisibleRows} startIcon={<DownloadRoundedIcon />} variant="outlined">
+                  {t("Export")}
+                </Button>
+              </Stack>
+            }
+            toolbarActions={
+              <ActionIconButton onClick={() => void refetch()} title={t("Refresh")} tone="neutral">
+                <RefreshRoundedIcon fontSize="small" />
+              </ActionIconButton>
+            }
+          />
+        </Stack>
+      </Stack>
+      <Dialog fullWidth maxWidth="lg" onClose={closeCreateDialog} open={isCreateDialogOpen}>
+        <DialogTitle>{t("New Transfer")}</DialogTitle>
+        <Divider />
+        <DialogContent sx={{ pt: 3 }}>
+          <CreateTransferOrderPanel
+            errorMessage={createErrorMessage}
+            isPending={createTransferOrderMutation.isPending}
+            onSubmit={(values, balancesById) =>
+              createTransferOrderMutation.mutateAsync({ balancesById, values })
+            }
+            successMessage={null}
+          />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

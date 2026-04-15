@@ -24,10 +24,14 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { brandColors, brandMotion } from "@/app/brand";
 import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
+import {
+  TableColumnVisibilityControl,
+  type TableColumnVisibilityCapableColumn,
+  type TableColumnVisibilityOptions,
+  useTableColumnVisibility,
+} from "@/shared/components/table-column-visibility";
 
-interface ColumnDefinition<TRow> {
-  key: string;
-  header: TranslatableText;
+export interface ResourceTableColumnDefinition<TRow> extends TableColumnVisibilityCapableColumn {
   align?: "left" | "right" | "center";
   headerAlign?: "left" | "right" | "center";
   headerTooltip?: TranslatableText;
@@ -58,17 +62,19 @@ interface ResourceTableProps<TRow> {
   title?: TranslatableText;
   subtitle?: TranslatableText;
   rows: TRow[];
-  columns: ColumnDefinition<TRow>[];
+  columns: ResourceTableColumnDefinition<TRow>[];
   getRowId: (row: TRow) => string | number;
   isLoading?: boolean;
   error?: string | null;
   pagination?: PaginationState;
   emptyMessage?: TranslatableText;
   toolbar?: ReactNode;
+  toolbarActions?: ReactNode;
   rowSelection?: ResourceTableRowSelection<TRow>;
   tableBorderRadius?: number | string;
   compact?: boolean;
   allowHorizontalScroll?: boolean;
+  columnVisibility?: TableColumnVisibilityOptions;
   preserveHeaderCase?: boolean;
   sorting?: {
     direction: "asc" | "desc";
@@ -88,10 +94,12 @@ export function ResourceTable<TRow>({
   pagination,
   emptyMessage = "No records found.",
   toolbar,
+  toolbarActions,
   rowSelection,
   tableBorderRadius = 3,
   compact = false,
   allowHorizontalScroll = false,
+  columnVisibility,
   preserveHeaderCase = false,
   sorting,
 }: ResourceTableProps<TRow>) {
@@ -103,7 +111,10 @@ export function ResourceTable<TRow>({
   const isDark = theme.palette.mode === "dark";
   const isChineseLocale = locale === "zh-CN";
   const compactHeaderFontSize = compact ? theme.typography.overline.fontSize : 12;
-  const usesFixedTableLayout = allowHorizontalScroll && (Boolean(rowSelection) || columns.some((column) => column.width));
+  const managedColumnVisibility = useTableColumnVisibility(columns, columnVisibility);
+  const visibleColumns = managedColumnVisibility.visibleColumns;
+  const usesFixedTableLayout =
+    allowHorizontalScroll && (Boolean(rowSelection) || visibleColumns.some((column) => column.width));
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
     : [];
@@ -111,6 +122,22 @@ export function ResourceTable<TRow>({
   const selectedSelectableCount = selectableIds.filter((id) => rowSelection?.selectedRowIds.includes(id)).length;
   const allSelected = selectableIds.length > 0 && selectedSelectableCount === selectableIds.length;
   const partiallySelected = selectedSelectableCount > 0 && !allSelected;
+  const utilityActions = (
+    <>
+      {toolbarActions}
+      {managedColumnVisibility.enabled ? (
+        <TableColumnVisibilityControl
+          items={managedColumnVisibility.items}
+          onReset={managedColumnVisibility.resetToDefaults}
+          onToggle={managedColumnVisibility.toggleColumn}
+          resetLabel={columnVisibility?.resetLabel}
+          title={columnVisibility?.menuTitle}
+          triggerLabel={columnVisibility?.triggerLabel}
+        />
+      ) : null}
+    </>
+  );
+  const hasUtilityActions = Boolean(toolbarActions) || managedColumnVisibility.enabled;
 
   return (
     <Card>
@@ -126,16 +153,40 @@ export function ResourceTable<TRow>({
               ) : null}
             </Box>
           ) : null}
-          {toolbar}
           {error ? <Alert severity="error">{error}</Alert> : null}
-          <TableContainer
+          <Box
             sx={{
               border: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
               borderRadius: tableBorderRadius,
-              overflowX: allowHorizontalScroll ? "auto" : "hidden",
-              overflowY: "hidden",
+              overflow: "hidden",
             }}
           >
+            {toolbar || hasUtilityActions ? (
+              <Stack
+                alignItems={{ sm: "center" }}
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                spacing={1.5}
+                sx={{
+                  borderBottom: `1px solid ${alpha(theme.palette.divider, 0.8)}`,
+                  px: compact ? 1.25 : 1.5,
+                  py: compact ? 1 : 1.25,
+                }}
+              >
+                <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>{toolbar}</Box>
+                {hasUtilityActions ? (
+                  <Stack direction="row" spacing={1}>
+                    {utilityActions}
+                  </Stack>
+                ) : null}
+              </Stack>
+            ) : null}
+            <TableContainer
+              sx={{
+                overflowX: allowHorizontalScroll ? "auto" : "hidden",
+                overflowY: "hidden",
+              }}
+            >
             <Table
               size="small"
               sx={
@@ -150,7 +201,7 @@ export function ResourceTable<TRow>({
               {usesFixedTableLayout ? (
                 <colgroup>
                   {rowSelection ? <col style={{ width: selectionColumnWidth }} /> : null}
-                  {columns.map((column) => (
+                  {visibleColumns.map((column) => (
                     <col key={column.key} style={column.width ? { width: column.width } : undefined} />
                   ))}
                 </colgroup>
@@ -185,7 +236,7 @@ export function ResourceTable<TRow>({
                       />
                     </TableCell>
                   ) : null}
-                  {columns.map((column) => (
+                  {visibleColumns.map((column) => (
                     <TableCell
                       align={column.headerAlign ?? column.align}
                       key={column.key}
@@ -284,7 +335,7 @@ export function ResourceTable<TRow>({
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
+                    <TableCell colSpan={visibleColumns.length + (rowSelection ? 1 : 0)}>
                       <Stack alignItems="center" direction="row" justifyContent="center" spacing={1.5} sx={{ py: 4 }}>
                         <CircularProgress size={20} />
                         <Typography variant="body2">{t("Loading data...")}</Typography>
@@ -293,7 +344,7 @@ export function ResourceTable<TRow>({
                   </TableRow>
                 ) : rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
+                    <TableCell colSpan={visibleColumns.length + (rowSelection ? 1 : 0)}>
                       <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
                         {translate(emptyMessage)}
                       </Typography>
@@ -355,7 +406,7 @@ export function ResourceTable<TRow>({
                             />
                           </TableCell>
                         ) : null}
-                        {columns.map((column) => (
+                        {visibleColumns.map((column) => (
                           <TableCell
                             align={column.align}
                             key={column.key}
@@ -379,7 +430,8 @@ export function ResourceTable<TRow>({
                 )}
               </TableBody>
             </Table>
-          </TableContainer>
+            </TableContainer>
+          </Box>
           {pagination ? (
             <TablePagination
               component="div"

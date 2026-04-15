@@ -1,4 +1,4 @@
-import { toDateTimeLocalInputValue, toNullableDateTime } from "@/shared/utils/date-time";
+import { toDateInputValue, toNullableDate } from "@/shared/utils/date-time";
 
 import type {
   InventoryBalanceRecord,
@@ -34,7 +34,7 @@ export function mapTransferOrderToEditValues(
   transferOrder: TransferOrderRecord,
 ): TransferOrderEditValues {
   return {
-    requested_date: toDateTimeLocalInputValue(transferOrder.requested_date),
+    requested_date: toDateInputValue(transferOrder.requested_date),
     reference_code: transferOrder.reference_code ?? "",
     notes: transferOrder.notes ?? "",
   };
@@ -44,7 +44,7 @@ export function mapEditValuesToTransferOrderPayload(
   values: TransferOrderEditValues,
 ): TransferOrderUpdatePayload {
   return {
-    requested_date: toNullableDateTime(values.requested_date),
+    requested_date: toNullableDate(values.requested_date),
     reference_code: values.reference_code,
     notes: values.notes,
   };
@@ -55,9 +55,9 @@ export function mapCreateValuesToTransferOrderPayload(
   balancesById: Map<number, InventoryBalanceRecord>,
 ): TransferOrderCreatePayload {
   return {
-    warehouse: values.warehouse,
+    warehouse_id: values.warehouse,
     transfer_number: values.transfer_number,
-    requested_date: toNullableDateTime(values.requested_date),
+    requested_date: toNullableDate(values.requested_date),
     reference_code: values.reference_code,
     notes: values.notes,
     line_items: values.line_items.map((lineItem, index) => {
@@ -67,9 +67,9 @@ export function mapCreateValuesToTransferOrderPayload(
       }
       return {
         line_number: index + 1,
-        goods: balance.goods,
-        from_location: balance.location,
-        to_location: lineItem.to_location,
+        product_id: balance.goods,
+        from_location_id: balance.location,
+        to_location_id: lineItem.to_location,
         requested_qty: lineItem.requested_qty,
         stock_status: balance.stock_status,
         lot_number: balance.lot_number,

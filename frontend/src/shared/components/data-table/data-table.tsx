@@ -23,10 +23,14 @@ import { alpha, useTheme } from "@mui/material/styles";
 import { brandColors, brandMotion } from "@/app/brand";
 import type { TranslatableText } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
+import {
+  TableColumnVisibilityControl,
+  type TableColumnVisibilityCapableColumn,
+  type TableColumnVisibilityOptions,
+  useTableColumnVisibility,
+} from "@/shared/components/table-column-visibility";
 
-export interface DataTableColumnDefinition<TRow, TSortKey extends string = string> {
-  key: string;
-  header: TranslatableText;
+export interface DataTableColumnDefinition<TRow, TSortKey extends string = string> extends TableColumnVisibilityCapableColumn {
   align?: "left" | "right" | "center";
   minWidth?: number | string;
   sortKey?: TSortKey;
@@ -115,6 +119,7 @@ interface DataTableProps<TRow, TSortKey extends string = string> {
   error?: string | null;
   emptyMessage?: TranslatableText;
   toolbar?: ReactNode;
+  toolbarActions?: ReactNode;
   pagination?: DataTablePaginationState;
   rowSelection?: DataTableRowSelection<TRow>;
   renderMetaRow?: (row: TRow) => ReactNode;
@@ -123,6 +128,7 @@ interface DataTableProps<TRow, TSortKey extends string = string> {
   stickyHeader?: boolean;
   onScrollStateChange?: (state: DataTableScrollState) => void;
   toolbarPlacement?: "inner" | "outer";
+  columnVisibility?: TableColumnVisibilityOptions;
   renderDetailContent?: (row: TRow) => ReactNode;
   sorting?: {
     direction: "asc" | "desc";
@@ -139,6 +145,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
   error,
   emptyMessage = "No records found.",
   toolbar,
+  toolbarActions,
   pagination,
   rowSelection,
   renderMetaRow,
@@ -147,12 +154,15 @@ export function DataTable<TRow, TSortKey extends string = string>({
   stickyHeader = false,
   onScrollStateChange,
   toolbarPlacement = "outer",
+  columnVisibility,
   renderDetailContent,
   sorting,
 }: DataTableProps<TRow, TSortKey>) {
   const theme = useTheme();
   const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
+  const managedColumnVisibility = useTableColumnVisibility(columns, columnVisibility);
+  const visibleColumns = managedColumnVisibility.visibleColumns;
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
     : [];
@@ -220,7 +230,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
     `box-shadow ${brandMotion.duration.slow} ${brandMotion.easing.emphasized}`,
     `opacity ${brandMotion.duration.standard} ${brandMotion.easing.standard}`,
   ].join(", ");
-  const stickyColumnConfig = buildStickyColumnConfig(columns);
+  const stickyColumnConfig = buildStickyColumnConfig(visibleColumns);
   const stickySurfaceBackground = alpha(theme.palette.background.paper, isDark ? 0.98 : 0.995);
   const stickyDividerColor = alpha(theme.palette.divider, 0.82);
   const stickyColumnDivider = `1px solid ${alpha(theme.palette.divider, isDark ? 0.56 : 0.9)}`;
@@ -243,6 +253,22 @@ export function DataTable<TRow, TSortKey extends string = string>({
       zIndex: isHeader ? 4 : 1,
     };
   };
+  const utilityActions = (
+    <>
+      {toolbarActions}
+      {managedColumnVisibility.enabled ? (
+        <TableColumnVisibilityControl
+          items={managedColumnVisibility.items}
+          onReset={managedColumnVisibility.resetToDefaults}
+          onToggle={managedColumnVisibility.toggleColumn}
+          resetLabel={columnVisibility?.resetLabel}
+          title={columnVisibility?.menuTitle}
+          triggerLabel={columnVisibility?.triggerLabel}
+        />
+      ) : null}
+    </>
+  );
+  const hasUtilityActions = Boolean(toolbarActions) || managedColumnVisibility.enabled;
 
   useEffect(() => {
     emitScrollState({ isScrolled: false, isScrolling: false, scrollTop: 0 });
@@ -346,7 +372,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
               },
             }}
           >
-            {toolbar && toolbarPlacement === "inner" ? (
+            {toolbarPlacement === "inner" && (toolbar || hasUtilityActions) ? (
               <Box
                 sx={{
                   backgroundColor: stickySurfaceBackground,
@@ -371,7 +397,50 @@ export function DataTable<TRow, TSortKey extends string = string>({
                   },
                 }}
               >
-                {toolbar}
+                <Stack
+                  alignItems={{ sm: "center" }}
+                  direction={{ xs: "column", sm: "row" }}
+                  justifyContent="space-between"
+                  spacing={1.5}
+                >
+                  <Box sx={{ flex: 1, minWidth: 0, width: "100%" }}>{toolbar}</Box>
+                  {hasUtilityActions ? (
+                    <Stack direction="row" spacing={1}>
+                      {utilityActions}
+                    </Stack>
+                  ) : null}
+                </Stack>
+              </Box>
+            ) : null}
+            {toolbarPlacement === "outer" && hasUtilityActions ? (
+              <Box
+                sx={{
+                  backgroundColor: stickySurfaceBackground,
+                  borderBottom: `1px solid ${stickyDividerColor}`,
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  px: 1.5,
+                  py: 1,
+                  position: "relative",
+                  transition: tableChromeTransition,
+                  zIndex: 2,
+                  "&::after": {
+                    background: topShadowGradient,
+                    content: "\"\"",
+                    height: 14,
+                    left: 0,
+                    opacity: "var(--DataTable-top-shadow-opacity)",
+                    pointerEvents: "none",
+                    position: "absolute",
+                    right: 0,
+                    top: "100%",
+                    transition: `opacity ${brandMotion.duration.slow} ${brandMotion.easing.emphasized}`,
+                  },
+                }}
+              >
+                <Stack direction="row" spacing={1}>
+                  {utilityActions}
+                </Stack>
               </Box>
             ) : null}
             <TableContainer
@@ -413,7 +482,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
               >
                 <colgroup>
                   {rowSelection ? <col style={{ width: selectionColumnWidth }} /> : null}
-                  {columns.map((column) => (
+                  {visibleColumns.map((column) => (
                     <col key={column.key} style={column.width ? { width: column.width } : undefined} />
                   ))}
                 </colgroup>
@@ -450,7 +519,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                         />
                       </TableCell>
                     ) : null}
-                    {columns.map((column) => (
+                    {visibleColumns.map((column) => (
                       <TableCell
                         align={column.align}
                         data-sticky-column={column.sticky}
@@ -505,7 +574,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
+                      <TableCell colSpan={visibleColumns.length + (rowSelection ? 1 : 0)}>
                         <Stack alignItems="center" direction="row" justifyContent="center" spacing={1.5} sx={{ py: 4 }}>
                           <CircularProgress size={20} />
                           <Typography variant="body2">{t("Loading data...")}</Typography>
@@ -514,7 +583,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                     </TableRow>
                   ) : rows.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={columns.length + (rowSelection ? 1 : 0)}>
+                      <TableCell colSpan={visibleColumns.length + (rowSelection ? 1 : 0)}>
                         <Typography color="text.secondary" sx={{ py: 3 }} textAlign="center" variant="body2">
                           {translate(emptyMessage)}
                         </Typography>
@@ -569,7 +638,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                                 />
                               </TableCell>
                             ) : null}
-                            <TableCell colSpan={columns.length} sx={{ px: 1.75, py: 1.1 }}>
+                            <TableCell colSpan={visibleColumns.length} sx={{ px: 1.75, py: 1.1 }}>
                               {renderMetaRow(row)}
                             </TableCell>
                           </TableRow>
@@ -610,11 +679,11 @@ export function DataTable<TRow, TSortKey extends string = string>({
                               />
                             ) : null}
                             {renderDetailContent ? (
-                              <TableCell colSpan={columns.length} sx={{ minWidth: 0, px: 0, py: 0 }}>
+                              <TableCell colSpan={visibleColumns.length} sx={{ minWidth: 0, px: 0, py: 0 }}>
                                 {renderDetailContent(row)}
                               </TableCell>
                             ) : (
-                              columns.map((column) => (
+                              visibleColumns.map((column) => (
                                 <TableCell
                                   align={column.align}
                                   data-sticky-column={column.sticky}
@@ -684,7 +753,7 @@ export function DataTable<TRow, TSortKey extends string = string>({
                             />
                           </TableCell>
                         ) : null}
-                        {columns.map((column) => (
+                        {visibleColumns.map((column) => (
                           <TableCell
                             align={column.align}
                             data-sticky-column={column.sticky}

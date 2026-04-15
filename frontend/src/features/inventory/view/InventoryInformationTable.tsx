@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import { alpha, useTheme } from "@mui/material/styles";
 
+import { findTranslationKey } from "@/app/i18n";
 import { useI18n } from "@/app/ui-preferences";
 import {
   decodeInventoryInformationMultiValue,
@@ -111,12 +112,25 @@ function buildInventoryInformationClientLabel(row: InventoryInformationRow) {
   return row.clients.map((client) => client.label).join(", ");
 }
 
-function buildInventoryInformationStatusLabel(row: InventoryInformationRow) {
+function resolveTranslatedInventoryStatusLabel(
+  label: string,
+  translate: (key: string) => string,
+) {
+  const translationKey = findTranslationKey(label);
+  return translationKey ? translate(translationKey) : label;
+}
+
+function buildInventoryInformationStatusLabel(
+  row: InventoryInformationRow,
+  translate: (key: string) => string,
+) {
   const statuses = row.stockStatuses.filter(Boolean);
   if (statuses.length > 0) {
-    return statuses.map((status) => formatStatusLabel(status)).join(", ");
+    return statuses
+      .map((status) => resolveTranslatedInventoryStatusLabel(formatStatusLabel(status), translate))
+      .join(", ");
   }
-  return formatStatusLabel(row.stockStatus);
+  return resolveTranslatedInventoryStatusLabel(formatStatusLabel(row.stockStatus), translate);
 }
 
 function buildInventoryInformationListedLabel(listingTime: string) {
@@ -760,7 +774,10 @@ export function InventoryInformationTable({
                 <InventoryInformationMetaField label="Warehouse" value={row.warehouseName || "--"} />
                 <InventoryInformationMetaField label="Client" value={buildInventoryInformationClientLabel(row)} />
                 <InventoryInformationMetaField label="Area" value={row.areaLabel || "--"} />
-                <InventoryInformationMetaField label="Status" value={translate(buildInventoryInformationStatusLabel(row))} />
+                <InventoryInformationMetaField
+                  label="Status"
+                  value={buildInventoryInformationStatusLabel(row, translate)}
+                />
               </Stack>
               <InventoryInformationMetaField label="Listed" value={buildInventoryInformationListedLabel(row.listingTime)} />
             </Stack>

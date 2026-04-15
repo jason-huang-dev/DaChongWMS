@@ -21,16 +21,16 @@ export type TransferOrderCreateValues = z.infer<typeof transferOrderCreateSchema
 export type TransferOrderEditValues = z.infer<typeof transferOrderEditSchema>;
 
 export interface TransferOrderCreatePayload {
-  warehouse: number;
+  warehouse_id: number;
   transfer_number: string;
   requested_date: string | null;
   reference_code: string;
   notes: string;
   line_items: Array<{
     line_number: number;
-    goods: number;
-    from_location: number;
-    to_location: number;
+    product_id: number;
+    from_location_id: number;
+    to_location_id: number;
     requested_qty: number;
     stock_status: string;
     lot_number: string;

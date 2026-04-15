@@ -275,4 +275,28 @@ describe("InventoryBalancesPage", () => {
       expect(screen.getByTestId("inventory-information-page-chrome")).toHaveAttribute("aria-hidden", "false");
     });
   });
+
+  test("renders combined stock status labels without treating the joined text as a translation key", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    apiGetMock.mockResolvedValueOnce({
+      ...inventoryInformationResponse,
+      results: [
+        {
+          ...inventoryInformationResponse.results[0],
+          stockStatus: "AVAILABLE",
+          stockStatuses: ["AVAILABLE", "DAMAGED"],
+        },
+      ],
+    });
+
+    renderWithProviders(<InventoryBalancesPage />);
+
+    expect(await screen.findByText("Available, Damaged")).toBeInTheDocument();
+    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+      'Missing translation key "Available, Damaged" for locale "en".',
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
 });

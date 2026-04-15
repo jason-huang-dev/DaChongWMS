@@ -158,4 +158,28 @@ describe("InventoryMovementsPage", () => {
       expect(screen.getByTestId("inventory-movements-page-chrome")).toHaveAttribute("aria-hidden", "false");
     });
   });
+
+  test("renders backend-provided movement labels without reporting missing translations", async () => {
+    const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    apiGetMock.mockResolvedValueOnce({
+      ...movementHistoryResponse,
+      results: [
+        {
+          ...movementHistoryResponse.results[0],
+          entryTypeLabel: "Cycle Count Correction",
+          movementTypeLabel: "Cycle Count Correction",
+        },
+      ],
+    });
+
+    renderWithProviders(<InventoryMovementsPage />);
+
+    expect(await screen.findByText("Cycle Count Correction")).toBeInTheDocument();
+    expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+      'Missing translation key "Cycle Count Correction" for locale "en".',
+    );
+
+    consoleErrorSpy.mockRestore();
+  });
 });

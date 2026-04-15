@@ -86,9 +86,11 @@ export function StatusBucketNav({ activeValue, items, onChange }: StatusBucketNa
               <Typography sx={{ fontSize: 13, fontWeight: isActive ? 700 : 600 }} variant="body2">
                 {item.label}
               </Typography>
-              <Typography color="text.secondary" variant="caption">
-                {item.count ?? "--"} items
-              </Typography>
+              {item.count !== undefined ? (
+                <Typography color="text.secondary" variant="caption">
+                  {item.count} items
+                </Typography>
+              ) : null}
             </Stack>
           </ButtonBase>
         );

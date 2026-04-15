@@ -85,7 +85,7 @@ export function CreateTransferOrderPanel({
               <FormTextField label="Transfer number" name="transfer_number" />
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
-              <FormTextField InputLabelProps={{ shrink: true }} label="Requested date" name="requested_date" type="datetime-local" />
+              <FormTextField InputLabelProps={{ shrink: true }} label="Requested date" name="requested_date" type="date" />
             </Grid>
             <Grid size={{ xs: 12, md: 6 }}>
               <FormTextField label="Reference code" name="reference_code" />
