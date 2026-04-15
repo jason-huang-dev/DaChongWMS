@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
 import { renderWithProviders } from "@/test/render";
@@ -181,5 +181,25 @@ describe("InventoryMovementsPage", () => {
     );
 
     consoleErrorSpy.mockRestore();
+  });
+
+  test("renders selection and reset controls in the table toolbar instead of the filter card", async () => {
+    renderWithProviders(<InventoryMovementsPage />);
+
+    expect(await screen.findByText("SKU-001")).toBeInTheDocument();
+
+    const pageChrome = screen.getByTestId("inventory-movements-page-chrome");
+
+    expect(within(pageChrome).queryByText("0 selected")).not.toBeInTheDocument();
+    expect(within(pageChrome).queryByRole("button", { name: "Clear all filters" })).not.toBeInTheDocument();
+    expect(screen.getByText("0 selected")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear all filters" })).toBeInTheDocument();
+
+    const [, rowCheckbox] = screen.getAllByRole("checkbox");
+    fireEvent.click(rowCheckbox);
+
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
+    expect(within(pageChrome).queryByText("1 selected")).not.toBeInTheDocument();
   });
 });

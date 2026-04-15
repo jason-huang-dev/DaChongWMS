@@ -34,20 +34,31 @@ export function PageTabs<TValue extends string>({
       sx={[
         (theme) => ({
           minHeight: 0,
-          "& .MuiTabs-flexContainer": {
+          width: "100%",
+          "& .MuiTabs-scroller": {
+            display: "flex",
+            justifyContent: "flex-start",
+            overflowX: "auto !important",
+          },
+          "& .MuiTabs-flexContainer, & .MuiTabs-list": {
+            justifyContent: "flex-start",
             minHeight: 0,
           },
           "& .MuiTab-root": {
-            alignItems: "flex-start",
+            alignItems: "center",
             color: theme.palette.text.secondary,
             fontSize: theme.typography.pxToRem(13),
             fontWeight: 600,
             height: "auto",
+            justifyContent: "center",
             lineHeight: 1.25,
+            minWidth: "max-content",
             minHeight: 0,
-            px: 0,
+            px: 1.25,
             py: "2px",
+            textAlign: "center",
             textTransform: "none",
+            whiteSpace: "nowrap",
           },
           "& .MuiTab-root + .MuiTab-root": {
             ml: 4,

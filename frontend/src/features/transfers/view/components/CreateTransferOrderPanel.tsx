@@ -25,17 +25,25 @@ const emptyLine = {
 };
 
 interface CreateTransferOrderPanelProps {
+  description?: string;
   errorMessage?: string | null;
   isPending: boolean;
   onSubmit: (values: TransferOrderCreateValues, balancesById: Map<number, InventoryBalanceRecord>) => Promise<unknown> | void;
+  submitLabel?: string;
+  submittingLabel?: string;
   successMessage?: string | null;
+  title?: string;
 }
 
 export function CreateTransferOrderPanel({
+  description = "Plan transfer orders from current inventory balances and destination-location selectors.",
   errorMessage,
   isPending,
   onSubmit,
+  submitLabel = "Create transfer order",
+  submittingLabel = "Creating...",
   successMessage,
+  title = "Create transfer order",
 }: CreateTransferOrderPanelProps) {
   const { t, msg } = useI18n();
   const form = useForm<TransferOrderCreateValues>({
@@ -70,10 +78,10 @@ export function CreateTransferOrderPanel({
 
   return (
     <MutationCard
-      description="Plan transfer orders from current inventory balances and destination-location selectors."
+      description={description}
       errorMessage={errorMessage}
       successMessage={successMessage}
-      title="Create transfer order"
+      title={title}
     >
       <FormProvider {...form}>
         <Stack component="form" noValidate onSubmit={handleSubmit} spacing={2}>
@@ -132,7 +140,7 @@ export function CreateTransferOrderPanel({
             </Button>
           </Stack>
           <Button disabled={isPending} type="submit" variant="contained">
-            {isPending ? "Creating..." : "Create transfer order"}
+            {isPending ? submittingLabel : submitLabel}
           </Button>
         </Stack>
       </FormProvider>

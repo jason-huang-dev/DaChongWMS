@@ -330,6 +330,7 @@ test("renders the inventory workspace with breadcrumbs for authorized operators"
     expect(screen.queryByText("All inventory pages")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Hide inventory sidebar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Inventory Movements" })).toHaveAttribute("href", "/inventory/movements");
+    expect(screen.getByRole("link", { name: "Internal Move" })).toHaveAttribute("href", "/inventory/internal-move");
     expect(screen.getByRole("link", { name: "Stock Age Report" })).toHaveAttribute("href", "/inventory/aging");
   } finally {
     restoreBreadcrumbMeasurements();

@@ -31,9 +31,10 @@ export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: 
         sx={{
           maxWidth: "100%",
           minHeight: compact ? 36 : 40,
-          width: "fit-content",
-          "& .MuiTabs-flexContainer": {
+          width: "100%",
+          "& .MuiTabs-flexContainer, & .MuiTabs-list": {
             gap: compact ? 0.35 : 0.5,
+            justifyContent: { sm: "center", xs: "flex-start" },
           },
           "& .MuiTabs-indicator": {
             backgroundColor: brandColors.accent,
@@ -44,7 +45,10 @@ export function ModuleTopNav({ activePath, compact = true, items, onNavigate }: 
             display: "none !important",
           },
           "& .MuiTabs-scroller": {
-            overflow: "visible",
+            display: "flex",
+            justifyContent: { sm: "center", xs: "flex-start" },
+            overflowX: "auto !important",
+            overflowY: "visible",
           },
         }}
       >

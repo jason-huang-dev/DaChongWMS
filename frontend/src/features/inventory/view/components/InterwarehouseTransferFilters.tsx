@@ -1,8 +1,8 @@
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
-import { Box, Button, Grid, InputAdornment, MenuItem, Stack, TextField, Typography } from "@mui/material";
-import { alpha } from "@mui/material/styles";
+import { Button, InputAdornment, MenuItem, Stack, TextField } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
+import { FieldSelectorFilter } from "@/shared/components/field-selector-filter";
 import { FilterCard } from "@/shared/components/filter-card/filter-card";
 import { PageTabs } from "@/shared/components/page-tabs";
 import { RangePicker } from "@/shared/components/range-picker/range-picker";
@@ -15,8 +15,8 @@ import type { WarehouseRecord } from "@/shared/types/domain";
 
 interface InterwarehouseTransferFiltersProps {
   activeBucket: InterwarehouseTransferBucket;
-  activeFilterCount: number;
   bucketItems: ReadonlyArray<{ count?: number | string; label: string; value: InterwarehouseTransferBucket }>;
+  compact?: boolean;
   filters: InterwarehouseTransferFilters;
   hasActiveFilters: boolean;
   onChange: <TKey extends keyof InterwarehouseTransferFilters>(
@@ -25,23 +25,33 @@ interface InterwarehouseTransferFiltersProps {
   ) => void;
   onBucketChange: (value: InterwarehouseTransferBucket) => void;
   onReset: () => void;
+  showToWarehouseFilter?: boolean;
+  showTransferTypeFilter?: boolean;
+  statusBucketsAriaLabel?: string;
   transferTypes: ReadonlyArray<{ label: string; value: string }>;
   warehouses: WarehouseRecord[];
 }
 
 export function InterwarehouseTransferFilters({
   activeBucket,
-  activeFilterCount,
   bucketItems,
+  compact = false,
   filters,
   hasActiveFilters,
   onChange,
   onBucketChange,
   onReset,
+  showToWarehouseFilter = true,
+  showTransferTypeFilter = true,
+  statusBucketsAriaLabel,
   transferTypes,
   warehouses,
 }: InterwarehouseTransferFiltersProps) {
   const { t } = useI18n();
+  const rowSpacing = compact ? 1.25 : 1.5;
+  const primaryFieldFlex = compact ? "1 1 220px" : "1 1 240px";
+  const searchFieldFlex = compact ? "1.8 1 360px" : "2.4 1 420px";
+  const dateRangeFlex = compact ? "1.8 1 420px" : "2.2 1 500px";
   const warehouseItems = [
     { label: t("All Warehouses"), value: "" },
     ...warehouses.map((warehouse) => ({
@@ -52,11 +62,14 @@ export function InterwarehouseTransferFilters({
 
   return (
     <FilterCard
-      contentSx={{ pb: "18px !important" }}
+      contentSx={{
+        pb: compact ? "14px !important" : "18px !important",
+        pt: compact ? 1.5 : 2.25,
+      }}
       header={
-        <Stack spacing={1}>
+        <Stack spacing={0.5}>
           <PageTabs
-            ariaLabel={t("Inter-warehouse transfer status buckets")}
+            ariaLabel={statusBucketsAriaLabel ?? t("Inter-warehouse transfer status buckets")}
             items={bucketItems.map((item) => ({
               ...item,
               label: item.value === "all" ? t("ui.all") : t(item.label),
@@ -64,14 +77,11 @@ export function InterwarehouseTransferFilters({
             onChange={onBucketChange}
             value={activeBucket}
           />
-          <Typography color="text.secondary" variant="caption">
-            {t("filters.activeCount", { count: activeFilterCount })}
-          </Typography>
         </Stack>
       }
     >
-      <Grid container spacing={1.5}>
-        <Grid size={{ xs: 12, md: 3 }}>
+      <Stack spacing={rowSpacing} sx={{ minWidth: 0 }}>
+        <Stack direction="row" spacing={rowSpacing} sx={{ flexWrap: "wrap", minWidth: 0 }} useFlexGap>
           <TextField
             aria-label={t("From Warehouse")}
             fullWidth
@@ -79,6 +89,10 @@ export function InterwarehouseTransferFilters({
             onChange={(event) => onChange("fromWarehouseId", event.target.value)}
             select
             size="small"
+            sx={{
+              flex: primaryFieldFlex,
+              minWidth: { sm: compact ? 220 : 240, xs: "100%" },
+            }}
             value={filters.fromWarehouseId}
           >
             {warehouseItems.map((warehouse) => (
@@ -87,95 +101,97 @@ export function InterwarehouseTransferFilters({
               </MenuItem>
             ))}
           </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <TextField
-            aria-label={t("To Warehouse")}
-            fullWidth
-            hiddenLabel
-            onChange={(event) => onChange("toWarehouseId", event.target.value)}
-            select
-            size="small"
-            value={filters.toWarehouseId}
-          >
-            {warehouseItems.map((warehouse) => (
-              <MenuItem key={`to-${warehouse.value || "all"}`} value={warehouse.value}>
-                {warehouse.label}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, md: 3 }}>
-          <TextField
-            aria-label={t("Transfer Type")}
-            fullWidth
-            hiddenLabel
-            onChange={(event) => onChange("transferType", event.target.value)}
-            select
-            size="small"
-            value={filters.transferType}
-          >
-            {transferTypes.map((option) => (
-              <MenuItem key={option.value || "all"} value={option.value}>
-                {t(option.label)}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, md: 5 }}>
-          <Box
-            sx={(theme) => ({
-              border: `1px solid ${alpha(theme.palette.divider, 0.86)}`,
-              borderRadius: 2.5,
-              overflow: "hidden",
-            })}
-          >
-            <Stack direction={{ xs: "column", md: "row" }} spacing={0}>
-              <TextField
-                aria-label={t("Transfer search field")}
-                onChange={(event) =>
-                  onChange(
-                    "searchField",
-                    event.target.value as InterwarehouseTransferFilters["searchField"],
-                  )
-                }
-                select
-                size="small"
-                sx={{
-                  minWidth: { md: 132 },
-                  "& .MuiOutlinedInput-notchedOutline": { border: 0 },
-                }}
-                value={filters.searchField}
-              >
-                <MenuItem value="transfer_number">{t("Transfer No.")}</MenuItem>
-                <MenuItem value="reference_code">{t("Reference")}</MenuItem>
-                <MenuItem value="notes">{t("Note")}</MenuItem>
-                <MenuItem value="details">{t("Details")}</MenuItem>
-              </TextField>
-              <TextField
-                aria-label={t("Transfer search")}
-                fullWidth
-                onChange={(event) => onChange("searchText", event.target.value)}
-                placeholder={t("Search content")}
-                size="small"
-                slotProps={{
-                  input: {
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchRoundedIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-                sx={{
-                  "& .MuiOutlinedInput-notchedOutline": { border: 0 },
-                }}
-                value={filters.searchText}
-              />
-            </Stack>
-          </Box>
-        </Grid>
-        <Grid size={{ xs: 12, md: 2 }}>
+          {showToWarehouseFilter ? (
+            <TextField
+              aria-label={t("To Warehouse")}
+              fullWidth
+              hiddenLabel
+              onChange={(event) => onChange("toWarehouseId", event.target.value)}
+              select
+              size="small"
+              sx={{
+                flex: primaryFieldFlex,
+                minWidth: { sm: compact ? 220 : 240, xs: "100%" },
+              }}
+              value={filters.toWarehouseId}
+            >
+              {warehouseItems.map((warehouse) => (
+                <MenuItem key={`to-${warehouse.value || "all"}`} value={warehouse.value}>
+                  {warehouse.label}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : null}
+          {showTransferTypeFilter ? (
+            <TextField
+              aria-label={t("Transfer Type")}
+              fullWidth
+              hiddenLabel
+              onChange={(event) => onChange("transferType", event.target.value)}
+              select
+              size="small"
+              sx={{
+                flex: primaryFieldFlex,
+                minWidth: { sm: compact ? 220 : 240, xs: "100%" },
+              }}
+              value={filters.transferType}
+            >
+              {transferTypes.map((option) => (
+                <MenuItem key={option.value || "all"} value={option.value}>
+                  {t(option.label)}
+                </MenuItem>
+              ))}
+            </TextField>
+          ) : null}
+        </Stack>
+        <Stack
+          alignItems={{ lg: "center", xs: "stretch" }}
+          direction={{ lg: "row", xs: "column" }}
+          spacing={rowSpacing}
+          sx={{ minWidth: 0 }}
+          useFlexGap
+        >
+          <FieldSelectorFilter sx={{ flex: searchFieldFlex, minWidth: 0, width: "100%" }}>
+            <TextField
+              aria-label={t("Transfer search field")}
+              onChange={(event) =>
+                onChange(
+                  "searchField",
+                  event.target.value as InterwarehouseTransferFilters["searchField"],
+                )
+              }
+              select
+              size="small"
+              sx={{
+                flex: { lg: "0 0 180px", xs: "1 1 auto" },
+                minWidth: { lg: 180, xs: "100%" },
+              }}
+              value={filters.searchField}
+            >
+              <MenuItem value="transfer_number">{t("Transfer No.")}</MenuItem>
+              <MenuItem value="reference_code">{t("Reference")}</MenuItem>
+              <MenuItem value="notes">{t("Note")}</MenuItem>
+              <MenuItem value="details">{t("Details")}</MenuItem>
+            </TextField>
+            <TextField
+              aria-label={t("Transfer search")}
+              fullWidth
+              onChange={(event) => onChange("searchText", event.target.value)}
+              placeholder={t("Search content")}
+              size="small"
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchRoundedIcon fontSize="small" />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+              sx={{ flex: "1 1 220px", minWidth: 0 }}
+              value={filters.searchText}
+            />
+          </FieldSelectorFilter>
           <TextField
             aria-label={t("Transfer search mode")}
             fullWidth
@@ -188,13 +204,15 @@ export function InterwarehouseTransferFilters({
             }
             select
             size="small"
+            sx={{
+              flex: { lg: "1 1 196px", xs: "1 1 auto" },
+              minWidth: { lg: 196, xs: "100%" },
+            }}
             value={filters.searchMode}
           >
             <MenuItem value="contains">{t("Fuzzy Search")}</MenuItem>
             <MenuItem value="exact">{t("Precise Search")}</MenuItem>
           </TextField>
-        </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
           <RangePicker
             active={Boolean(filters.dateFrom || filters.dateTo)}
             endAriaLabel={t("Transfer end date")}
@@ -213,7 +231,8 @@ export function InterwarehouseTransferFilters({
                 select
                 size="small"
                 sx={{
-                  minWidth: { md: 124 },
+                  minWidth: { lg: 156, xs: "100%" },
+                  width: { lg: 156, xs: "100%" },
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 2,
                     height: 38,
@@ -227,22 +246,38 @@ export function InterwarehouseTransferFilters({
             }
             onEndChange={(value) => onChange("dateTo", value)}
             onStartChange={(value) => onChange("dateFrom", value)}
-            rootSx={{ height: "100%", minHeight: 40 }}
+            fieldSx={{
+              flex: { lg: "1 1 152px", xs: "1 1 auto" },
+              minWidth: { lg: 152, xs: "100%" },
+              width: { lg: 152, xs: "100%" },
+            }}
+            rootSx={{
+              flex: dateRangeFlex,
+              height: "auto",
+              maxWidth: "100%",
+              minHeight: 42,
+              minWidth: 0,
+              px: 0.625,
+              py: 0.375,
+              width: "100%",
+            }}
             startAriaLabel={t("Transfer start date")}
             startValue={filters.dateFrom}
           />
-        </Grid>
-        <Grid size={{ xs: 12, md: "auto" }}>
           <Button
             disabled={!hasActiveFilters}
             onClick={onReset}
-            sx={{ minWidth: 92 }}
+            sx={{
+              alignSelf: { lg: "center", xs: "stretch" },
+              flex: { lg: "0 0 auto", xs: "1 1 auto" },
+              minWidth: 92,
+            }}
             variant="outlined"
           >
             {t("Reset")}
           </Button>
-        </Grid>
-      </Grid>
+        </Stack>
+      </Stack>
     </FilterCard>
   );
 }

@@ -4,6 +4,7 @@ import {
   buildInterwarehouseTransferBucketCounts,
   buildInterwarehouseTransferCsv,
   buildInterwarehouseTransferRows,
+  filterInterwarehouseTransferRowsByScope,
   filterInterwarehouseTransferRows,
   type InterwarehouseTransferOrderRecord,
 } from "@/features/inventory/model/interwarehouse-transfer";
@@ -200,5 +201,14 @@ describe("interwarehouse transfer model", () => {
     expect(filteredRows).toHaveLength(1);
     expect(csv).toContain("TR-1001");
     expect(csv).toContain("South DC");
+  });
+
+  it("splits internal moves from inter-warehouse transfers", () => {
+    const rows = buildInterwarehouseTransferRows(orders, warehouses, locations);
+
+    expect(filterInterwarehouseTransferRowsByScope(rows, "internal").map((row) => row.transferNumber)).toEqual(["TR-1002"]);
+    expect(filterInterwarehouseTransferRowsByScope(rows, "interWarehouse").map((row) => row.transferNumber)).toEqual([
+      "TR-1001",
+    ]);
   });
 });

@@ -9,9 +9,11 @@ import {
   buildInterwarehouseTransferRows,
   createDefaultInterwarehouseTransferFilters,
   filterInterwarehouseTransferRows,
+  filterInterwarehouseTransferRowsByScope,
   formatTransferTypeLabel,
   interwarehouseTransferBucketItems,
   sortInterwarehouseTransferRows,
+  type InventoryTransferWorkbenchScope,
   type InterwarehouseTransferBucket,
   type InterwarehouseTransferFilters,
   type InterwarehouseTransferOrderRecord,
@@ -35,7 +37,11 @@ interface CreateTransferOrderMutationInput {
   values: TransferOrderCreateValues;
 }
 
-export function useInventoryCrossWarehouseController() {
+function buildTransferWorkbenchStoragePrefix(scope: InventoryTransferWorkbenchScope) {
+  return scope === "internal" ? "inventory.internal-move" : "inventory.cross-warehouse";
+}
+
+export function useInventoryTransferWorkbenchController(scope: InventoryTransferWorkbenchScope) {
   const queryClient = useQueryClient();
   const { company, activeWarehouseId, warehouses } = useTenantScope();
   const [activeBucket, setActiveBucket] = useState<InterwarehouseTransferBucket>("all");
@@ -44,14 +50,16 @@ export function useInventoryCrossWarehouseController() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [createSuccessMessage, setCreateSuccessMessage] = useState<string | null>(null);
   const [createErrorMessage, setCreateErrorMessage] = useState<string | null>(null);
+  const storagePrefix = buildTransferWorkbenchStoragePrefix(scope);
+
   const dataView = useDataView<InterwarehouseTransferFilters>({
-    viewKey: `inventory.cross-warehouse.transfer-orders.${company?.openid ?? "anonymous"}`,
+    viewKey: `${storagePrefix}.transfer-orders.${company?.openid ?? "anonymous"}`,
     defaultFilters: createDefaultInterwarehouseTransferFilters(activeWarehouseId),
     pageSize: 50,
   });
 
   const transferOrdersQuery = useQuery({
-    queryKey: ["inventory", "cross-warehouse", "transfer-orders", company?.id],
+    queryKey: ["inventory", "transfer-orders", company?.id],
     queryFn: () =>
       apiGet<InterwarehouseTransferOrderRecord[]>(
         buildOrganizationTransferOrdersPath(company!.id),
@@ -60,7 +68,7 @@ export function useInventoryCrossWarehouseController() {
   });
 
   const locationsQuery = useQuery({
-    queryKey: ["inventory", "cross-warehouse", "locations", company?.id],
+    queryKey: ["inventory", "transfer-locations", company?.id],
     queryFn: () =>
       apiGet<PaginatedResponse<LocationRecord>>("/api/locations/", {
         page: 1,
@@ -79,9 +87,14 @@ export function useInventoryCrossWarehouseController() {
     [locationsQuery.data?.results, transferOrdersQuery.data, warehouses],
   );
 
+  const scopedRows = useMemo(
+    () => filterInterwarehouseTransferRowsByScope(rows, scope),
+    [rows, scope],
+  );
+
   const filteredRows = useMemo(
-    () => filterInterwarehouseTransferRows(rows, dataView.filters, activeBucket),
-    [activeBucket, dataView.filters, rows],
+    () => filterInterwarehouseTransferRows(scopedRows, dataView.filters, activeBucket),
+    [activeBucket, dataView.filters, scopedRows],
   );
 
   const sortedRows = useMemo(
@@ -94,7 +107,7 @@ export function useInventoryCrossWarehouseController() {
     return sortedRows.slice(startIndex, startIndex + dataView.pageSize);
   }, [dataView.page, dataView.pageSize, sortedRows]);
 
-  const bucketCounts = useMemo(() => buildInterwarehouseTransferBucketCounts(rows), [rows]);
+  const bucketCounts = useMemo(() => buildInterwarehouseTransferBucketCounts(scopedRows), [scopedRows]);
 
   const createTransferOrderMutation = useMutation({
     mutationFn: ({ balancesById, values }: CreateTransferOrderMutationInput) =>
@@ -120,15 +133,21 @@ export function useInventoryCrossWarehouseController() {
 
   const hasActiveFilters = dataView.activeFilterCount > 0 || activeBucket !== "all";
   const filterOptions = {
-    transferTypes: [
-      { label: "Transfer Type", value: "" },
-      { label: formatTransferTypeLabel("CROSS_WAREHOUSE"), value: "CROSS_WAREHOUSE" },
-      { label: formatTransferTypeLabel("INTERNAL_RELOCATION"), value: "INTERNAL_RELOCATION" },
-      { label: formatTransferTypeLabel("MIXED"), value: "MIXED" },
-    ],
+    transferTypes:
+      scope === "internal"
+        ? [
+            { label: "Transfer Type", value: "" },
+            { label: formatTransferTypeLabel("INTERNAL_RELOCATION"), value: "INTERNAL_RELOCATION" },
+          ]
+        : [
+            { label: "Transfer Type", value: "" },
+            { label: formatTransferTypeLabel("CROSS_WAREHOUSE"), value: "CROSS_WAREHOUSE" },
+            { label: formatTransferTypeLabel("MIXED"), value: "MIXED" },
+          ],
   } as const;
 
   return {
+    allowCreation: scope === "internal",
     activeBucket,
     bucketItems: interwarehouseTransferBucketItems.map((item) => ({
       ...item,
@@ -150,7 +169,7 @@ export function useInventoryCrossWarehouseController() {
       total: sortedRows.length,
       onPageChange: dataView.setPage,
     },
-    columnVisibilityStorageKey: `inventory.cross-warehouse.transfer-orders.columns.${company?.openid ?? "anonymous"}`,
+    columnVisibilityStorageKey: `${storagePrefix}.transfer-orders.columns.${company?.openid ?? "anonymous"}`,
     queryError:
       transferOrdersQuery.error || locationsQuery.error
         ? parseApiError(transferOrdersQuery.error ?? locationsQuery.error)
@@ -163,6 +182,7 @@ export function useInventoryCrossWarehouseController() {
       setActiveBucket("all");
     },
     rows: pagedRows,
+    scope,
     setActiveBucket,
     setSort: (nextSortKey: "createTime" | "stockOutTime" | "stockInTime" | "cancelTime") => {
       if (sortKey === nextSortKey) {
@@ -181,7 +201,15 @@ export function useInventoryCrossWarehouseController() {
     exportVisibleRows: () =>
       downloadCsvFile(
         buildInterwarehouseTransferCsv(sortedRows),
-        `interwarehouse-transfer-${new Date().toISOString().slice(0, 10)}.csv`,
+        `${scope === "internal" ? "internal-move" : "interwarehouse-transfer"}-${new Date().toISOString().slice(0, 10)}.csv`,
       ),
   };
+}
+
+export function useInventoryCrossWarehouseController() {
+  return useInventoryTransferWorkbenchController("interWarehouse");
+}
+
+export function useInventoryInternalMoveController() {
+  return useInventoryTransferWorkbenchController("internal");
 }

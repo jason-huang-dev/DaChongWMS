@@ -1040,6 +1040,18 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Inventory information": "库存信息",
     Product: "商品",
     "Inventory Movements": "库存流水",
+    "Internal move status buckets": "库内移动状态分组",
+    "New Internal Move": "新建库内移动",
+    "Create internal move": "创建库内移动",
+    "Creating internal move...": "正在创建库内移动...",
+    "Plan same-warehouse inventory relocations from source balances to destination locations.":
+      "根据源库存和目标库位规划同仓内的库存移动。",
+    "Internal Move shows same-warehouse transfer orders that relocate stock between locations inside a warehouse.":
+      "库内移动页面展示同一仓库内不同库位之间的库存移动调拨单。",
+    "Inter-warehouse Transfer is a visibility-only workspace and shows only movements whose destination warehouse differs from the source warehouse.":
+      "跨仓调拨页面仅提供可视化视图，只显示目标仓与源仓不同的移动记录。",
+    "No internal moves match the current workspace filters.": "没有符合当前筛选条件的库内移动。",
+    "No inter-warehouse transfers match the current workspace filters.": "没有符合当前筛选条件的跨仓调拨。",
     "Sort by": "排序字段",
     "Product Info": "商品信息",
     "Client Info": "客户信息",

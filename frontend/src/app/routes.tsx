@@ -50,6 +50,10 @@ const InventoryMovementsPage = lazyNamedPage(
   () => import("@/features/inventory/view/InventoryMovementsPage"),
   "InventoryMovementsPage",
 );
+const InventoryInternalMovePage = lazyNamedPage(
+  () => import("@/features/inventory/view/InventoryInternalMovePage"),
+  "InventoryInternalMovePage",
+);
 const InventoryAdjustmentsPage = lazyNamedPage(
   () => import("@/features/inventory/view/InventoryAdjustmentsPage"),
   "InventoryAdjustmentsPage",
@@ -194,6 +198,11 @@ const baseRoutes: RouteObject[] = [
                     path: "movements",
                     element: withSuspense(<InventoryMovementsPage />),
                     handle: { crumb: "Inventory Movements" },
+                  },
+                  {
+                    path: "internal-move",
+                    element: withSuspense(<InventoryInternalMovePage />),
+                    handle: { crumb: "Internal Move" },
                   },
                   {
                     path: "aging",

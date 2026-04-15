@@ -77,6 +77,8 @@ export interface InterwarehouseTransferRow {
   stockOutTime: string | null;
 }
 
+export type InventoryTransferWorkbenchScope = "internal" | "interWarehouse";
+
 export const interwarehouseTransferBucketItems = [
   { label: "All", value: "all" },
   { label: "Pending", value: "pending" },
@@ -236,6 +238,17 @@ export function buildInterwarehouseTransferRows(
       stockOutTime,
     };
   });
+}
+
+export function filterInterwarehouseTransferRowsByScope(
+  rows: InterwarehouseTransferRow[],
+  scope: InventoryTransferWorkbenchScope,
+) {
+  return rows.filter((row) =>
+    scope === "internal"
+      ? row.transferType === "INTERNAL_RELOCATION"
+      : row.transferType === "CROSS_WAREHOUSE" || row.transferType === "MIXED",
+  );
 }
 
 function resolveSearchValue(row: InterwarehouseTransferRow, field: InterwarehouseTransferFilters["searchField"]) {
