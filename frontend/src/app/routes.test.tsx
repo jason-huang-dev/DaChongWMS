@@ -965,6 +965,12 @@ test("renders client management for authorized operators", async () => {
   expect(await screen.findByRole("button", { name: "Open account" })).toBeInTheDocument();
   expect((await screen.findAllByText("Acme Retail")).length).toBeGreaterThan(0);
   expect(screen.getByText("ACM-1")).toBeInTheDocument();
+  expect(screen.getByRole("navigation", { name: "Client workspace pages" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Hide client sidebar" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Pending approval" })).toHaveAttribute("href", "/clients/pending-approval");
+  expect(screen.getByRole("link", { name: "Approved" })).toHaveAttribute("href", "/clients/approved");
+  expect(screen.getByRole("link", { name: "Review not approved" })).toHaveAttribute("href", "/clients/review-not-approved");
+  expect(screen.getByRole("link", { name: "Deactivated" })).toHaveAttribute("href", "/clients/deactivated");
   expect(screen.getByRole("tab", { name: /Approved\(1\)/i })).toBeInTheDocument();
 });
 
@@ -1511,6 +1517,12 @@ test("renders the grouped standard stock-in page for authorized operators", asyn
 
   expect(await screen.findByText("Standard Stock-in", undefined, { timeout: 5000 })).toBeInTheDocument();
   expect((await screen.findAllByText("PO-1001", undefined, { timeout: 5000 })).length).toBeGreaterThan(0);
+  expect(screen.getByRole("navigation", { name: "Stock-in workspace pages" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Hide stock-in sidebar" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Standard Stock-in" })).toHaveAttribute("href", "/inbound/standard-stock-in");
+  expect(screen.getByRole("link", { name: "Import to Stock-in" })).toHaveAttribute("href", "/inbound/imports");
+  expect(screen.getByRole("link", { name: "Returns to Stock In" })).toHaveAttribute("href", "/inbound/returns");
+  expect(screen.getByRole("link", { name: "Stock-in Record" })).toHaveAttribute("href", "/inbound/records");
   expect(screen.getByRole("tab", { name: "Stock-in List Management" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Create receipt" })).toBeInTheDocument();
   expect(screen.getAllByText("Supplier A").length).toBeGreaterThan(0);

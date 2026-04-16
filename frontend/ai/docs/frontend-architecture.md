@@ -115,14 +115,15 @@ Migration rule:
 - Feature-local `controller/` files own mutation orchestration, query invalidation, and feature coordination.
 - Feature-local `view/` files own JSX, MUI layout, and presentational composition.
 - Feature-local `test/` files mirror the feature tree so the package reads as MVC+T rather than interleaving tests with `view/` or `controller/`.
-- Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, `ResourceTable`, the inventory-style `DataTable`, and dense queue chrome (`FilterCard`, `PageTabs`, and `ActionIconButton`) keep the first set of screens consistent while the product surface grows.
+- Shared UI primitives such as `PageHeader`, `MetricCard`, `StatusChip`, `ResourceTable`, the inventory-style `DataTable`, dense queue chrome (`FilterCard`, `PageTabs`, and `ActionIconButton`), and saved-view controls (`DataViewSavedViewControls`) keep the first set of screens consistent while the product surface grows.
+- Shared table column configuration now lives in the shared table layer as well: `TableColumnVisibilityControl` and `useTableColumnVisibility(...)` persist both column visibility and operator-defined column order, so queue pages do not need page-local column-settings logic.
 - Shared components now live in folder modules under `src/shared/components/<component>/`, with `<component>.tsx`, colocated `<component>.test.tsx` when applicable, and `index.ts` re-exports so reusable UI stays organized as the shared layer grows.
 - Exception-first surfaces use shared `ExceptionLane` tables so overdue, blocked, and failed workflow queues keep the same visual contract across domains.
 - Shared bulk queue actions use `useBulkSelection`, `BulkActionBar`, and `executeBulkAction` so selection state, batch orchestration, and operator feedback stay consistent across features.
 - Repeated selector-driven create flows use shared `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, JSON helpers, and reference-option hooks under `src/shared/` instead of rebuilding those primitives per feature.
 - Workspace and warehouse context are centralized through `src/app/scope-context.tsx`, which keeps page flows aligned on the currently selected company membership and warehouse scope.
 - UI locale and color mode are centralized through `src/app/ui-preferences.tsx`; the root provider persists browser preferences and rebuilds the MUI theme for light, dark, English, and Simplified Chinese modes.
-- Repeated table filtering and saved views use shared modules (`useDataView`, `DataViewToolbar`, `ResourceTable`, and the denser inventory-style `DataTable`) instead of per-page one-off controls.
+- Repeated table filtering and saved views use shared modules (`useDataView`, `DataViewToolbar`, `DataViewSavedViewControls`, `ResourceTable`, and the denser inventory-style `DataTable`) instead of per-page one-off controls.
 - Repeated branding usage goes through reusable modules: raw logo files live in `src/assets/logo/`, and the live UI consumes them through shared components such as `BrandLogo` and `AuthShell`.
 - JF-style shell state now lives in shared app modules: `src/app/workspace-preferences.ts` owns workspace-tab and workbench-preference queries, while `app/layout/*` owns the horizontal module nav and workspace-tab strip.
 - Cross-feature infrastructure such as CSV export, permission checks, and formatting should move into `src/shared/utils/` rather than being duplicated inside individual features.
@@ -139,7 +140,7 @@ Migration rule:
 - `ProductsPage`: product master data plus selected-product subworkflows for distribution products, serial settings, packaging, and product marks.
 - `DashboardPage`: workbench-style operational summary with persisted time window and right-rail widgets.
 - `InventoryBalancesPage`: inventory workbench covering tenant-scoped stock positions, count escalation, internal moves, stock-age reporting, manual adjustments, and cross-warehouse planning.
-- `InboundPage`: stock-in workbench covering standard receipt posting, stock-in list management, scan sign/receive/list actions, CSV import intake, returns-to-stock visibility, and inbound record queues for ASN, signing, receiving, and listing.
+- `InboundPage`: stock-in workbench covering standard receipt posting, stock-in list management, scan sign/receive/list actions, CSV import intake, returns-to-stock visibility, and inbound record queues for ASN, signing, receiving, and listing. The standard stock-in list is now a dedicated sticky-table page built from shared filter-card, page-tab, saved-view, and table primitives, with its search/date/status behavior modeled in `features/inbound/model/stock-in-list-management.ts`.
 - `PurchaseOrderDetailPage`: editable purchase-order header flow plus cancel action.
 - `OutboundPage`: sales orders, pick tasks, shipments, dock-load verification, explicit short-pick follow-up, and scan-first pick/ship actions.
 - `SalesOrderDetailPage`: editable sales-order header flow plus allocation and cancel actions.
@@ -165,7 +166,7 @@ Migration rule:
 - Feature routes import directly from `features/<domain>/view/*`.
 - Scan-first mutations and detail actions are split into `model/`, `controller/`, and `view/` layers for inbound, outbound, counting, reporting, auth, and MFA.
 - Shared modules such as `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
-- Shared modules such as `WorkspaceContextSwitcher`, `DataViewToolbar`, `DataTable`, `useDataView(...)`, `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
+- Shared modules such as `WorkspaceContextSwitcher`, `DataViewToolbar`, `DataViewSavedViewControls`, `DataTable`, `useDataView(...)`, `SummaryCard`, `MutationCard`, `DocumentHeaderFields`, `FormAutocomplete`, `ReferenceAutocompleteField`, `FormSwitchField`, `useReferenceOptions(...)`, and `invalidateQueryGroups(...)` absorb repeated view and controller patterns instead of repeating them across order-detail screens.
 - Brand palette, gradients, and shadows come from `src/app/brand.ts`, so auth screens, page headers, and the shell all stay aligned with the gold/copper/charcoal logo theme.
 - Shared UI primitives now resolve translatable values through the strict catalog contract in `src/app/i18n.ts`; arbitrary raw-English fallback is no longer part of the runtime.
 - The authenticated shell is now JF-inspired: horizontal module nav first, workspace-tab strip second, content canvas third. Mobile keeps a drawer fallback.

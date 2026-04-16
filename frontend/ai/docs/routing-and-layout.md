@@ -48,7 +48,7 @@ The quality standard for future routing changes lives in `frontend/ai/docs/chang
 
 ## Module Notes
 
-- `/inbound` is now a stock-in workbench rather than a single receipt table. It includes anchored sections for standard stock-in, stock-in list management, scan-to-sign, scan-to-receive, scan-to-list, import-to-stock-in, import management, returns-to-stock, return order management, and the inbound record queues.
+- `/inbound` is now a stock-in workbench rather than a single receipt table. It includes anchored sections for standard stock-in, stock-in list management, scan-to-sign, scan-to-receive, scan-to-list, import-to-stock-in, import management, returns-to-stock, return order management, and the inbound record queues. The standard stock-in list now uses a dedicated filter-card + sticky-table composition instead of the generic toolbar table, with status tabs, route-restorable search/date filters, and saved views kept in the table toolbar.
 - `/outbound` is now a package and shipping workbench rather than only sales orders plus shipments. It includes anchored sections for package management, stock-out package execution, interception management, abnormal packages, wave management, secondary picking, shipping management, manifest/photo/scanform records, logistics tracking, short-pick follow-up, and dock-load verification.
 - `/work-orders` is a scheduling workbench. It includes work-order type management for reusable urgency/SLA templates and work-order management for warehouse-scoped prioritization, assignee planning, and fulfillment sequencing.
 - `/logistics` is a logistics configuration and financial-control workbench. It includes online/offline channels, provider masters, customer channel assignments, logistics rules, partition rules, remote-area rules, fuel rules, waybill watermarking, charging strategies, customer-specific charging overrides, operational logistics charges, and carrier-side logistics costs.
@@ -104,6 +104,7 @@ When a sticky-table page has filters or tabs above the table, use `shared/hooks/
 Current `DataTable` pages using this standard:
 
 - `features/clients/view/ClientAccountTable.tsx`
+- `features/inbound/view/components/StockInListManagementSection.tsx`
 - `features/inventory/view/InventoryInformationTable.tsx`
 - `features/inventory/view/InventoryMovementsPage.tsx`
 
@@ -152,7 +153,7 @@ Scan-first action panels and selector-driven create panels are packaged as route
 
 - Inventory is now a workbench route rather than a single balance screen. It groups inventory information, stock-count escalation, internal moves, stock-age reporting, manual adjustments, and cross-warehouse planning in one warehouse-scoped module page.
 - Inbound purchase-order detail exposes editable header fields and a cancel action.
-- Inbound queue now exposes an overdue-receipts exception lane ahead of the broader purchase-order queue.
+- Inbound queue now exposes an overdue-receipts exception lane ahead of the broader purchase-order queue. Standard stock-in list management also now has a dedicated status-tabbed filter card above a bounded data table, and its search/date state is mapped through a stock-in-specific filter model rather than the legacy generic toolbar fields.
 - Outbound sales-order detail exposes editable header fields plus allocation/cancel actions.
 - Outbound queue now exposes wave generation, scan-to-pack, scan-to-inspect, weighing-to-ship, shipping-document generation, logistics-tracking capture, a real short-pick exception lane backed by explicit backend short-pick records and resolution actions, plus dock-load verification and higher-level package-management tables.
 - B2B exposes a cross-cut workbench for replenishment-style flows and now scopes every queue and supported mutation through the backend `order_type=B2B` partition. It still reuses the same inbound/outbound models underneath, but the partition is now enforced server-side rather than only by route semantics.

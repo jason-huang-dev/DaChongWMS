@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode, useCallback, useEffect, useRef } from "react";
+import { Fragment, type ReactNode, useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   Alert,
@@ -161,7 +161,16 @@ export function DataTable<TRow, TSortKey extends string = string>({
   const theme = useTheme();
   const { t, translate } = useI18n();
   const isDark = theme.palette.mode === "dark";
-  const managedColumnVisibility = useTableColumnVisibility(columns, columnVisibility);
+  const configurableColumns = useMemo(
+    () =>
+      columns.map((column) => ({
+        ...column,
+        columnOrderLock:
+          column.columnOrderLock ?? (column.sticky === "left" ? "start" : column.sticky === "right" ? "end" : undefined),
+      })),
+    [columns],
+  );
+  const managedColumnVisibility = useTableColumnVisibility(configurableColumns, columnVisibility);
   const visibleColumns = managedColumnVisibility.visibleColumns;
   const selectableRows = rowSelection
     ? rows.filter((row) => (rowSelection.isRowSelectable ? rowSelection.isRowSelectable(row) : true))
@@ -259,6 +268,8 @@ export function DataTable<TRow, TSortKey extends string = string>({
       {managedColumnVisibility.enabled ? (
         <TableColumnVisibilityControl
           items={managedColumnVisibility.items}
+          onMoveEarlier={managedColumnVisibility.moveColumnEarlier}
+          onMoveLater={managedColumnVisibility.moveColumnLater}
           onReset={managedColumnVisibility.resetToDefaults}
           onToggle={managedColumnVisibility.toggleColumn}
           resetLabel={columnVisibility?.resetLabel}

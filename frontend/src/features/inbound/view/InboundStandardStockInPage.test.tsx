@@ -32,9 +32,19 @@ const emptyView = {
   activeFilterCount: 0,
   applySavedView: vi.fn(),
   deleteSavedView: vi.fn(),
-  filters: {},
+  filters: {
+    po_number__icontains: "",
+    status: "",
+    status__in: "",
+    searchField: "",
+    searchValue: "",
+    dateField: "",
+    dateFrom: "",
+    dateTo: "",
+  },
   page: 1,
   pageSize: 8,
+  queryFilters: {},
   resetFilters: vi.fn(),
   saveCurrentView: vi.fn(),
   savedViews: [],
@@ -94,6 +104,7 @@ test("switches between standard stock-in subpages with tabs", async () => {
   );
 
   expect(screen.getByRole("tab", { name: "Stock-in List Management" })).toBeInTheDocument();
+  expect(screen.getByTestId("stock-in-list-page-chrome")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Create receipt" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "PO-1001" })).toHaveAttribute("href", "/inbound/purchase-orders/1");
 

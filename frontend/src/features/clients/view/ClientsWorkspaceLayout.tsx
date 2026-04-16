@@ -2,27 +2,27 @@ import { Box, Stack } from "@mui/material";
 import { Outlet } from "react-router-dom";
 
 import { useWorkbenchPreference } from "@/app/workspace-preferences";
-import { inboundWorkspaceItems } from "@/features/inbound/view/inbound-navigation";
+import { clientWorkspaceItems } from "@/features/clients/view/client-navigation";
 import {
   WorkspaceIconNav,
   workspaceIconNavCompactWidth,
   workspaceIconNavHiddenWidth,
 } from "@/shared/components/workspace-icon-nav";
 
-const inboundWorkspacePagesNavigationId = "inbound-workspace-pages";
+const clientsWorkspacePagesNavigationId = "clients-workspace-pages";
 
-function resolveInboundSidebarMode(layoutPayload: Record<string, unknown>) {
+function resolveClientsSidebarMode(layoutPayload: Record<string, unknown>) {
   return layoutPayload.sidebar_mode === "hidden" ? "hidden" : "compact";
 }
 
-export function InboundWorkspaceLayout() {
-  const { preferenceQuery, updateWorkbenchPreference } = useWorkbenchPreference("inbound");
+export function ClientsWorkspaceLayout() {
+  const { preferenceQuery, updateWorkbenchPreference } = useWorkbenchPreference("clients");
 
   const rawLayoutPayload =
     preferenceQuery.data?.layout_payload && typeof preferenceQuery.data.layout_payload === "object"
       ? preferenceQuery.data.layout_payload
       : {};
-  const sidebarMode = resolveInboundSidebarMode(rawLayoutPayload);
+  const sidebarMode = resolveClientsSidebarMode(rawLayoutPayload);
 
   function persistLayout(nextSidebarMode: "compact" | "hidden") {
     updateWorkbenchPreference.mutate({
@@ -52,15 +52,15 @@ export function InboundWorkspaceLayout() {
         }}
       >
         <WorkspaceIconNav
-          ariaLabel="Stock-in workspace pages"
-          hideLabel="Hide stock-in sidebar"
+          ariaLabel="Client workspace pages"
+          hideLabel="Hide client sidebar"
           isSaving={updateWorkbenchPreference.isPending}
-          items={inboundWorkspaceItems}
+          items={clientWorkspaceItems}
           mode={sidebarMode}
-          navigationId={inboundWorkspacePagesNavigationId}
+          navigationId={clientsWorkspacePagesNavigationId}
           onHide={() => persistLayout("hidden")}
           onShow={() => persistLayout("compact")}
-          showLabel="Show stock-in sidebar"
+          showLabel="Show client sidebar"
         />
         <Box
           sx={{

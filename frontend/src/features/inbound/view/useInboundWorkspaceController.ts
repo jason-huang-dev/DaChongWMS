@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 
 import { useInboundController } from "@/features/inbound/controller/useInboundController";
+import type { StockInListDateField, StockInListSearchField } from "@/features/inbound/model/stock-in-list-management";
 
 export function useInboundWorkspaceController() {
   const [searchParams] = useSearchParams();
@@ -15,6 +16,11 @@ export function useInboundWorkspaceController() {
       po_number__icontains: searchParams.get("poNumber") ?? "",
       status: searchParams.get("poStatus") ?? "",
       status__in: searchParams.get("poStatuses") ?? "",
+      searchField: (searchParams.get("poSearchField") as StockInListSearchField | null) ?? "",
+      searchValue: searchParams.get("poSearchValue") ?? "",
+      dateField: (searchParams.get("poDateField") as StockInListDateField | null) ?? "",
+      dateFrom: searchParams.get("poDateFrom") ?? "",
+      dateTo: searchParams.get("poDateTo") ?? "",
     },
     initialReceiptFilters: {
       receipt_number__icontains: searchParams.get("receiptNumber") ?? "",

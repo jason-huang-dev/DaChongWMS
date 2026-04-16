@@ -101,6 +101,10 @@ const ClientsPendingApprovalPage = lazyNamedPage(
   () => import("@/features/clients/view/ClientsPage"),
   "ClientsPendingApprovalPage",
 );
+const ClientsWorkspaceLayout = lazyNamedPage(
+  () => import("@/features/clients/view/ClientsWorkspaceLayout"),
+  "ClientsWorkspaceLayout",
+);
 const ClientsApprovedPage = lazyNamedPage(
   () => import("@/features/clients/view/ClientsPage"),
   "ClientsApprovedPage",
@@ -327,7 +331,7 @@ const baseRoutes: RouteObject[] = [
               },
               {
                 path: "/clients",
-                element: <Outlet />,
+                element: withSuspense(<ClientsWorkspaceLayout />),
                 handle: { crumb: "Clients" },
                 children: [
                   {

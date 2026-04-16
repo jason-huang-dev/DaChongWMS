@@ -9,8 +9,10 @@ type ActionIconButtonTone = "neutral" | "primary" | "success" | "warning";
 
 interface ActionIconButtonProps extends Omit<IconButtonProps, "children" | "title"> {
   children: ReactNode;
+  href?: string;
   sx?: SxProps<Theme>;
   title: ReactNode;
+  to?: string;
   tone?: ActionIconButtonTone;
   tooltipPlacement?: TooltipProps["placement"];
 }

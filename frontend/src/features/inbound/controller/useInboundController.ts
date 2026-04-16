@@ -12,6 +12,10 @@ import {
   runScanSign,
   runStockInImport,
 } from "@/features/inbound/controller/actions";
+import {
+  buildStockInListQueryFilters,
+  type StockInListFilters,
+} from "@/features/inbound/model/stock-in-list-management";
 import { defaultPurchaseOrderEditValues, defaultReceiptCreateValues, mapPurchaseOrderToEditValues } from "@/features/inbound/model/mappers";
 import { inboundApi } from "@/features/inbound/model/api";
 import type {
@@ -46,6 +50,11 @@ interface InboundControllerOptions {
     po_number__icontains?: string;
     status?: string;
     status__in?: string;
+    searchField?: StockInListFilters["searchField"];
+    searchValue?: string;
+    dateField?: StockInListFilters["dateField"];
+    dateFrom?: string;
+    dateTo?: string;
   };
   initialReceiptFilters?: {
     receipt_number__icontains?: string;
@@ -111,6 +120,11 @@ export function useInboundController(options: InboundControllerOptions = {}) {
       po_number__icontains: options.initialPurchaseOrderFilters?.po_number__icontains ?? "",
       status: options.initialPurchaseOrderFilters?.status ?? "",
       status__in: options.initialPurchaseOrderFilters?.status__in ?? "",
+      searchField: options.initialPurchaseOrderFilters?.searchField ?? "",
+      searchValue: options.initialPurchaseOrderFilters?.searchValue ?? "",
+      dateField: options.initialPurchaseOrderFilters?.dateField ?? "",
+      dateFrom: options.initialPurchaseOrderFilters?.dateFrom ?? "",
+      dateTo: options.initialPurchaseOrderFilters?.dateTo ?? "",
     },
     pageSize: 8,
   });
@@ -226,7 +240,7 @@ export function useInboundController(options: InboundControllerOptions = {}) {
       purchaseOrdersView.pageSize,
       {
         ...scopedQuery,
-        ...purchaseOrdersView.queryFilters,
+        ...buildStockInListQueryFilters(purchaseOrdersView.filters),
       },
     ),
     purchaseOrdersView,

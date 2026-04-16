@@ -3,9 +3,9 @@ import FactCheckOutlinedIcon from "@mui/icons-material/FactCheckOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 
-import type { WorkspaceSectionNavItem } from "@/shared/components/workspace-section-nav";
+import type { WorkspaceIconNavItem } from "@/shared/components/workspace-icon-nav";
 
-export const inboundWorkspaceItems: WorkspaceSectionNavItem[] = [
+export const inboundWorkspaceItems: WorkspaceIconNavItem[] = [
   {
     label: "Standard Stock-in",
     to: "/inbound/standard-stock-in",

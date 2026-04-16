@@ -153,3 +153,41 @@ test("supports column visibility controls without breaking the rendered table", 
   expect(screen.getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
   expect(screen.getAllByText("Open")).toHaveLength(2);
 });
+
+test("supports reordering columns from the shared column configuration control", async () => {
+  const user = userEvent.setup();
+
+  renderWithProviders(
+    <div style={{ height: 320, width: 420 }}>
+      <DataTable
+        columns={[
+          ...columns,
+          {
+            header: "Code",
+            key: "code",
+            render: (row) => `SKU-${row.id}`,
+            width: 140,
+          },
+        ]}
+        fillHeight
+        getRowId={(row) => row.id}
+        rows={rows}
+        stickyHeader
+      />
+    </div>,
+  );
+
+  expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Name", "Code"]);
+
+  await user.click(screen.getByRole("button", { name: "Configure columns" }));
+  await user.click(screen.getByRole("button", { name: "Move Code earlier" }));
+  await user.keyboard("{Escape}");
+
+  expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Code", "Name"]);
+
+  await user.click(screen.getByRole("button", { name: "Configure columns" }));
+  await user.click(screen.getByRole("button", { name: "Restore default" }));
+  await user.keyboard("{Escape}");
+
+  expect(screen.getAllByRole("columnheader").map((cell) => cell.textContent)).toEqual(["Name", "Code"]);
+});

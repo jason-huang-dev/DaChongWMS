@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from django.db.models import Prefetch
+from django.db.models import Prefetch, Q
+from django.utils.dateparse import parse_date
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -11,12 +12,85 @@ from apps.common.api_compat import (
     empty_compat_response,
     get_compat_membership,
     get_optional_int,
+    get_query_value,
     get_query_values,
     iso_date,
     iso_datetime,
     paginate_compat_list,
 )
 from apps.inbound.models import AdvanceShipmentNotice, PurchaseOrder, PurchaseOrderLine, PutawayTask
+
+
+def _purchase_order_queryset(organization_id: int):
+    return (
+        PurchaseOrder.objects.select_related("warehouse", "customer_account")
+        .prefetch_related(
+            Prefetch(
+                "lines",
+                queryset=PurchaseOrderLine.objects.select_related("product").order_by("line_number", "id"),
+            )
+        )
+        .filter(organization_id=organization_id)
+        .order_by("-create_time", "-id")
+    )
+
+
+def _normalize_purchase_order_status(value: str | None) -> str:
+    normalized_value = str(value or "").strip().upper()
+    if normalized_value == "RECEIVED":
+        return "CLOSED"
+    return normalized_value
+
+
+def _build_purchase_order_search_query(search_field: str, search_value: str) -> Q:
+    normalized_search_field = search_field.strip().lower()
+
+    if normalized_search_field == "po_number":
+        return Q(po_number__icontains=search_value)
+    if normalized_search_field == "customer":
+        return Q(customer_name__icontains=search_value) | Q(customer_code__icontains=search_value)
+    if normalized_search_field == "supplier":
+        return (
+            Q(supplier_name__icontains=search_value)
+            | Q(supplier_code__icontains=search_value)
+            | Q(supplier_contact_name__icontains=search_value)
+        )
+    if normalized_search_field == "reference_code":
+        return Q(reference_code__icontains=search_value)
+
+    return (
+        Q(po_number__icontains=search_value)
+        | Q(customer_name__icontains=search_value)
+        | Q(customer_code__icontains=search_value)
+        | Q(supplier_name__icontains=search_value)
+        | Q(supplier_code__icontains=search_value)
+        | Q(reference_code__icontains=search_value)
+    )
+
+
+def _apply_purchase_order_date_filters(
+    queryset,
+    *,
+    date_field: str,
+    date_from_value: str | None,
+    date_to_value: str | None,
+):
+    normalized_date_field = date_field.strip().lower()
+    date_from = parse_date(date_from_value or "")
+    date_to = parse_date(date_to_value or "")
+
+    if normalized_date_field == "expected_arrival_date":
+        if date_from is not None:
+            queryset = queryset.filter(expected_arrival_date__gte=date_from)
+        if date_to is not None:
+            queryset = queryset.filter(expected_arrival_date__lte=date_to)
+        return queryset
+
+    if date_from is not None:
+        queryset = queryset.filter(create_time__date__gte=date_from)
+    if date_to is not None:
+        queryset = queryset.filter(create_time__date__lte=date_to)
+    return queryset
 
 
 def _serialize_purchase_order_line(line: PurchaseOrderLine) -> dict[str, object]:
@@ -118,6 +192,9 @@ def _serialize_advance_shipment_notice(asn: AdvanceShipmentNotice) -> dict[str, 
 class CompatibilityPurchaseOrderListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self, organization_id: int):
+        return _purchase_order_queryset(organization_id)
+
     def get(self, request: Request) -> Response:
         membership = get_compat_membership(request)
         if membership is None:
@@ -126,27 +203,41 @@ class CompatibilityPurchaseOrderListAPIView(APIView):
         warehouse_id = get_optional_int(request, "warehouse", "warehouse_id")
         customer_account_id = get_optional_int(request, "customer", "customer_account", "customer_account_id")
         order_type = request.query_params.get("order_type")
-        status_value = request.query_params.get("status")
+        status_value = _normalize_purchase_order_status(request.query_params.get("status"))
+        status_values = [
+            normalized_status
+            for normalized_status in (_normalize_purchase_order_status(value) for value in get_query_values(request, "status__in"))
+            if normalized_status
+        ]
+        po_number_filter = str(request.query_params.get("po_number__icontains") or "").strip()
+        search_field = get_query_value(request, "search_field") or ""
+        search_value = get_query_value(request, "search_value", "search")
+        date_field = get_query_value(request, "date_field") or "create_time"
+        date_from_value = get_query_value(request, "date_from")
+        date_to_value = get_query_value(request, "date_to")
 
-        queryset = (
-            PurchaseOrder.objects.select_related("warehouse", "customer_account")
-            .prefetch_related(
-                Prefetch(
-                    "lines",
-                    queryset=PurchaseOrderLine.objects.select_related("product").order_by("line_number", "id"),
-                )
-            )
-            .filter(organization_id=membership.organization_id)
-            .order_by("-create_time", "-id")
-        )
+        queryset = self.get_queryset(membership.organization_id)
         if warehouse_id is not None:
             queryset = queryset.filter(warehouse_id=warehouse_id)
         if customer_account_id is not None:
             queryset = queryset.filter(customer_account_id=customer_account_id)
         if isinstance(order_type, str) and order_type.strip():
             queryset = queryset.filter(order_type=order_type.strip().upper())
-        if isinstance(status_value, str) and status_value.strip():
-            queryset = queryset.filter(status=status_value.strip().upper())
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+        if status_values:
+            queryset = queryset.filter(status__in=status_values)
+        if po_number_filter:
+            queryset = queryset.filter(po_number__icontains=po_number_filter)
+        if search_value:
+            queryset = queryset.filter(_build_purchase_order_search_query(search_field, search_value))
+        if date_from_value or date_to_value:
+            queryset = _apply_purchase_order_date_filters(
+                queryset,
+                date_field=date_field,
+                date_from_value=date_from_value,
+                date_to_value=date_to_value,
+            )
 
         return paginate_compat_list(
             request=request,

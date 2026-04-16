@@ -128,6 +128,8 @@ export function ResourceTable<TRow>({
       {managedColumnVisibility.enabled ? (
         <TableColumnVisibilityControl
           items={managedColumnVisibility.items}
+          onMoveEarlier={managedColumnVisibility.moveColumnEarlier}
+          onMoveLater={managedColumnVisibility.moveColumnLater}
           onReset={managedColumnVisibility.resetToDefaults}
           onToggle={managedColumnVisibility.toggleColumn}
           resetLabel={columnVisibility?.resetLabel}

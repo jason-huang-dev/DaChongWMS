@@ -8,6 +8,7 @@ import { ScanPutawayPanel } from "@/features/inbound/view/components/ScanPutaway
 import { ScanReceivePanel } from "@/features/inbound/view/components/ScanReceivePanel";
 import { ScanSignPanel } from "@/features/inbound/view/components/ScanSignPanel";
 import { StockInImportPanel } from "@/features/inbound/view/components/StockInImportPanel";
+import { StockInListManagementSection as StockInListManagementTable } from "@/features/inbound/view/components/StockInListManagementSection";
 import { DataViewToolbar, type DataViewFieldConfig } from "@/shared/components/data-view-toolbar";
 import { RecordLink } from "@/shared/components/record-link";
 import { ResourceTable } from "@/shared/components/resource-table";
@@ -48,21 +49,6 @@ type InboundWorkspaceControllerState = ReturnType<typeof useInboundController>;
 
 const asnFields: DataViewFieldConfig<{ asn_number__icontains: string; status: string }>[] = [
   { key: "asn_number__icontains", label: "ASN", placeholder: "ASN-1001" },
-  {
-    key: "status",
-    label: "Status",
-    type: "select",
-    options: [
-      { label: "Open", value: "OPEN" },
-      { label: "Partially received", value: "PARTIAL" },
-      { label: "Received", value: "RECEIVED" },
-      { label: "Cancelled", value: "CANCELLED" },
-    ],
-  },
-];
-
-const purchaseOrderFields: DataViewFieldConfig<{ po_number__icontains: string; status: string }>[] = [
-  { key: "po_number__icontains", label: "PO number", placeholder: "PO-1001" },
   {
     key: "status",
     label: "Status",
@@ -156,47 +142,13 @@ export function StockInListManagementSection({
   controller: InboundWorkspaceControllerState;
   toolbarActions?: ReactNode;
 }) {
-  const { t, msg } = useI18n();
   const { activeWarehouse, purchaseOrdersQuery, purchaseOrdersView } = controller;
 
   return (
-    <ResourceTable
-      columns={[
-        { header: "PO", key: "po", render: (row) => <RecordLink to={`/inbound/purchase-orders/${row.id}`}>{row.po_number}</RecordLink> },
-        { header: "Warehouse", key: "warehouse", render: (row) => row.warehouse_name },
-        { header: "Supplier", key: "supplier", render: (row) => row.supplier_name },
-        { header: "Expected arrival", key: "arrival", render: (row) => formatDateTime(row.expected_arrival_date) },
-        { header: "Status", key: "status", render: (row) => <StatusChip status={row.status} /> },
-      ]}
-      error={purchaseOrdersQuery.error ? parseApiError(purchaseOrdersQuery.error) : null}
-      getRowId={(row) => row.id}
-      isLoading={purchaseOrdersQuery.isLoading}
-      pagination={{
-        page: purchaseOrdersView.page,
-        pageSize: purchaseOrdersView.pageSize,
-        total: purchaseOrdersQuery.data?.count ?? 0,
-        onPageChange: purchaseOrdersView.setPage,
-      }}
-      rows={purchaseOrdersQuery.data?.results ?? []}
-      compact
-      toolbar={
-        <DataViewToolbar
-          activeFilterCount={purchaseOrdersView.activeFilterCount}
-          contextLabel={warehouseContextLabel(activeWarehouse, msg, t)}
-          fields={purchaseOrderFields}
-          filters={purchaseOrdersView.filters}
-          onChange={purchaseOrdersView.updateFilter}
-          onReset={purchaseOrdersView.resetFilters}
-          resultCount={purchaseOrdersQuery.data?.count}
-          savedViews={{
-            items: purchaseOrdersView.savedViews,
-            selectedId: purchaseOrdersView.selectedSavedViewId,
-            onApply: purchaseOrdersView.applySavedView,
-            onDelete: purchaseOrdersView.deleteSavedView,
-            onSave: purchaseOrdersView.saveCurrentView,
-          }}
-        />
-      }
+    <StockInListManagementTable
+      activeWarehouse={activeWarehouse}
+      purchaseOrdersQuery={purchaseOrdersQuery}
+      purchaseOrdersView={purchaseOrdersView}
       toolbarActions={toolbarActions}
     />
   );
