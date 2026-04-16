@@ -41,6 +41,7 @@ interface CreateReceiptPanelProps {
   errorMessage?: string | null;
   isPending: boolean;
   onSubmit: (values: ReceiptCreateValues) => Promise<unknown> | void;
+  showHeader?: boolean;
   successMessage?: string | null;
 }
 
@@ -48,6 +49,7 @@ export function CreateReceiptPanel({
   errorMessage,
   isPending,
   onSubmit,
+  showHeader = true,
   successMessage,
 }: CreateReceiptPanelProps) {
   const { t, msg } = useI18n();
@@ -101,10 +103,10 @@ export function CreateReceiptPanel({
 
   return (
     <MutationCard
-      description="Create warehouse receipts from purchase-order selectors instead of manually entering backend ids."
+      description={showHeader ? "Create warehouse receipts from purchase-order selectors instead of manually entering backend ids." : undefined}
       errorMessage={errorMessage}
       successMessage={successMessage}
-      title="Create receipt"
+      title={showHeader ? "Create receipt" : undefined}
     >
       <FormProvider {...form}>
         <Stack component="form" noValidate onSubmit={handleSubmit} spacing={2}>

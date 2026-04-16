@@ -240,7 +240,7 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
   expect(screen.getByRole("button", { name: "Customize dashboard" })).toBeInTheDocument();
 
   const stockInLink = screen.getByRole("link", { name: "Stock In: Pending Stock In" });
-  expect(stockInLink).toHaveAttribute("href", "/inbound?poStatuses=OPEN%2CPARTIAL#purchase-orders");
+  expect(stockInLink).toHaveAttribute("href", "/inbound/standard-stock-in?poStatuses=OPEN%2CPARTIAL");
 
   const financeLink = screen.getByRole("link", { name: "Finance: Quota pending review" });
   expect(financeLink).toHaveAttribute("href", "/finance#voucher-management");

@@ -69,6 +69,28 @@ const keyedMessages = {
     "table.paginationDisplayedRows": "{{from}}-{{to}} of {{count}}",
     "dashboard.metricLinkLabel": "{{section}}: {{label}}",
     "dashboard.cellsCount": "{{count}} cells",
+    "Stock-in workspace groups": "Stock-in workspace groups",
+    "Standard stock-in pages": "Standard stock-in pages",
+    "Stock-in import pages": "Stock-in import pages",
+    "Stock-in record pages": "Stock-in record pages",
+    "Returns to stock-in pages": "Returns to stock-in pages",
+    "Stock-in workspace pages": "Stock-in workspace pages",
+    "Stock-in overview": "Stock-in overview",
+    Overview: "Overview",
+    Imports: "Imports",
+    Records: "Records",
+    "Standard stock-in": "Standard stock-in",
+    "Returns to stock in": "Returns to stock in",
+    "Choose a stock-in group first, then work within focused subpages instead of a single long inbound screen.":
+      "Choose a stock-in group first, then work within focused subpages instead of a single long inbound screen.",
+    "Manage purchase orders, dock signing, receiving, and listing from the standard stock-in workspace.":
+      "Manage purchase orders, dock signing, receiving, and listing from the standard stock-in workspace.",
+    "Upload stock-in files and monitor import outcomes from a dedicated inbound import workspace.":
+      "Upload stock-in files and monitor import outcomes from a dedicated inbound import workspace.",
+    "Monitor returned inventory flowing back into stock-in and jump into the main returns workspace when needed.":
+      "Monitor returned inventory flowing back into stock-in and jump into the main returns workspace when needed.",
+    "Review planned, signed, received, and listed stock-in records from a focused inbound record workspace.":
+      "Review planned, signed, received, and listed stock-in records from a focused inbound record workspace.",
   },
   "zh-CN": {
     "ui.language": "语言",
@@ -543,9 +565,31 @@ const supplementalRawMessages: TranslationCatalog = mergeLocaleMessageGroups(sto
     "Print selected labels": "打印所选标签",
     "No warehouse selected": "未选择仓库",
     "Inventory area pages": "库存区域页面",
+    "Stock-in workspace groups": "入库工作台分组",
+    "Standard stock-in pages": "标准入库页面",
+    "Stock-in import pages": "入库导入页面",
+    "Stock-in record pages": "入库记录页面",
+    "Returns to stock-in pages": "退货转入库页面",
+    "Stock-in workspace pages": "入库工作台页面",
+    "Stock-in overview": "入库总览",
+    Overview: "总览",
+    Imports: "导入",
+    Records: "记录",
+    "Standard stock-in": "标准入库",
+    "Returns to stock in": "退货转入库",
     "Warehouse filter": "仓库筛选",
     "Client filter": "客户筛选",
     "Stock-in operations": "入库作业",
+    "Choose a stock-in group first, then work within focused subpages instead of a single long inbound screen.":
+      "先选择入库分组，再进入对应的子页面处理，而不是在一个超长的入库页面中来回滚动。",
+    "Manage purchase orders, dock signing, receiving, and listing from the standard stock-in workspace.":
+      "在标准入库工作台中集中处理采购订单、月台签收、收货和上架。",
+    "Upload stock-in files and monitor import outcomes from a dedicated inbound import workspace.":
+      "在专用的入库导入工作台中上传文件并跟踪导入结果。",
+    "Monitor returned inventory flowing back into stock-in and jump into the main returns workspace when needed.":
+      "监控回流入库的退货库存，并在需要时跳转到主退货工作台。",
+    "Review planned, signed, received, and listed stock-in records from a focused inbound record workspace.":
+      "在聚焦的入库记录工作台中查看计划、签收、收货和上架记录。",
     "One stock-in workbench for standard receipts, dock sign-off, scan-first receiving, imports, returns-to-stock, and the inbound record queues.":
       "一个统一的入库工作台，涵盖标准收货、月台签收、扫码收货、导入、退货转入库和入库记录队列。",
     "Purchase orders whose expected arrival date has already passed and still need dock attention.":

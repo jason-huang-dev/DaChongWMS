@@ -1420,7 +1420,7 @@ test("renders B2B operations for authorized operators", async () => {
   expect(screen.getByRole("link", { name: "Scan and Relabel" })).toHaveAttribute("href", "#scan-and-relabel");
 });
 
-test("renders inbound scan panels and inbound records for authorized operators", async () => {
+test("renders the grouped standard stock-in page for authorized operators", async () => {
   saveStoredSession({
     username: "inbound",
     openid: "tenant-openid",
@@ -1507,12 +1507,12 @@ test("renders inbound scan panels and inbound records for authorized operators",
     return undefined;
   });
 
-  renderWithRouter(["/inbound"]);
+  renderWithRouter(["/inbound/standard-stock-in"]);
 
-  expect(await screen.findByText("Stock-in operations", undefined, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByText("Standard Stock-in", undefined, { timeout: 5000 })).toBeInTheDocument();
   expect((await screen.findAllByText("PO-1001", undefined, { timeout: 5000 })).length).toBeGreaterThan(0);
-  expect(screen.getByText("Scan receive")).toBeInTheDocument();
-  expect(screen.getByText("Scan putaway")).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Stock-in List Management" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Create receipt" })).toBeInTheDocument();
   expect(screen.getAllByText("Supplier A").length).toBeGreaterThan(0);
 });
 

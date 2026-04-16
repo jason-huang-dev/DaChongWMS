@@ -27,6 +27,7 @@ interface StockInImportPanelProps {
   errorMessage?: string | null;
   isPending: boolean;
   onSubmit: (file: File) => Promise<unknown> | void;
+  showHeader?: boolean;
   successMessage?: string | null;
 }
 
@@ -39,6 +40,7 @@ export function StockInImportPanel({
   errorMessage,
   isPending,
   onSubmit,
+  showHeader = true,
   successMessage,
 }: StockInImportPanelProps) {
   const { t, translate, msg } = useI18n();
@@ -62,10 +64,14 @@ export function StockInImportPanel({
 
   return (
     <MutationCard
-      description="Bulk receive stock-in rows from a CSV manifest. Each row is processed through the same scan-receive validation used by handheld intake."
+      description={
+        showHeader
+          ? "Bulk receive stock-in rows from a CSV manifest. Each row is processed through the same scan-receive validation used by handheld intake."
+          : undefined
+      }
       errorMessage={errorMessage ?? localError}
       successMessage={successMessage}
-      title="Import to Stock-in"
+      title={showHeader ? "Import to Stock-in" : undefined}
     >
       <Stack spacing={2}>
         <Alert severity="info">

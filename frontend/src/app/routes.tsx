@@ -62,7 +62,26 @@ const InventoryCrossWarehousePage = lazyNamedPage(
   () => import("@/features/inventory/view/InventoryCrossWarehousePage"),
   "InventoryCrossWarehousePage",
 );
-const InboundPage = lazyNamedPage(() => import("@/features/inbound/view/InboundPage"), "InboundPage");
+const InboundWorkspaceLayout = lazyNamedPage(
+  () => import("@/features/inbound/view/InboundWorkspaceLayout"),
+  "InboundWorkspaceLayout",
+);
+const InboundStandardStockInPage = lazyNamedPage(
+  () => import("@/features/inbound/view/InboundStandardStockInPage"),
+  "InboundStandardStockInPage",
+);
+const InboundImportsPage = lazyNamedPage(
+  () => import("@/features/inbound/view/InboundImportsPage"),
+  "InboundImportsPage",
+);
+const InboundReturnsPage = lazyNamedPage(
+  () => import("@/features/inbound/view/InboundReturnsPage"),
+  "InboundReturnsPage",
+);
+const InboundRecordsPage = lazyNamedPage(
+  () => import("@/features/inbound/view/InboundRecordsPage"),
+  "InboundRecordsPage",
+);
 const PurchaseOrderDetailPage = lazyNamedPage(
   () => import("@/features/inbound/view/PurchaseOrderDetailPage"),
   "PurchaseOrderDetailPage",
@@ -232,8 +251,34 @@ const baseRoutes: RouteObject[] = [
             children: [
               {
                 path: "/inbound",
-                element: withSuspense(<InboundPage />),
+                element: withSuspense(<InboundWorkspaceLayout />),
                 handle: { crumb: "Inbound" },
+                children: [
+                  {
+                    index: true,
+                    element: <Navigate replace to="/inbound/standard-stock-in" />,
+                  },
+                  {
+                    path: "standard-stock-in",
+                    element: withSuspense(<InboundStandardStockInPage />),
+                    handle: { crumb: "Standard stock-in" },
+                  },
+                  {
+                    path: "imports",
+                    element: withSuspense(<InboundImportsPage />),
+                    handle: { crumb: "Imports" },
+                  },
+                  {
+                    path: "returns",
+                    element: withSuspense(<InboundReturnsPage />),
+                    handle: { crumb: "Returns to stock in" },
+                  },
+                  {
+                    path: "records",
+                    element: withSuspense(<InboundRecordsPage />),
+                    handle: { crumb: "Records" },
+                  },
+                ],
               },
               {
                 path: "/inbound/purchase-orders/:purchaseOrderId",

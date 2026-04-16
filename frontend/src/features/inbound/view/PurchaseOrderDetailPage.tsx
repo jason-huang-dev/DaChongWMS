@@ -54,7 +54,7 @@ export function PurchaseOrderDetailPage() {
   }, [purchaseOrderQuery.data]);
 
   if (!purchaseOrderId) {
-    return <Navigate replace to="/inbound" />;
+    return <Navigate replace to="/inbound/standard-stock-in" />;
   }
 
   if (purchaseOrderQuery.isLoading) {
@@ -67,7 +67,7 @@ export function PurchaseOrderDetailPage() {
     <Stack spacing={3}>
       <PageHeader
         actions={
-          <Button component={RouterLink} to="/inbound" variant="outlined">
+          <Button component={RouterLink} to="/inbound/standard-stock-in" variant="outlined">
             Back to inbound
           </Button>
         }

@@ -136,21 +136,21 @@ export function DashboardPage() {
       label: "Pending Stock In",
       tone: "warning",
       value: canViewOps ? formatNumber(queueMetrics.stockIn.pendingStockIn) : "Restricted",
-      to: canViewOps ? buildDashboardLink("/inbound", { poStatuses: "OPEN,PARTIAL" }, "purchase-orders") : undefined,
+      to: canViewOps ? buildDashboardLink("/inbound/standard-stock-in", { poStatuses: "OPEN,PARTIAL" }) : undefined,
     },
     {
       key: "stock-in-transit",
       label: "In Transit",
       tone: "info",
       value: canViewOps ? formatNumber(queueMetrics.stockIn.inTransit) : "Restricted",
-      to: canViewOps ? buildDashboardLink("/inbound", { asnStatuses: "OPEN,PARTIAL" }, "advance-shipment-notices") : undefined,
+      to: canViewOps ? buildDashboardLink("/inbound/records", { asnStatuses: "OPEN,PARTIAL" }) : undefined,
     },
     {
       key: "stock-in-stocking",
       label: "Stocking In",
       tone: "success",
       value: canViewOps ? formatNumber(queueMetrics.stockIn.stockingIn) : "Restricted",
-      to: canViewOps ? buildDashboardLink("/inbound", { putawayStatuses: "OPEN,ASSIGNED" }, "putaway-tasks") : undefined,
+      to: canViewOps ? buildDashboardLink("/inbound/records", { putawayStatuses: "OPEN,ASSIGNED", tab: "listing-record" }) : undefined,
     },
   ];
 
