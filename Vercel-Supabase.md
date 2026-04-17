@@ -207,20 +207,20 @@ Add this file:
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
-    "api/index.py": {
+    "api/**/*.py": {
       "maxDuration": 60
     }
   },
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/api/index.py"
+      "destination": "/api"
     }
   ]
 }
 ```
 
-This sends all backend requests through the Django app.
+This configures all Python functions under `api/` and sends backend requests through the `api/index.py` Django entrypoint, which is exposed at the `/api` route.
 
 ### 4.4 Python version
 
