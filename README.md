@@ -33,12 +33,13 @@ The stack now separates shared Compose state from development and production beh
 
 ### Development
 
-1. Copy `.env.dev.example` to `.env` if you do not already have a local dev env file.
-2. Start the stack:
+1. Copy `.env.dev.example` to `.env.dev` if you do not already have a local dev env file.
+2. Copy `frontend/.env.example` to `frontend/.env.local` if you run the Vite app directly outside Docker.
+3. Start the stack:
 
 ```bash
-make dev
-# or: make dev_build
+make dev DEV_ENV_FILE=.env.dev
+# or: make dev_build DEV_ENV_FILE=.env.dev
 ```
 
 The frontend runs on `http://localhost:5173` through Vite. `/api`, `/admin`, `/media`, and `/static` are proxied to the backend container.

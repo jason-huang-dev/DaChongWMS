@@ -1,4 +1,5 @@
 PYTHON ?= python3
+DEV_ENV_FILE ?= .env.dev
 PROD_ENV_FILE ?= .env.prod
 TEST_TARGET ?=
 COMMIT_MSG ?= no message update
@@ -7,7 +8,7 @@ PARAMS ?= --ff-only
 DUMP_FILE ?= tmp/pg13-to-pg16.dump
 OLD_PG13_VOLUME ?= dachongwms_db_data
 
-COMPOSE_DEV := docker compose -f docker-compose.yml -f docker-compose.dev.yml
+COMPOSE_DEV := docker compose --env-file $(DEV_ENV_FILE) -f docker-compose.yml -f docker-compose.dev.yml
 COMPOSE_PROD := docker compose --env-file $(PROD_ENV_FILE) -f docker-compose.yml -f docker-compose.prod.yml
 MANAGE_DEV := $(COMPOSE_DEV) exec backend python manage.py
 MANAGE_PROD := $(COMPOSE_PROD) exec backend python manage.py
@@ -28,8 +29,10 @@ MANAGE_PROD := $(COMPOSE_PROD) exec backend python manage.py
 help:
 	@printf "%s\n" \
 		"Common targets:" \
-		"  make dev                     Start the development stack" \
-		"  make dev_build               Rebuild and start the development stack" \
+		"  make dev DEV_ENV_FILE=.env.dev" \
+		"                              Start the development stack" \
+		"  make dev_build DEV_ENV_FILE=.env.dev" \
+		"                              Rebuild and start the development stack" \
 		"  make prod PROD_ENV_FILE=.env.prod" \
 		"                              Start the production stack" \
 		"  make prod_build PROD_ENV_FILE=.env.prod" \
