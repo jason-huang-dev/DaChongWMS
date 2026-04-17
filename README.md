@@ -44,6 +44,29 @@ make dev DEV_ENV_FILE=.env.dev
 
 The frontend runs on `http://localhost:5173` through Vite. `/api`, `/admin`, `/media`, and `/static` are proxied to the backend container.
 
+### Backend Without Docker
+
+If you want to run Django directly on your machine and generate migration files without the backend container:
+
+1. Create the virtualenv and install backend dependencies:
+
+```bash
+make venv
+```
+
+2. Copy `backend/.env.local.example` to `backend/.env.local` and point `DATABASE_URL` at a PostgreSQL instance reachable from your host machine, typically `127.0.0.1`.
+
+3. Run backend commands locally:
+
+```bash
+make run_backend_local
+make makemigrations_local
+make migrate_local
+```
+
+Use the Docker targets only when the Compose backend service is actually running. For example, `make makemigrations` still targets the running `backend` container.
+The `makemigrations` targets now use `--skip-checks` so Django does not spend time importing the full URL/view graph before generating migration files.
+
 ### Production
 
 1. Copy `.env.prod.example` to `.env.prod` and replace every placeholder secret/value.

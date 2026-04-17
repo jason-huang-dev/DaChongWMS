@@ -144,6 +144,7 @@ celerybeat.pid
 !frontend/.env.example
 !frontend/.env.vercel.example
 !backend/.env.vercel.example
+!backend/.env.local.example
 !frontend/src/lib/
 !frontend/src/lib/**
 !frontend/src/shared/lib/
