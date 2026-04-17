@@ -3,7 +3,13 @@ from pathlib import Path
 
 import dj_database_url
 
-from apps.common.env import build_allowed_hosts, database_conn_max_age, database_url, env_bool
+from apps.common.env import (
+    build_allowed_hosts,
+    database_conn_max_age,
+    database_url,
+    env_bool,
+    split_env,
+)
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -13,6 +19,11 @@ ALLOWED_HOSTS = build_allowed_hosts(
     debug=DEBUG,
     default_hosts=("localhost", "127.0.0.1"),
 )
+CORS_ALLOWED_ORIGINS = split_env("DJANGO_CORS_ALLOWED_ORIGINS")
+CSRF_TRUSTED_ORIGINS = split_env("DJANGO_CSRF_TRUSTED_ORIGINS")
+CORS_ALLOW_CREDENTIALS = env_bool("DJANGO_CORS_ALLOW_CREDENTIALS", default=True)
+SESSION_COOKIE_SAMESITE = os.getenv("DJANGO_SESSION_COOKIE_SAMESITE", "Lax")
+CSRF_COOKIE_SAMESITE = os.getenv("DJANGO_CSRF_COOKIE_SAMESITE", "Lax")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -21,6 +32,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "rest_framework",
     "django_filters",
     "apps.accounts.apps.AccountsConfig",
@@ -45,6 +57,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -103,6 +117,11 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    }
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"

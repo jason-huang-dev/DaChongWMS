@@ -81,7 +81,14 @@ beforeEach(() => {
             total_rows: 12,
             success_rows: 12,
             failed_rows: 0,
+            summary: "12 rows staged into stock-in",
+            failure_rows: [],
+            imported_by: "Alice",
             imported_at: "2026-04-15T10:00:00Z",
+            creator: "Seeder",
+            openid: "import-batch-1",
+            create_time: "2026-04-15T09:58:00Z",
+            update_time: "2026-04-15T10:00:00Z",
           },
         ],
       },
@@ -180,10 +187,19 @@ test("renders import subpages from the grouped inbound imports page", async () =
   );
 
   expect(screen.getByText("Stock-in import panel")).toBeInTheDocument();
+  expect(screen.getByText("IMP-20260415")).toBeInTheDocument();
+  expect(screen.getByPlaceholderText("Search import batch")).toBeInTheDocument();
 
   await user.click(screen.getByRole("tab", { name: "Import Management" }));
 
+  expect(screen.queryByText("Stock-in import panel")).not.toBeInTheDocument();
   expect(screen.getByText("IMP-20260415")).toBeInTheDocument();
+  expect(screen.getByPlaceholderText("Search import batch")).toBeInTheDocument();
+  expect(screen.getByText("stock-in.csv")).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Upload batch" }));
+
+  expect(screen.getByText("Stock-in import panel")).toBeInTheDocument();
 });
 
 test("renders record subpages from the grouped inbound records page", async () => {

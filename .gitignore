@@ -142,6 +142,8 @@ celerybeat.pid
 !.env.dev.example
 !.env.prod.example
 !frontend/.env.example
+!frontend/.env.vercel.example
+!backend/.env.vercel.example
 .envrc
 .venv
 env/

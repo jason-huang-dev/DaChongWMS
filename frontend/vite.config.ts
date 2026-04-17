@@ -38,6 +38,10 @@ export default defineConfig(({ mode }) => {
           target: devProxyTarget,
           changeOrigin: true,
         },
+        "/health": {
+          target: devProxyTarget,
+          changeOrigin: true,
+        },
         "/media": {
           target: devProxyTarget,
           changeOrigin: true,

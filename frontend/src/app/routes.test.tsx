@@ -1515,7 +1515,7 @@ test("renders the grouped standard stock-in page for authorized operators", asyn
 
   renderWithRouter(["/inbound/standard-stock-in"]);
 
-  expect(await screen.findByText("Standard Stock-in", undefined, { timeout: 5000 })).toBeInTheDocument();
+  expect(await screen.findByRole("tab", { name: "Stock-in List Management" }, { timeout: 5000 })).toBeInTheDocument();
   expect((await screen.findAllByText("PO-1001", undefined, { timeout: 5000 })).length).toBeGreaterThan(0);
   expect(screen.getByRole("navigation", { name: "Stock-in workspace pages" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Hide stock-in sidebar" })).toBeInTheDocument();
@@ -1523,7 +1523,6 @@ test("renders the grouped standard stock-in page for authorized operators", asyn
   expect(screen.getByRole("link", { name: "Import to Stock-in" })).toHaveAttribute("href", "/inbound/imports");
   expect(screen.getByRole("link", { name: "Returns to Stock In" })).toHaveAttribute("href", "/inbound/returns");
   expect(screen.getByRole("link", { name: "Stock-in Record" })).toHaveAttribute("href", "/inbound/records");
-  expect(screen.getByRole("tab", { name: "Stock-in List Management" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Create receipt" })).toBeInTheDocument();
   expect(screen.getAllByText("Supplier A").length).toBeGreaterThan(0);
 });

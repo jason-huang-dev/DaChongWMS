@@ -10,6 +10,7 @@ from django.urls import resolve, reverse
 from apps.common import env as env_helpers
 from config.settings import base as base_settings
 from config.settings import dev as dev_settings
+from config.settings import prod as prod_settings
 from config.settings import test as test_settings
 
 
@@ -37,9 +38,66 @@ class ConfigProjectTests(SimpleTestCase):
             importlib.reload(base_settings)
             reloaded_dev_settings = importlib.reload(dev_settings)
 
-        self.assertIn("backend", reloaded_dev_settings.ALLOWED_HOSTS)
-        self.assertIn("frontend", reloaded_dev_settings.ALLOWED_HOSTS)
-        self.assertIn("host.docker.internal", reloaded_dev_settings.ALLOWED_HOSTS)
+        try:
+            self.assertIn("backend", reloaded_dev_settings.ALLOWED_HOSTS)
+            self.assertIn("frontend", reloaded_dev_settings.ALLOWED_HOSTS)
+            self.assertIn("host.docker.internal", reloaded_dev_settings.ALLOWED_HOSTS)
+        finally:
+            importlib.reload(base_settings)
+            importlib.reload(dev_settings)
+
+    def test_base_settings_enable_whitenoise_and_cors_support(self) -> None:
+        self.assertIn("corsheaders", base_settings.INSTALLED_APPS)
+        self.assertIn("whitenoise.middleware.WhiteNoiseMiddleware", base_settings.MIDDLEWARE)
+        self.assertIn("corsheaders.middleware.CorsMiddleware", base_settings.MIDDLEWARE)
+
+    def test_base_settings_parse_cors_and_csrf_origin_lists_from_env(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "DJANGO_CORS_ALLOWED_ORIGINS": "https://app.example.com, https://preview.example.com ",
+                "DJANGO_CSRF_TRUSTED_ORIGINS": "https://app.example.com,https://api.example.com",
+            },
+            clear=False,
+        ):
+            reloaded_base_settings = importlib.reload(base_settings)
+
+        try:
+            self.assertEqual(
+                reloaded_base_settings.CORS_ALLOWED_ORIGINS,
+                ["https://app.example.com", "https://preview.example.com"],
+            )
+            self.assertEqual(
+                reloaded_base_settings.CSRF_TRUSTED_ORIGINS,
+                ["https://app.example.com", "https://api.example.com"],
+            )
+        finally:
+            importlib.reload(base_settings)
+
+    def test_base_settings_allow_cookie_policy_overrides_from_env(self) -> None:
+        with mock.patch.dict(
+            os.environ,
+            {
+                "DJANGO_SESSION_COOKIE_SAMESITE": "None",
+                "DJANGO_CSRF_COOKIE_SAMESITE": "None",
+            },
+            clear=False,
+        ):
+            reloaded_base_settings = importlib.reload(base_settings)
+
+        try:
+            self.assertEqual(reloaded_base_settings.SESSION_COOKIE_SAMESITE, "None")
+            self.assertEqual(reloaded_base_settings.CSRF_COOKIE_SAMESITE, "None")
+        finally:
+            importlib.reload(base_settings)
+
+    def test_prod_settings_use_serverless_friendly_database_defaults(self) -> None:
+        reloaded_prod_settings = importlib.reload(prod_settings)
+
+        self.assertEqual(reloaded_prod_settings.DATABASES["default"]["CONN_MAX_AGE"], 0)
+        self.assertFalse(reloaded_prod_settings.SECURE_SSL_REDIRECT)
+        self.assertTrue(reloaded_prod_settings.CSRF_COOKIE_SECURE)
+        self.assertTrue(reloaded_prod_settings.SESSION_COOKIE_SECURE)
 
 
 class SharedEnvHelpersTests(SimpleTestCase):

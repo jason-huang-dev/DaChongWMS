@@ -17,6 +17,7 @@ import {
   type StockInListFilters,
   type StockInListSearchField,
 } from "@/features/inbound/model/stock-in-list-management";
+import { sumPurchaseOrderLineQuantity } from "@/features/inbound/model/purchase-order-metrics";
 import type { PurchaseOrderRecord } from "@/features/inbound/model/types";
 import { ActionIconButton } from "@/shared/components/action-icon-button";
 import { DataViewSavedViewControls } from "@/shared/components/data-view-saved-view-controls";
@@ -66,13 +67,6 @@ const stockInDateFieldOptions: Array<{ label: string; value: StockInListDateFiel
   { label: "Create Time", value: "create_time" },
   { label: "Expected arrival", value: "expected_arrival_date" },
 ];
-
-function sumPurchaseOrderLineQuantity(
-  purchaseOrder: PurchaseOrderRecord,
-  field: "ordered_qty" | "received_qty",
-) {
-  return (purchaseOrder.lines ?? []).reduce((total, line) => total + Number(line?.[field] ?? 0), 0);
-}
 
 function buildPurchaseOrderClientLabel(purchaseOrder: PurchaseOrderRecord) {
   if (purchaseOrder.customer_name?.trim()) {

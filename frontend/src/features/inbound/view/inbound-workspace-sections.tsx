@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
 
-import { Chip, Stack } from "@mui/material";
+import { Box, Chip, Stack } from "@mui/material";
 
 import { useI18n } from "@/app/ui-preferences";
 import { useInboundController } from "@/features/inbound/controller/useInboundController";
+import {
+  ImportBatchWorkspaceTable,
+  ImportManagementSection as ImportManagementTable,
+} from "@/features/inbound/view/components/ImportManagementSection";
 import { ScanPutawayPanel } from "@/features/inbound/view/components/ScanPutawayPanel";
 import { ScanReceivePanel } from "@/features/inbound/view/components/ScanReceivePanel";
 import { ScanSignPanel } from "@/features/inbound/view/components/ScanSignPanel";
@@ -95,21 +99,6 @@ const putawayFields: DataViewFieldConfig<{ task_number__icontains: string; statu
   },
 ];
 
-const importBatchFields: DataViewFieldConfig<{ batch_number__icontains: string; status: string }>[] = [
-  { key: "batch_number__icontains", label: "Batch", placeholder: "IMP-20260322" },
-  {
-    key: "status",
-    label: "Status",
-    type: "select",
-    options: [
-      { label: "Processing", value: "PROCESSING" },
-      { label: "Completed", value: "COMPLETED" },
-      { label: "Completed with errors", value: "COMPLETED_WITH_ERRORS" },
-      { label: "Failed", value: "FAILED" },
-    ],
-  },
-];
-
 const returnOrderFields: DataViewFieldConfig<{ return_number__icontains: string; status: string }>[] = [
   { key: "return_number__icontains", label: "Return", placeholder: "RMA-1001" },
   {
@@ -167,63 +156,46 @@ export function ScanToListSection() {
 }
 
 export function ImportToStockInSection({ controller }: { controller: InboundWorkspaceControllerState }) {
-  const { importBatchErrorMessage, importBatchMutation, importBatchSuccessMessage } = controller;
+  const { t } = useI18n();
+  const { importBatchErrorMessage, importBatchMutation, importBatchSuccessMessage, importBatchesQuery, importBatchesView } = controller;
 
   return (
-    <StockInImportPanel
-      errorMessage={importBatchErrorMessage}
-      isPending={importBatchMutation.isPending}
-      onSubmit={(file) => importBatchMutation.mutateAsync(file)}
-      showHeader={false}
-      successMessage={importBatchSuccessMessage}
-    />
+    <Stack spacing={2} sx={{ height: "100%", minHeight: 0 }}>
+      <Box sx={{ flex: "0 0 auto" }}>
+        <StockInImportPanel
+          errorMessage={importBatchErrorMessage}
+          isPending={importBatchMutation.isPending}
+          onSubmit={(file) => importBatchMutation.mutateAsync(file)}
+          showHeader={false}
+          successMessage={importBatchSuccessMessage}
+        />
+      </Box>
+      <Box sx={{ flex: "1 1 auto", minHeight: 320 }}>
+        <ImportBatchWorkspaceTable
+          chromeTestId="import-to-stock-page-chrome"
+          importBatchesQuery={importBatchesQuery}
+          importBatchesView={importBatchesView}
+          title={t("Import batches")}
+        />
+      </Box>
+    </Stack>
   );
 }
 
-export function ImportManagementSection({ controller }: { controller: InboundWorkspaceControllerState }) {
-  const { t } = useI18n();
+export function ImportManagementSection({
+  controller,
+  onStartImport,
+}: {
+  controller: InboundWorkspaceControllerState;
+  onStartImport?: () => void;
+}) {
   const { importBatchesQuery, importBatchesView } = controller;
 
   return (
-    <ResourceTable
-      columns={[
-        { header: "Batch", key: "batch", render: (row) => row.batch_number },
-        { header: "File", key: "file", render: (row) => row.file_name },
-        { header: "Status", key: "status", render: (row) => <StatusChip status={row.status} /> },
-        { header: "Rows", key: "rows", align: "right", render: (row) => formatNumber(row.total_rows) },
-        { header: "Success", key: "success", align: "right", render: (row) => formatNumber(row.success_rows) },
-        { header: "Failed", key: "failed", align: "right", render: (row) => formatNumber(row.failed_rows) },
-        { header: "Imported", key: "imported", render: (row) => formatDateTime(row.imported_at) },
-      ]}
-      error={importBatchesQuery.error ? parseApiError(importBatchesQuery.error) : null}
-      getRowId={(row) => row.id}
-      isLoading={importBatchesQuery.isLoading}
-      pagination={{
-        page: importBatchesView.page,
-        pageSize: importBatchesView.pageSize,
-        total: importBatchesQuery.data?.count ?? 0,
-        onPageChange: importBatchesView.setPage,
-      }}
-      rows={importBatchesQuery.data?.results ?? []}
-      compact
-      toolbar={
-        <DataViewToolbar
-          activeFilterCount={importBatchesView.activeFilterCount}
-          contextLabel={t("Tenant-wide imports")}
-          fields={importBatchFields}
-          filters={importBatchesView.filters}
-          onChange={importBatchesView.updateFilter}
-          onReset={importBatchesView.resetFilters}
-          resultCount={importBatchesQuery.data?.count}
-          savedViews={{
-            items: importBatchesView.savedViews,
-            selectedId: importBatchesView.selectedSavedViewId,
-            onApply: importBatchesView.applySavedView,
-            onDelete: importBatchesView.deleteSavedView,
-            onSave: importBatchesView.saveCurrentView,
-          }}
-        />
-      }
+    <ImportManagementTable
+      importBatchesQuery={importBatchesQuery}
+      importBatchesView={importBatchesView}
+      onStartImport={onStartImport}
     />
   );
 }
