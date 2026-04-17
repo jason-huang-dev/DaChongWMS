@@ -26,7 +26,6 @@ pandas==3.0.1
 psycopg[binary]==3.2.10
 pyotp==2.9.0
 pycparser==3.0
-pygraphviz==1.14
 PyJWT==2.11.0
 python-dateutil==2.9.0.post0
 PyYAML==6.0.3
