@@ -206,11 +206,6 @@ Add this file:
 // backend/vercel.json
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "api/**/*.py": {
-      "maxDuration": 60
-    }
-  },
   "rewrites": [
     {
       "source": "/(.*)",
@@ -220,7 +215,9 @@ Add this file:
 }
 ```
 
-This configures all Python functions under `api/` and sends backend requests through the `api/index.py` Django entrypoint, which is exposed at the `/api` route.
+This sends backend requests through the `api/index.py` Django entrypoint, which is exposed at the `/api` route.
+
+If you need to raise the function max duration, set it in the Vercel dashboard under the backend project's Functions settings instead of using a `functions` glob in `vercel.json`.
 
 ### 4.4 Python version
 
@@ -661,6 +658,7 @@ Keep Docker only if you want it for local development or local parity.
 - [ ] `DJANGO_ALLOWED_HOSTS` set correctly
 - [ ] `DJANGO_CORS_ALLOWED_ORIGINS` set correctly
 - [ ] `DJANGO_CSRF_TRUSTED_ORIGINS` set correctly
+- [ ] function max duration configured in the Vercel dashboard if your requests need more than the default
 - [ ] migrations applied
 
 ### Supabase
