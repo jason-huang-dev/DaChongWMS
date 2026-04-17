@@ -68,6 +68,9 @@ class ConfigProjectTests(SimpleTestCase):
         self.assertIn("corsheaders", base_settings.INSTALLED_APPS)
         self.assertIn("whitenoise.middleware.WhiteNoiseMiddleware", base_settings.MIDDLEWARE)
         self.assertIn("corsheaders.middleware.CorsMiddleware", base_settings.MIDDLEWARE)
+        self.assertIn("token", base_settings.CORS_ALLOW_HEADERS)
+        self.assertIn("openid", base_settings.CORS_ALLOW_HEADERS)
+        self.assertIn("operator", base_settings.CORS_ALLOW_HEADERS)
 
     def test_base_settings_parse_cors_and_csrf_origin_lists_from_env(self) -> None:
         with mock.patch.dict(
