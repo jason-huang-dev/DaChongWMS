@@ -3,11 +3,23 @@ from django.http import JsonResponse
 from django.urls import include, path
 
 
+def root_status(_request):
+    return JsonResponse(
+        {
+            "status": "ok",
+            "service": "dachongwms-backend",
+            "health": "/health/",
+            "api": "/api/v1/",
+        }
+    )
+
+
 def healthcheck(_request):
     return JsonResponse({"status": "ok"})
 
 
 urlpatterns = [
+    path("", root_status, name="root-status"),
     path("admin/", admin.site.urls),
     path("health/", healthcheck, name="healthcheck"),
     path("api-auth/", include("rest_framework.urls")),

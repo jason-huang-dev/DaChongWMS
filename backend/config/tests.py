@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import importlib
+import json
 import os
 from unittest import mock
 
-from django.test import SimpleTestCase
+from django.test import RequestFactory, SimpleTestCase
 from django.urls import resolve, reverse
 
 from apps.common import env as env_helpers
+from config.urls import root_status
 from config.settings import base as base_settings
 from config.settings import dev as dev_settings
 from config.settings import prod as prod_settings
@@ -21,10 +23,26 @@ class ConfigProjectTests(SimpleTestCase):
         self.assertEqual(test_settings.ASGI_APPLICATION, "config.asgi.application")
 
     def test_health_and_compat_routes_resolve_from_config_urls(self) -> None:
+        self.assertEqual(reverse("root-status"), "/")
         self.assertEqual(reverse("healthcheck"), "/health/")
         self.assertEqual(reverse("compat-login"), "/api/login/")
         self.assertEqual(reverse("compat-company-invite-accept"), "/api/access/company-invites/accept/")
+        self.assertEqual(resolve("/").url_name, "root-status")
         self.assertEqual(resolve("/health/").url_name, "healthcheck")
+
+    def test_root_status_endpoint_returns_backend_metadata(self) -> None:
+        response = root_status(RequestFactory().get("/"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            json.loads(response.content),
+            {
+                "status": "ok",
+                "service": "dachongwms-backend",
+                "health": "/health/",
+                "api": "/api/v1/",
+            },
+        )
 
     def test_dev_settings_allow_docker_service_hosts(self) -> None:
         with mock.patch.dict(
