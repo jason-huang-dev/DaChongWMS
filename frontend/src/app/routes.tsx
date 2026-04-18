@@ -86,6 +86,14 @@ const PurchaseOrderDetailPage = lazyNamedPage(
   () => import("@/features/inbound/view/PurchaseOrderDetailPage"),
   "PurchaseOrderDetailPage",
 );
+const OutboundWorkspaceLayout = lazyNamedPage(
+  () => import("@/features/outbound/view/OutboundWorkspaceLayout"),
+  "OutboundWorkspaceLayout",
+);
+const StockOutListPage = lazyNamedPage(
+  () => import("@/features/outbound/view/StockOutListPage"),
+  "StockOutListPage",
+);
 const OutboundPage = lazyNamedPage(() => import("@/features/outbound/view/OutboundPage"), "OutboundPage");
 const SalesOrderDetailPage = lazyNamedPage(
   () => import("@/features/outbound/view/SalesOrderDetailPage"),
@@ -296,8 +304,20 @@ const baseRoutes: RouteObject[] = [
             children: [
               {
                 path: "/outbound",
-                element: withSuspense(<OutboundPage />),
+                element: withSuspense(<OutboundWorkspaceLayout />),
                 handle: { crumb: "Outbound" },
+                children: [
+                  {
+                    index: true,
+                    element: withSuspense(<StockOutListPage />),
+                    handle: { crumb: "Stock-out list" },
+                  },
+                  {
+                    path: "workbench",
+                    element: withSuspense(<OutboundPage />),
+                    handle: { crumb: "Operations workbench" },
+                  },
+                ],
               },
               {
                 path: "/outbound/sales-orders/:salesOrderId",

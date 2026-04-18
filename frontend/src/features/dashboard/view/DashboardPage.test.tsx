@@ -246,10 +246,10 @@ test("renders warehouse-scoped queue cards and links them into filtered queues",
   expect(financeLink).toHaveAttribute("href", "/finance#voucher-management");
 
   const toPickLink = screen.getByRole("link", { name: "Dropshipping Stock-Out: To Pick" });
-  expect(toPickLink).toHaveAttribute("href", "/outbound?pickTaskStatuses=OPEN%2CASSIGNED#secondary-picking");
+  expect(toPickLink).toHaveAttribute("href", "/outbound/workbench?pickTaskStatuses=OPEN%2CASSIGNED#secondary-picking");
 
   const abnormalLink = screen.getByRole("link", { name: /Abnormal/i });
-  expect(abnormalLink).toHaveAttribute("href", "/outbound?salesOrderException=ABNORMAL_PACKAGE#abnormal-package");
+  expect(abnormalLink).toHaveAttribute("href", "/outbound?salesOrderException=ABNORMAL_PACKAGE");
 
   const warehouseSelect = screen.getByRole("combobox", { name: "Warehouse" });
   fireEvent.mouseDown(warehouseSelect);

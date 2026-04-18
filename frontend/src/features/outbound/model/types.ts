@@ -40,9 +40,15 @@ export type PackageExecutionValues = z.infer<typeof packageExecutionSchema>;
 export type ShipmentDocumentValues = z.infer<typeof shipmentDocumentSchema>;
 export type LogisticsTrackingValues = z.infer<typeof logisticsTrackingSchema>;
 export interface SalesOrderUpdatePayload {
-  requested_ship_date: string | null;
-  reference_code: string;
-  notes: string;
+  exception_notes?: string;
+  exception_state?: string;
+  notes?: string;
+  packed_at?: string | null;
+  reference_code?: string;
+  requested_ship_date?: string | null;
+  tracking_number?: string;
+  waybill_number?: string;
+  waybill_printed?: boolean;
 }
 export type ScanPickValues = z.infer<typeof scanPickSchema>;
 export type ScanShipValues = z.infer<typeof scanShipSchema>;
