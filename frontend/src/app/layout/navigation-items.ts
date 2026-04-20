@@ -19,11 +19,30 @@ import SettingsSuggestOutlinedIcon from "@mui/icons-material/SettingsSuggestOutl
 import SwapHorizOutlinedIcon from "@mui/icons-material/SwapHorizOutlined";
 import type { SvgIconProps } from "@mui/material/SvgIcon";
 
+import {
+  automationAccessPermissionCodes,
+  b2bPermissionGroups,
+  clientsAccessPermissionCodes,
+  countingAccessPermissionCodes,
+  feesAccessPermissionCodes,
+  inboundAccessPermissionCodes,
+  inventoryAccessPermissionCodes,
+  integrationsAccessPermissionCodes,
+  logisticsAccessPermissionCodes,
+  outboundAccessPermissionCodes,
+  productsAccessPermissionCodes,
+  returnsAccessPermissionCodes,
+  statisticsPermissionGroups,
+  transfersAccessPermissionCodes,
+  workOrdersAccessPermissionCodes,
+} from "@/app/access";
+
 export interface NavigationItem {
   label: string;
   path: string;
   icon: ComponentType<SvgIconProps>;
-  roles?: string[];
+  permissionCodes?: readonly string[];
+  permissionGroups?: readonly (readonly string[])[];
 }
 
 export const navigationItems: NavigationItem[] = [
@@ -36,91 +55,91 @@ export const navigationItems: NavigationItem[] = [
     label: "Inventory",
     path: "/inventory",
     icon: Inventory2OutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: inventoryAccessPermissionCodes,
   },
   {
     label: "Inbound",
     path: "/inbound",
     icon: MoveToInboxOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "StockControl"],
+    permissionCodes: inboundAccessPermissionCodes,
   },
   {
     label: "Outbound",
     path: "/outbound",
     icon: LocalShippingOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Outbound", "StockControl"],
+    permissionCodes: outboundAccessPermissionCodes,
   },
   {
     label: "Transfers",
     path: "/transfers",
     icon: SwapHorizOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: transfersAccessPermissionCodes,
   },
   {
     label: "Returns",
     path: "/returns",
     icon: AssignmentReturnOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: returnsAccessPermissionCodes,
   },
   {
     label: "Clients",
     path: "/clients",
     icon: GroupsOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: clientsAccessPermissionCodes,
   },
   {
     label: "Products",
     path: "/products",
     icon: CategoryOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: productsAccessPermissionCodes,
   },
   {
     label: "Logistics",
     path: "/logistics",
     icon: RouteOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: logisticsAccessPermissionCodes,
   },
   {
     label: "B2B",
     path: "/b2b",
     icon: BusinessCenterOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionGroups: b2bPermissionGroups,
   },
   {
     label: "Work orders",
     path: "/work-orders",
     icon: AssignmentTurnedInOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: workOrdersAccessPermissionCodes,
   },
   {
     label: "Counting",
     path: "/counting",
     icon: FactCheckOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: countingAccessPermissionCodes,
   },
   {
     label: "Statistics",
     path: "/statistics",
     icon: QueryStatsOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionGroups: statisticsPermissionGroups,
   },
   {
     label: "Automation",
     path: "/automation",
     icon: SettingsSuggestOutlinedIcon,
-    roles: ["Manager", "Supervisor", "StockControl"],
+    permissionCodes: automationAccessPermissionCodes,
   },
   {
     label: "Integrations",
     path: "/integrations",
     icon: HubOutlinedIcon,
-    roles: ["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"],
+    permissionCodes: integrationsAccessPermissionCodes,
   },
   {
     label: "Finance",
     path: "/finance",
     icon: RequestQuoteOutlinedIcon,
-    roles: ["Finance", "Manager", "Supervisor"],
+    permissionCodes: feesAccessPermissionCodes,
   },
   {
     label: "Security",

@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 from django.db.models import Q
 
+from apps.iam.constants import PermissionCode
 from apps.organizations.models import Organization, OrganizationMembership
 
 from .models import AccessScope, PermissionOverride
@@ -70,6 +71,68 @@ def membership_has_any_permission(
         membership_has_permission(membership, permission_code, scope=scope)
         for permission_code in permission_codes
     )
+
+
+def membership_permission_codes(
+    membership: OrganizationMembership | None,
+    *,
+    scope: AccessScope | None = None,
+) -> tuple[str, ...]:
+    if membership is None or not membership.is_active:
+        return ()
+
+    if getattr(membership.user, "is_superuser", False):
+        return tuple(
+            sorted(
+                value
+                for key, value in vars(PermissionCode).items()
+                if key.isupper() and isinstance(value, str)
+            )
+        )
+
+    scope_query = _scope_q(scope)
+    granted_codes = {
+        f"{app_label}.{codename}"
+        for app_label, codename in membership.role_assignments.filter(scope_query).values_list(
+            "role__role_permissions__permission__content_type__app_label",
+            "role__role_permissions__permission__codename",
+        )
+        if app_label and codename
+    }
+    granted_codes.update(
+        f"{app_label}.{codename}"
+        for app_label, codename in membership.group_assignments.filter(scope_query).values_list(
+            "group__group_permissions__permission__content_type__app_label",
+            "group__group_permissions__permission__codename",
+        )
+        if app_label and codename
+    )
+
+    denied_codes = {
+        f"{app_label}.{codename}"
+        for app_label, codename in membership.permission_overrides.filter(
+            scope_query,
+            effect=PermissionOverride.Effect.DENY,
+        ).values_list(
+            "permission__content_type__app_label",
+            "permission__codename",
+        )
+        if app_label and codename
+    }
+    allowed_codes = {
+        f"{app_label}.{codename}"
+        for app_label, codename in membership.permission_overrides.filter(
+            scope_query,
+            effect=PermissionOverride.Effect.ALLOW,
+        ).values_list(
+            "permission__content_type__app_label",
+            "permission__codename",
+        )
+        if app_label and codename
+    }
+
+    effective_codes = (granted_codes - denied_codes) | (allowed_codes - denied_codes)
+    return tuple(sorted(effective_codes))
 
 
 def get_active_membership(user: object, organization: Organization) -> OrganizationMembership | None:

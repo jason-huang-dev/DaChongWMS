@@ -24,6 +24,7 @@ from apps.accounts.services.session_service import (
     provision_test_system_session,
     provision_signup_session,
 )
+from apps.iam.permissions import membership_permission_codes
 from apps.iam.models import Role
 from apps.organizations.api.compat_serializers import CompatibilityStaffSerializer
 from apps.organizations.models import OrganizationStaffProfile
@@ -102,6 +103,7 @@ def _serialize_staff_profile(profile: OrganizationStaffProfile) -> dict[str, obj
         "update_time": _format_datetime(profile.update_time),
         "error_check_code_counter": profile.error_check_code_counter,
         "is_lock": profile.is_lock,
+        "permission_codes": list(membership_permission_codes(profile.membership)),
     }
 
 

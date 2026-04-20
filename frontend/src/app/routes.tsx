@@ -3,8 +3,26 @@ import { Suspense, lazy, type ComponentType, type ReactElement } from "react";
 import type { RouteObject } from "react-router-dom";
 import { Navigate, Outlet, createBrowserRouter } from "react-router-dom";
 
+import {
+  automationAccessPermissionCodes,
+  b2bPermissionGroups,
+  clientsAccessPermissionCodes,
+  countingAccessPermissionCodes,
+  feesAccessPermissionCodes,
+  inboundAccessPermissionCodes,
+  integrationsAccessPermissionCodes,
+  inventoryAccessPermissionCodes,
+  logisticsAccessPermissionCodes,
+  outboundAccessPermissionCodes,
+  productsAccessPermissionCodes,
+  reportingAccessPermissionCodes,
+  returnsAccessPermissionCodes,
+  statisticsPermissionGroups,
+  transfersAccessPermissionCodes,
+  workOrdersAccessPermissionCodes,
+} from "@/app/access";
 import { AppShell } from "@/app/layout/app-shell";
-import { RequireAuth, RequireRoles } from "@/features/auth/view/components/RequireAuth";
+import { RequireAuth, RequirePermissions } from "@/features/auth/view/components/RequireAuth";
 import { RouteErrorBoundary } from "@/shared/components/route-error-boundary";
 import { RouteFallback } from "@/shared/components/route-fallback";
 
@@ -213,7 +231,7 @@ const baseRoutes: RouteObject[] = [
             handle: { crumb: "Security" },
           },
           {
-            element: <RequireRoles roles={["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"]} />,
+            element: <RequirePermissions permissionCodes={inventoryAccessPermissionCodes} />,
             children: [
               {
                 path: "/inventory",
@@ -259,7 +277,7 @@ const baseRoutes: RouteObject[] = [
             ],
           },
           {
-            element: <RequireRoles roles={["Manager", "Supervisor", "Inbound", "StockControl"]} />,
+            element: <RequirePermissions permissionCodes={inboundAccessPermissionCodes} />,
             children: [
               {
                 path: "/inbound",
@@ -300,7 +318,7 @@ const baseRoutes: RouteObject[] = [
             ],
           },
           {
-            element: <RequireRoles roles={["Manager", "Supervisor", "Outbound", "StockControl"]} />,
+            element: <RequirePermissions permissionCodes={outboundAccessPermissionCodes} />,
             children: [
               {
                 path: "/outbound",
@@ -327,28 +345,48 @@ const baseRoutes: RouteObject[] = [
             ],
           },
           {
-            element: <RequireRoles roles={["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"]} />,
+            element: <RequirePermissions permissionCodes={productsAccessPermissionCodes} />,
             children: [
               {
                 path: "/products",
                 element: withSuspense(<ProductsPage />),
                 handle: { crumb: "Products" },
               },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionCodes={logisticsAccessPermissionCodes} />,
+            children: [
               {
                 path: "/logistics",
                 element: withSuspense(<LogisticsPage />),
                 handle: { crumb: "Logistics" },
               },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionGroups={b2bPermissionGroups} />,
+            children: [
               {
                 path: "/b2b",
                 element: withSuspense(<B2BPage />),
                 handle: { crumb: "B2B" },
               },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionCodes={workOrdersAccessPermissionCodes} />,
+            children: [
               {
                 path: "/work-orders",
                 element: withSuspense(<WorkOrdersPage />),
                 handle: { crumb: "Work orders" },
               },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionCodes={clientsAccessPermissionCodes} />,
+            children: [
               {
                 path: "/clients",
                 element: withSuspense(<ClientsWorkspaceLayout />),
@@ -380,6 +418,11 @@ const baseRoutes: RouteObject[] = [
                   },
                 ],
               },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionCodes={transfersAccessPermissionCodes} />,
+            children: [
               {
                 path: "/transfers",
                 element: withSuspense(<TransfersPage />),
@@ -390,6 +433,11 @@ const baseRoutes: RouteObject[] = [
                 element: withSuspense(<TransferOrderDetailPage />),
                 handle: { crumb: "Transfer detail" },
               },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionCodes={returnsAccessPermissionCodes} />,
+            children: [
               {
                 path: "/returns",
                 element: withSuspense(<ReturnsPage />),
@@ -403,17 +451,12 @@ const baseRoutes: RouteObject[] = [
             ],
           },
           {
-            element: <RequireRoles roles={["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"]} />,
+            element: <RequirePermissions permissionCodes={countingAccessPermissionCodes} />,
             children: [
               {
                 path: "/counting",
                 element: withSuspense(<CountingPage />),
                 handle: { crumb: "Counting" },
-              },
-              {
-                path: "/statistics",
-                element: withSuspense(<StatisticsPage />),
-                handle: { crumb: "Statistics" },
               },
               {
                 path: "/counting/approvals/:approvalId",
@@ -423,7 +466,17 @@ const baseRoutes: RouteObject[] = [
             ],
           },
           {
-            element: <RequireRoles roles={["Manager", "Supervisor", "StockControl"]} />,
+            element: <RequirePermissions permissionGroups={statisticsPermissionGroups} />,
+            children: [
+              {
+                path: "/statistics",
+                element: withSuspense(<StatisticsPage />),
+                handle: { crumb: "Statistics" },
+              },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionCodes={automationAccessPermissionCodes} />,
             children: [
               {
                 path: "/automation",
@@ -443,7 +496,7 @@ const baseRoutes: RouteObject[] = [
             ],
           },
           {
-            element: <RequireRoles roles={["Manager", "Supervisor", "Inbound", "Outbound", "StockControl"]} />,
+            element: <RequirePermissions permissionCodes={integrationsAccessPermissionCodes} />,
             children: [
               {
                 path: "/integrations",
@@ -468,13 +521,18 @@ const baseRoutes: RouteObject[] = [
             ],
           },
           {
-            element: <RequireRoles roles={["Finance", "Manager", "Supervisor"]} />,
+            element: <RequirePermissions permissionCodes={feesAccessPermissionCodes} />,
             children: [
               {
                 path: "/finance",
                 element: withSuspense(<FeesPage />),
                 handle: { crumb: "Finance" },
               },
+            ],
+          },
+          {
+            element: <RequirePermissions permissionCodes={reportingAccessPermissionCodes} />,
+            children: [
               {
                 path: "/finance/invoices/:invoiceId",
                 element: withSuspense(<InvoiceDetailPage />),

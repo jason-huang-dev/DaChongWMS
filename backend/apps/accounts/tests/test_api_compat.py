@@ -112,6 +112,10 @@ class CompatibilityAuthAPITests(TestCase):
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
         self.assertEqual(detail_response.data["staff_name"], self.user.display_name)
         self.assertEqual(detail_response.data["staff_type"], "Owner")
+        self.assertEqual(
+            sorted(detail_response.data["permission_codes"]),
+            ["iam.manage_client_users", "iam.manage_memberships"],
+        )
         self.assertEqual(role_types_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(role_types_response.data["count"], 1)
 

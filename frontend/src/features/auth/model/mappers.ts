@@ -7,6 +7,7 @@ export function mapOperatorToSession(baseSession: BaseAuthSession, operator: Sta
     ...baseSession,
     operatorName: operator.staff_name,
     operatorRole: operator.staff_type,
+    permissionCodes: operator.permission_codes ?? [],
   };
 }
 

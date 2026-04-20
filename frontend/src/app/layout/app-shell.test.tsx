@@ -3,6 +3,21 @@ import userEvent from "@testing-library/user-event";
 import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { expect, test, vi } from "vitest";
 
+import {
+  clientsAccessPermissionCodes,
+  countingAccessPermissionCodes,
+  feesAccessPermissionCodes,
+  inboundAccessPermissionCodes,
+  inventoryAccessPermissionCodes,
+  logisticsAccessPermissionCodes,
+  outboundAccessPermissionCodes,
+  productsAccessPermissionCodes,
+  reportingAccessPermissionCodes,
+  returnsAccessPermissionCodes,
+  securityManagementPermissionCodes,
+  transfersAccessPermissionCodes,
+  workOrdersAccessPermissionCodes,
+} from "@/app/access";
 import { AppShell } from "@/app/layout/app-shell";
 import { renderWithProviders } from "@/test/render";
 
@@ -26,6 +41,21 @@ test("renders accessible module tabs with workspace and warehouse controls in th
       operatorId: 11,
       operatorName: "Route Tester",
       operatorRole: "Manager",
+      permissionCodes: [
+        ...clientsAccessPermissionCodes,
+        ...countingAccessPermissionCodes,
+        ...feesAccessPermissionCodes,
+        ...inboundAccessPermissionCodes,
+        ...inventoryAccessPermissionCodes,
+        ...logisticsAccessPermissionCodes,
+        ...outboundAccessPermissionCodes,
+        ...productsAccessPermissionCodes,
+        ...reportingAccessPermissionCodes,
+        ...returnsAccessPermissionCodes,
+        ...securityManagementPermissionCodes,
+        ...transfersAccessPermissionCodes,
+        ...workOrdersAccessPermissionCodes,
+      ],
       token: "token-1",
       username: "manager",
     },
@@ -171,8 +201,12 @@ test("renders accessible module tabs with workspace and warehouse controls in th
   const primaryNavigation = screen.getByRole("tablist", { name: "Primary navigation" });
   expect(within(primaryNavigation).getByRole("tab", { name: "Dashboard" })).toBeInTheDocument();
   expect(within(primaryNavigation).getByRole("tab", { name: "Inventory" })).toBeInTheDocument();
+  expect(within(primaryNavigation).getByRole("tab", { name: "B2B" })).toBeInTheDocument();
   expect(within(primaryNavigation).getByRole("tab", { name: "Clients" })).toBeInTheDocument();
   expect(within(primaryNavigation).getByRole("tab", { name: "Logistics" })).toBeInTheDocument();
+  expect(within(primaryNavigation).getByRole("tab", { name: "Statistics" })).toBeInTheDocument();
+  expect(within(primaryNavigation).getByRole("tab", { name: "Automation" })).toBeInTheDocument();
+  expect(within(primaryNavigation).getByRole("tab", { name: "Integrations" })).toBeInTheDocument();
   expect(within(primaryNavigation).getByRole("tab", { name: "Finance" })).toBeInTheDocument();
   expect(within(primaryNavigation).getByRole("tab", { name: "Security" })).toBeInTheDocument();
 
@@ -222,6 +256,21 @@ test("opens workspace options from the navbar context block", async () => {
       operatorId: 11,
       operatorName: "Route Tester",
       operatorRole: "Manager",
+      permissionCodes: [
+        ...clientsAccessPermissionCodes,
+        ...countingAccessPermissionCodes,
+        ...feesAccessPermissionCodes,
+        ...inboundAccessPermissionCodes,
+        ...inventoryAccessPermissionCodes,
+        ...logisticsAccessPermissionCodes,
+        ...outboundAccessPermissionCodes,
+        ...productsAccessPermissionCodes,
+        ...reportingAccessPermissionCodes,
+        ...returnsAccessPermissionCodes,
+        ...securityManagementPermissionCodes,
+        ...transfersAccessPermissionCodes,
+        ...workOrdersAccessPermissionCodes,
+      ],
       token: "token-1",
       username: "manager",
     },

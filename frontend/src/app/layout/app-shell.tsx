@@ -32,7 +32,7 @@ import { BrandLogo } from "@/shared/components/brand-logo";
 import { getStaffRoleLabelKey } from "@/shared/i18n/system-labels";
 import { UiPreferencesControls } from "@/shared/components/ui-preferences-controls";
 import { WorkspaceContextSwitcher } from "@/shared/components/workspace-context-switcher";
-import { hasAnyRole } from "@/shared/utils/permissions";
+import { canAccessSurface } from "@/shared/utils/permissions";
 
 const mobileDrawerWidth = 300;
 const shellNavPillHeight = 32;
@@ -55,7 +55,7 @@ export function AppShell() {
   const [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
 
   const filteredItems = useMemo(
-    () => navigationItems.filter((item) => hasAnyRole(session, item.roles)),
+    () => navigationItems.filter((item) => canAccessSurface(session, item)),
     [session],
   );
 

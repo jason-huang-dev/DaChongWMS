@@ -1,3 +1,4 @@
+import { securityManagementPermissionCodes } from "@/app/access";
 import Grid from "@mui/material/Grid";
 import { Alert, Button, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
@@ -16,7 +17,7 @@ import { SecurityTable } from "@/features/security/view/SecurityTable";
 import { PageHeader } from "@/shared/components/page-header";
 import { SummaryCard } from "@/shared/components/summary-card";
 import { useWarehouseReferenceOptions } from "@/shared/hooks/use-reference-options";
-import { hasAnyRole } from "@/shared/utils/permissions";
+import { hasAnyPermission } from "@/shared/utils/permissions";
 
 export function SecurityPage() {
   const navigate = useNavigate();
@@ -59,7 +60,7 @@ export function SecurityPage() {
     clearSelection,
     clearMembershipSelection,
   } = useSecurityController();
-  const canManageAccess = hasAnyRole(session, ["Manager", "Supervisor"]);
+  const canManageAccess = hasAnyPermission(session, securityManagementPermissionCodes);
   const warehouseReference = useWarehouseReferenceOptions();
 
   return (

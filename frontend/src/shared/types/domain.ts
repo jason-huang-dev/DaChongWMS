@@ -5,6 +5,7 @@ export interface AuthSession {
   operatorId: number;
   operatorName: string;
   operatorRole: string;
+  permissionCodes?: string[];
   companyId?: number;
   companyName?: string;
   membershipId?: number;
@@ -1414,6 +1415,7 @@ export interface StaffRecord {
   id: number;
   staff_name: string;
   staff_type: string;
+  permission_codes?: string[];
   check_code: number;
   create_time: string;
   update_time: string;
