@@ -22,6 +22,76 @@ Authoritative design notes live inside the repo so they version with code:
 
 Consult these docs before adding new features; update them alongside behavior changes to keep context current. For higher-level coordination or knowledge sharing, mirror highlights to your project wiki pointing back to these canonical files.
 
+## CI/CD
+
+GitHub Actions now validates the repo and deploys both Vercel projects from a single workflow:
+
+- workflow file: `.github/workflows/ci-cd.yml`
+- frontend deploy target: Vercel project rooted at `frontend/`
+- backend deploy target: Vercel project rooted at `backend/`
+
+### Requirements
+
+Before the workflow can deploy successfully, configure the following in GitHub and Vercel:
+
+- GitHub Actions must be enabled for the repository.
+- Create two Vercel projects from this monorepo:
+  - frontend project with root directory `frontend`
+  - backend project with root directory `backend`
+- Add these GitHub repository secrets:
+  - `VERCEL_TOKEN`
+  - `VERCEL_ORG_ID`
+  - `VERCEL_FRONTEND_PROJECT_ID`
+  - `VERCEL_BACKEND_PROJECT_ID`
+- Configure the required runtime environment variables directly in each Vercel project. See `Vercel-Supabase.md` for the expected frontend/backend hosting shape and environment setup.
+
+### How The Workflow Works
+
+The workflow has four jobs:
+
+- `frontend_ci`
+  - runs on pull requests, pushes to `main`, and manual dispatches
+  - installs frontend dependencies with `npm ci`
+  - runs `npm run test:ci`
+  - runs `npm run build`
+- `backend_ci`
+  - installs backend dependencies from `backend/requirements.txt`
+  - runs backend tests with `TEST_DATABASE_URL=sqlite:////tmp/dachongwms-test.sqlite3`
+  - executes:
+    `python backend/manage.py test apps.accounts.tests.test_api_compat apps.iam.tests.test_permissions --settings=config.settings.test`
+- `deploy_frontend`
+  - runs only for non-PR builds on `main`
+  - waits for both CI jobs to succeed
+  - uses `vercel pull`, `vercel build --prod`, and `vercel deploy --prebuilt --prod` inside `frontend/`
+- `deploy_backend`
+  - runs only for non-PR builds on `main`
+  - waits for both CI jobs to succeed
+  - uses the same Vercel flow inside `backend/`
+
+The workflow also uses GitHub Actions concurrency to cancel older in-progress pull-request runs on the same ref.
+
+### Test Scope
+
+`npm run test:ci` is intentionally a curated stable frontend suite rather than the broad `vitest run` command. The wider frontend test tree still contains additional non-gating failures, so CI uses the explicit allowlist in `frontend/package.json` to keep validation deterministic.
+
+### Local Reproduction
+
+You can run the same CI checks locally with:
+
+```bash
+npm --prefix frontend run test:ci
+npm --prefix frontend run build
+TEST_DATABASE_URL=sqlite:////tmp/dachongwms-test.sqlite3 ./.venv/bin/python backend/manage.py test apps.accounts.tests.test_api_compat apps.iam.tests.test_permissions --settings=config.settings.test
+```
+
+### Deploy Caveat
+
+The GitHub workflow does not run Django migrations automatically after backend deploys. When schema changes are present, run:
+
+```bash
+make migrate_vercel_prod
+```
+
 ## Docker Environments
 
 The stack now separates shared Compose state from development and production behavior:

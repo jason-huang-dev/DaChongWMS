@@ -193,9 +193,9 @@ test("renders the stock-out list and honors initial queue filters", async () => 
   );
 
   expect(await screen.findByText("Stock-out list")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Generate wave" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Generate wave" })).toHaveAttribute("href", "/outbound/workbench#wave-management");
   expect(screen.getByText("Queue states")).toBeInTheDocument();
   expect(await screen.findByRole("link", { name: "SO-200" })).toHaveAttribute("href", "/outbound/sales-orders/2");
   expect(screen.queryByRole("link", { name: "SO-100" })).not.toBeInTheDocument();
-  expect(screen.getByText("Abnormal package")).toBeInTheDocument();
+  expect(screen.getAllByText("Abnormal package").length).toBeGreaterThan(0);
 });

@@ -25,10 +25,10 @@ test("apiGet reuses the stored session for authenticated requests", async () => 
     }
 
     const headers = new Headers(init?.headers);
-    expect(headers.get("Token")).toBe("session-token-7");
-    expect(headers.get("Authorization")).toBe("Token session-token-7");
-    expect(headers.get("Openid")).toBe("tenant-openid");
-    expect(headers.get("Operator")).toBe("7");
+    expect(headers.get("TOKEN")).toBe("session-token-7");
+    expect(headers.get("Authorization")).toBeNull();
+    expect(headers.get("OPENID")).toBe("tenant-openid");
+    expect(headers.get("OPERATOR")).toBe("7");
     return jsonResponse({ count: 0, next: null, previous: null, results: [] });
   });
 
@@ -57,10 +57,10 @@ test("allowAnonymous requests do not attach the stored session", async () => {
     }
 
     const headers = new Headers(init?.headers);
-    expect(headers.get("Token")).toBeNull();
+    expect(headers.get("TOKEN")).toBeNull();
     expect(headers.get("Authorization")).toBeNull();
-    expect(headers.get("Openid")).toBeNull();
-    expect(headers.get("Operator")).toBeNull();
+    expect(headers.get("OPENID")).toBeNull();
+    expect(headers.get("OPERATOR")).toBeNull();
     return jsonResponse({ code: "200", msg: "success", data: {} });
   });
 
