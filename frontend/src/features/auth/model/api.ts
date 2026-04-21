@@ -1,4 +1,4 @@
-import { apiGet, apiPost } from "@/lib/http";
+import { apiGet, apiGetPublic, apiPost } from "@/lib/http";
 import type { FbMessage } from "@/shared/types/api";
 import type { AuthSession, StaffRecord } from "@/shared/types/domain";
 import type {
@@ -7,6 +7,7 @@ import type {
   BootstrapResponseData,
   LoginPayload,
   LoginResponseData,
+  SocialAuthProviderListResponse,
   SignupPayload,
   SignupResponseData,
 } from "./types";
@@ -21,6 +22,10 @@ export async function bootstrapRequest(payload: BootstrapPayload = {}) {
 
 export async function signupRequest(payload: SignupPayload) {
   return apiPost<FbMessage<SignupResponseData>>("/api/signup/", payload, null, true);
+}
+
+export async function fetchSocialAuthProviders() {
+  return apiGetPublic<SocialAuthProviderListResponse>("/api/v1/auth/social/providers/");
 }
 
 export async function switchMembershipRequest(membershipId: number) {

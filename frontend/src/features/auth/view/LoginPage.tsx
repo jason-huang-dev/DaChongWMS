@@ -10,6 +10,7 @@ import { config } from "@/lib/config";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import type { LoginFormValues } from "@/features/auth/model/types";
 import { loginSchema } from "@/features/auth/model/validators";
+import { SocialAuthButtons } from "@/features/auth/view/components/SocialAuthButtons";
 import { AuthShell } from "@/shared/components/auth-shell";
 import { FormTextField } from "@/shared/components/form-text-field";
 import { parseApiError } from "@/shared/utils/parse-api-error";
@@ -57,8 +58,8 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      description="Sign in with your warehouse account. The frontend uses the backend login endpoint and keeps the tenant token and operator id in browser storage for API access."
-      heroPoints={["Scanner-first receiving", "Inventory and finance controls", "MFA-backed sign-in"]}
+      description="Sign in with your warehouse account or a configured identity provider. The frontend still uses the backend-issued tenant token and operator id for every API call."
+      heroPoints={["Scanner-first receiving", "Inventory and finance controls", "MFA-backed sign-in", "Provider-backed SSO"]}
       heroSummary="The operator shell now uses industrial surface layering, restrained yellow emphasis, and sharper hierarchy instead of generic dashboard defaults."
       heroTitle="Precision-built access for every warehouse role"
       title="Sign in to the operator console"
@@ -67,7 +68,7 @@ export function LoginPage() {
         {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
         <FormProvider {...form}>
           <Stack component="form" noValidate onSubmit={handleSubmit} spacing={2.5}>
-            <FormTextField autoComplete="username" label="User name" name="name" />
+            <FormTextField autoComplete="username" label="Email address" name="name" />
             <FormTextField autoComplete="current-password" label="Password" name="password" type="password" />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
               <Button disabled={form.formState.isSubmitting} size="large" type="submit" variant="contained">
@@ -79,6 +80,7 @@ export function LoginPage() {
             </Stack>
           </Stack>
         </FormProvider>
+        <SocialAuthButtons />
         {config.enableTestSystem ? (
           <>
             <Divider />

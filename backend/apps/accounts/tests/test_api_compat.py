@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import parse_qsl, urlsplit
+
 from django.test import TestCase
 from django.test import override_settings
 from django.urls import reverse
@@ -10,6 +12,7 @@ from apps.accounts.models import User
 from apps.accounts.services.session_service import ensure_operator_profile, issue_session_token
 from apps.counting.models import CycleCount
 from apps.fees.models import ChargeItem, ManualCharge, ReceivableBill
+from apps.iam.constants import PermissionCode
 from apps.iam.models import Role
 from apps.inbound.models import PurchaseOrder
 from apps.logistics.models import LogisticsCharge, LogisticsProvider, LogisticsProviderChannel
@@ -67,6 +70,19 @@ class CompatibilityAuthAPITests(TestCase):
         self.assertEqual(me_response.data["email"], self.user.email)
         self.assertEqual(me_response.data["memberships"][0]["organization_id"], self.organization.id)
 
+    def test_login_does_not_accept_full_name_identifier(self) -> None:
+        login_response = self.client.post(
+            reverse("compat-login"),
+            {
+                "name": self.user.full_name,
+                "password": "secret123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(login_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(login_response.data["code"], "1011")
+
     def test_signup_creates_first_class_workspace_and_allows_membership_bootstrap(self) -> None:
         signup_response = self.client.post(
             reverse("compat-signup"),
@@ -95,6 +111,26 @@ class CompatibilityAuthAPITests(TestCase):
         self.assertEqual(memberships_response.data["count"], 1)
         self.assertEqual(memberships_response.data["results"][0]["staff_type"], "Owner")
 
+    def test_signup_duplicate_email_uses_generic_error_message(self) -> None:
+        signup_response = self.client.post(
+            reverse("compat-signup"),
+            {
+                "name": "Owner User",
+                "email": self.user.email,
+                "password1": "supersecret123",
+                "password2": "supersecret123",
+            },
+            format="json",
+        )
+
+        self.assertEqual(signup_response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(signup_response.data["code"], "1016")
+        self.assertEqual(
+            signup_response.data["msg"],
+            "Unable to create an account with the provided information.",
+        )
+        self.assertIsNone(signup_response.data["data"])
+
     def test_staff_detail_and_role_type_endpoints_use_current_membership_context(self) -> None:
         token = issue_session_token(membership=self.membership)
         operator_profile = ensure_operator_profile(self.membership)
@@ -112,10 +148,9 @@ class CompatibilityAuthAPITests(TestCase):
         self.assertEqual(detail_response.status_code, status.HTTP_200_OK)
         self.assertEqual(detail_response.data["staff_name"], self.user.display_name)
         self.assertEqual(detail_response.data["staff_type"], "Owner")
-        self.assertEqual(
-            sorted(detail_response.data["permission_codes"]),
-            ["iam.manage_client_users", "iam.manage_memberships"],
-        )
+        self.assertIn(PermissionCode.MANAGE_CLIENT_USERS, detail_response.data["permission_codes"])
+        self.assertIn(PermissionCode.MANAGE_MEMBERSHIPS, detail_response.data["permission_codes"])
+        self.assertIn(PermissionCode.VIEW_INBOUND, detail_response.data["permission_codes"])
         self.assertEqual(role_types_response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(role_types_response.data["count"], 1)
 
@@ -223,6 +258,14 @@ class CompatibilityAuthAPITests(TestCase):
         self.assertEqual(second_response.data["data"]["seed_summary"]["organizations"], 0)
         self.assertEqual(second_response.data["data"]["seed_summary"]["memberships"], 0)
         self.assertEqual(second_response.data["data"]["seed_summary"]["warehouses"], 0)
+        self.client.credentials(
+            HTTP_TOKEN=first_response.data["data"]["token"],
+            HTTP_OPENID=first_response.data["data"]["openid"],
+            HTTP_OPERATOR=str(first_response.data["data"]["user_id"]),
+        )
+        staff_detail_response = self.client.get(
+            reverse("compat-staff-detail", kwargs={"staff_id": first_response.data["data"]["user_id"]})
+        )
 
         self.assertTrue(CustomerAccount.objects.filter(organization__name="Test System Organization").exists())
         self.assertTrue(Product.objects.filter(organization__name="Test System Organization").exists())
@@ -271,3 +314,46 @@ class CompatibilityAuthAPITests(TestCase):
             WarehouseKpiSnapshot.objects.filter(organization__name="Test System Organization").count(),
             2,
         )
+        self.assertEqual(staff_detail_response.status_code, status.HTTP_200_OK)
+        self.assertIn(PermissionCode.MANAGE_MEMBERSHIPS, staff_detail_response.data["permission_codes"])
+        self.assertIn(PermissionCode.VIEW_FEES, staff_detail_response.data["permission_codes"])
+
+
+@override_settings(ENABLED_SOCIAL_AUTH_PROVIDERS=("apple", "google", "weixin"))
+class SocialAuthAPITests(TestCase):
+    def setUp(self) -> None:
+        self.client = APIClient()
+
+    def test_provider_list_only_exposes_enabled_providers(self) -> None:
+        response = self.client.get(reverse("auth-social-provider-list"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 3)
+        self.assertEqual(
+            [provider["id"] for provider in response.data["results"]],
+            ["apple", "google", "weixin"],
+        )
+
+    def test_social_begin_redirects_to_provider_login_view(self) -> None:
+        response = self.client.get(reverse("auth-social-begin", kwargs={"provider": "google"}))
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        self.assertIn("/accounts/google/login/", response["Location"])
+        self.assertIn("process=login", response["Location"])
+
+    def test_social_complete_provisions_owner_membership_for_first_login(self) -> None:
+        user = make_user("social-user@example.com", full_name="Social User")
+        self.client.force_login(user)
+
+        response = self.client.get(reverse("auth-social-complete"))
+
+        self.assertEqual(response.status_code, status.HTTP_302_FOUND)
+        redirect = urlsplit(response["Location"])
+        fragment = dict(parse_qsl(redirect.fragment))
+        self.assertEqual(fragment["name"], user.display_name)
+        self.assertTrue(fragment["token"])
+        self.assertTrue(fragment["openid"])
+        self.assertTrue(fragment["membership_id"])
+
+        user.refresh_from_db()
+        self.assertEqual(user.organization_memberships.filter(is_active=True).count(), 1)

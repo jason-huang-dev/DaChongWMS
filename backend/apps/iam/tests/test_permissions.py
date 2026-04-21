@@ -1,7 +1,9 @@
 from django.test import TestCase
 
+from apps.iam.constants import PermissionCode
 from apps.iam.models import AccessScope, PermissionOverride, Role, RoleAssignment, RolePermission
-from apps.iam.permissions import membership_has_permission
+from apps.iam.permissions import membership_has_permission, membership_permission_codes
+from apps.iam.services.bootstrap import sync_system_roles
 from apps.organizations.tests.test_factories import (
     add_membership,
     make_organization,
@@ -101,4 +103,36 @@ class MembershipPermissionResolutionTests(TestCase):
                 self.membership,
                 "inventory.view_inventory",
             )
+        )
+
+    def test_system_role_without_materialized_permissions_does_not_grant_access(self):
+        owner_role = make_role(Role.SystemCode.OWNER, name="Owner")
+        RoleAssignment.objects.create(membership=self.membership, role=owner_role)
+
+        self.assertFalse(
+            membership_has_permission(
+                self.membership,
+                PermissionCode.VIEW_INBOUND,
+            )
+        )
+        self.assertNotIn(
+            PermissionCode.VIEW_INBOUND,
+            membership_permission_codes(self.membership),
+        )
+
+    def test_sync_system_roles_materializes_owner_permissions(self):
+        owner_role = make_role(Role.SystemCode.OWNER, name="Owner")
+        RoleAssignment.objects.create(membership=self.membership, role=owner_role)
+
+        sync_system_roles()
+
+        self.assertTrue(
+            membership_has_permission(
+                self.membership,
+                PermissionCode.VIEW_INBOUND,
+            )
+        )
+        self.assertIn(
+            PermissionCode.VIEW_INBOUND,
+            membership_permission_codes(self.membership),
         )

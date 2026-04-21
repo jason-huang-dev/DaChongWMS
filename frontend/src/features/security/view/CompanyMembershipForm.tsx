@@ -4,8 +4,8 @@ import { FormProvider, useForm } from "react-hook-form";
 
 import type { CompanyMembershipFormValues } from "@/features/security/model/types";
 import { companyMembershipFormSchema } from "@/features/security/model/validators";
-import { FormSwitchField } from "@/shared/components/form-switch-field";
 import { FormTextField } from "@/shared/components/form-text-field";
+import { FormSwitchField } from "@/shared/components/form-switch-field";
 import { MutationCard } from "@/shared/components/mutation-card";
 import { ReferenceAutocompleteField } from "@/shared/components/reference-autocomplete-field";
 import type { ReferenceListState } from "@/shared/hooks/use-reference-options";
@@ -42,7 +42,7 @@ export function CompanyMembershipForm({
 
   return (
     <MutationCard
-      description="Provision browser accounts tied to the current company, assign warehouse roles, and control company-admin capabilities."
+      description="Provision browser accounts tied to the current company. Role selection now drives IAM access directly, including admin capabilities."
       errorMessage={errorMessage}
       successMessage={successMessage}
       title={isEditing ? "Edit browser account" : "Provision browser account"}
@@ -84,11 +84,9 @@ export function CompanyMembershipForm({
             emptyText="No warehouses available"
           />
           <FormSwitchField label="Lock browser/operator access" name="is_lock" />
-          <FormSwitchField label="Company admin" name="is_company_admin" />
-          <FormSwitchField label="Can manage users" name="can_manage_users" />
           <FormSwitchField label="Membership active" name="is_active" />
           <Alert severity="info">
-            Company memberships now drive workspace switching and browser provisioning. Staff directory edits remain available for legacy handheld-only records.
+            Company memberships now drive workspace switching and browser provisioning. Administrative access is assigned by role, not by separate boolean toggles.
           </Alert>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
             <Button disabled={isSubmitting} type="submit" variant="contained">

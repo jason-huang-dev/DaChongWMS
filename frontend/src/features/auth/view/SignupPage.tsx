@@ -14,6 +14,7 @@ import { useI18n } from "@/app/ui-preferences";
 import { useAuth } from "@/features/auth/controller/useAuthController";
 import type { SignupFormValues } from "@/features/auth/model/types";
 import { signupSchema } from "@/features/auth/model/validators";
+import { SocialAuthButtons } from "@/features/auth/view/components/SocialAuthButtons";
 import { AuthShell } from "@/shared/components/auth-shell";
 import { FormTextField } from "@/shared/components/form-text-field";
 import { parseApiError } from "@/shared/utils/parse-api-error";
@@ -45,8 +46,8 @@ export function SignupPage() {
 
   return (
     <AuthShell
-      description="Create a manager account backed by Django auth, a tenant user profile, and a matching staff record. Email is required so MFA enrollment and recovery can be added without changing the account model later."
-      heroPoints={["Tenant bootstrap ready", "Manager role by default", "Immediate MFA enrollment"]}
+      description="Create a manager account backed by Django auth, a tenant user profile, and a matching staff record, or bootstrap directly from a configured identity provider."
+      heroPoints={["Tenant bootstrap ready", "Manager role by default", "Immediate MFA enrollment", "Provider-backed onboarding"]}
       heroSummary="The signup flow now follows the same industrial kinetic system as the operator shell, with cleaner surfaces and a tighter operational hierarchy."
       heroTitle="Provision a workspace with industrial clarity"
       title="Create workspace account"
@@ -55,7 +56,7 @@ export function SignupPage() {
         {errorMessage ? <Alert severity="error">{errorMessage}</Alert> : null}
         <FormProvider {...form}>
           <Stack component="form" noValidate onSubmit={handleSubmit} spacing={2.5}>
-            <FormTextField autoComplete="username" label="User name" name="name" />
+            <FormTextField autoComplete="username" label="Display name" name="name" />
             <FormTextField autoComplete="email" label="Email" name="email" type="email" />
             <FormTextField autoComplete="new-password" label="Password" name="password1" type="password" />
             <FormTextField autoComplete="new-password" label="Confirm password" name="password2" type="password" />
@@ -69,6 +70,7 @@ export function SignupPage() {
             </Stack>
           </Stack>
         </FormProvider>
+        <SocialAuthButtons />
       </Stack>
     </AuthShell>
   );

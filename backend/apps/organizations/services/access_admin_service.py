@@ -4,7 +4,6 @@ import secrets
 from dataclasses import dataclass
 from datetime import timedelta
 
-from django.contrib.auth.models import Permission
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
@@ -16,8 +15,12 @@ from apps.accounts.services.session_service import (
     can_manage_users,
     get_membership_staff_profile,
 )
-from apps.iam.constants import PermissionCode
 from apps.iam.models import PermissionOverride, Role, RoleAssignment
+from apps.iam.role_assignment_policy import (
+    can_assign_role,
+    role_management_flags,
+    sync_role_assignment_policies,
+)
 from apps.organizations.models import (
     MembershipType,
     Organization,
@@ -158,6 +161,7 @@ def _resolve_role_for_staff_type(
     staff_type: str,
     membership_type: str,
 ) -> Role:
+    sync_role_assignment_policies()
     normalized_staff_type = _normalize_staff_type(staff_type)
     role = (
         Role.objects.filter(
@@ -173,43 +177,23 @@ def _resolve_role_for_staff_type(
         raise ValidationError({"staff_type": "Selected role does not exist for this organization."})
     return role
 
-
-def _get_permission(permission_code: str) -> Permission:
-    app_label, codename = permission_code.split(".", 1)
-    permission = Permission.objects.filter(
-        content_type__app_label=app_label,
-        codename=codename,
-    ).first()
-    if permission is None:
-        raise ValidationError({"permission": f"Permission '{permission_code}' is not registered."})
-    return permission
+def _clear_legacy_management_overrides(membership: OrganizationMembership) -> None:
+    PermissionOverride.objects.filter(
+        membership=membership,
+        scope__isnull=True,
+        permission__content_type__app_label="iam",
+        permission__codename__in=("manage_memberships", "manage_client_users"),
+    ).delete()
 
 
-def _sync_management_overrides(
+def _authorize_role_assignment(
     *,
-    membership: OrganizationMembership,
-    is_company_admin: bool,
-    can_manage_member_users: bool,
+    actor_membership: OrganizationMembership,
+    role: Role,
 ) -> None:
-    desired_effects = {
-        PermissionCode.MANAGE_MEMBERSHIPS: (
-            PermissionOverride.Effect.ALLOW if is_company_admin else PermissionOverride.Effect.DENY
-        ),
-        PermissionCode.MANAGE_CLIENT_USERS: (
-            PermissionOverride.Effect.ALLOW if can_manage_member_users else PermissionOverride.Effect.DENY
-        ),
-    }
-    for permission_code, effect in desired_effects.items():
-        permission = _get_permission(permission_code)
-        PermissionOverride.objects.update_or_create(
-            membership=membership,
-            permission=permission,
-            scope=None,
-            defaults={
-                "effect": effect,
-                "reason": "Managed through compatibility security administration UI.",
-            },
-        )
+    if can_assign_role(actor_membership, role):
+        return
+    raise PermissionDenied("You are not allowed to assign the selected role.")
 
 
 def _append_audit_event(
@@ -377,8 +361,10 @@ def create_company_membership(payload: MembershipAdminInput) -> OrganizationMemb
         staff_type=payload.staff_type,
         membership_type=membership.membership_type,
     )
+    _authorize_role_assignment(actor_membership=payload.actor_membership, role=role)
     membership.role_assignments.filter(scope__isnull=True).delete()
     RoleAssignment.objects.get_or_create(membership=membership, role=role, scope=None)
+    _clear_legacy_management_overrides(membership)
     _upsert_membership_staff_profile(
         membership=membership,
         staff_name=payload.staff_name,
@@ -386,11 +372,6 @@ def create_company_membership(payload: MembershipAdminInput) -> OrganizationMemb
         check_code=payload.check_code,
         is_lock=payload.is_lock,
         default_warehouse_id=payload.default_warehouse_id,
-    )
-    _sync_management_overrides(
-        membership=membership,
-        is_company_admin=payload.is_company_admin,
-        can_manage_member_users=payload.can_manage_users,
     )
     _append_audit_event(
         organization=payload.organization,
@@ -436,10 +417,12 @@ def update_company_membership(
         staff_type=payload.staff_type,
         membership_type=membership.membership_type,
     )
+    _authorize_role_assignment(actor_membership=actor_membership, role=role)
     membership.is_active = payload.is_active
     membership.save(update_fields=["is_active"])
     membership.role_assignments.filter(scope__isnull=True).delete()
     RoleAssignment.objects.get_or_create(membership=membership, role=role, scope=None)
+    _clear_legacy_management_overrides(membership)
     _upsert_membership_staff_profile(
         membership=membership,
         staff_name=payload.staff_name,
@@ -447,11 +430,6 @@ def update_company_membership(
         check_code=payload.check_code,
         is_lock=payload.is_lock,
         default_warehouse_id=payload.default_warehouse_id,
-    )
-    _sync_management_overrides(
-        membership=membership,
-        is_company_admin=payload.is_company_admin,
-        can_manage_member_users=payload.can_manage_users,
     )
     _append_audit_event(
         organization=payload.organization,
@@ -474,16 +452,24 @@ def create_invite(payload: InviteCreateInput) -> OrganizationInvite:
         organization=payload.organization,
         warehouse_id=payload.default_warehouse_id,
     )
+    membership_type = _resolve_membership_type_for_staff_type(payload.staff_type)
+    role = _resolve_role_for_staff_type(
+        organization=payload.organization,
+        staff_type=payload.staff_type,
+        membership_type=membership_type,
+    )
+    _authorize_role_assignment(actor_membership=payload.actor_membership, role=role)
+    is_company_admin, can_manage_member_users = role_management_flags(role)
     invite = OrganizationInvite.objects.create(
         organization=payload.organization,
         created_by_membership=payload.actor_membership,
         email=normalized_email,
         staff_name=_normalize_staff_name(payload.staff_name),
-        staff_type=_normalize_staff_type(payload.staff_type),
+        staff_type=role.name,
         check_code=payload.check_code,
         default_warehouse=default_warehouse,
-        is_company_admin=payload.is_company_admin,
-        can_manage_users=payload.can_manage_users,
+        is_company_admin=is_company_admin,
+        can_manage_users=can_manage_member_users,
         invite_token=secrets.token_urlsafe(24),
         invite_message=payload.invite_message.strip(),
         invited_by=_actor_name(payload.actor_membership),
@@ -628,8 +614,15 @@ def accept_invite(payload: InviteAcceptanceInput) -> dict[str, object]:
         staff_type=invite.staff_type,
         membership_type=membership.membership_type,
     )
+    if invite.created_by_membership is not None:
+        _authorize_role_assignment(actor_membership=invite.created_by_membership, role=role)
+    else:
+        is_company_admin, can_manage_member_users = role_management_flags(role)
+        if is_company_admin or can_manage_member_users:
+            raise PermissionDenied("Invite can no longer assign the selected role.")
     membership.role_assignments.filter(scope__isnull=True).delete()
     RoleAssignment.objects.get_or_create(membership=membership, role=role, scope=None)
+    _clear_legacy_management_overrides(membership)
     _upsert_membership_staff_profile(
         membership=membership,
         staff_name=invite.staff_name,
@@ -638,12 +631,6 @@ def accept_invite(payload: InviteAcceptanceInput) -> dict[str, object]:
         is_lock=False,
         default_warehouse_id=invite.default_warehouse_id,
     )
-    _sync_management_overrides(
-        membership=membership,
-        is_company_admin=invite.is_company_admin,
-        can_manage_member_users=invite.can_manage_users,
-    )
-
     invite.status = OrganizationInviteStatus.ACCEPTED
     invite.accepted_at = timezone.now()
     invite.accepted_membership = membership

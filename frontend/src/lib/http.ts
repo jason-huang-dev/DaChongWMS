@@ -124,6 +124,10 @@ export function apiGet<TResponse>(path: string, query?: QueryParams, session?: S
   return request<TResponse>("GET", path, { query, session });
 }
 
+export function apiGetPublic<TResponse>(path: string, query?: QueryParams) {
+  return request<TResponse>("GET", path, { query, session: null, unauthenticated: true });
+}
+
 export function apiPost<TResponse>(path: string, body?: unknown, query?: QueryParams | null, unauthenticated = false) {
   return request<TResponse>("POST", path, {
     body,

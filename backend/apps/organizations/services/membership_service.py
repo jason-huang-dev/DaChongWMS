@@ -8,7 +8,8 @@ from django.db.models import Q
 from apps.accounts.services.user_service import get_or_create_user_by_email
 from apps.iam.constants import PermissionCode
 from apps.iam.models import Role, RoleAssignment
-from apps.iam.permissions import user_has_organization_permission
+from apps.iam.permissions import get_active_membership, user_has_organization_permission
+from apps.iam.role_assignment_policy import can_assign_role, sync_role_assignment_policies
 from apps.organizations.models import MembershipType, Organization, OrganizationMembership
 from apps.partners.models import CustomerAccount
 from apps.partners.services.customer_accounts import (
@@ -61,6 +62,7 @@ def _can_manage_membership_type(
 
 @transaction.atomic
 def create_organization_user(payload: CreateOrganizationUserInput) -> tuple[OrganizationMembership, bool]:
+    sync_role_assignment_policies()
     customer_account: CustomerAccount | None = None
     if payload.membership_type == MembershipType.CLIENT:
         if payload.customer_account_id is None:
@@ -100,7 +102,24 @@ def create_organization_user(payload: CreateOrganizationUserInput) -> tuple[Orga
         membership.is_active = True
         membership.save(update_fields=["membership_type", "is_active"])
 
+    actor_membership = None
+    if not getattr(payload.actor, "is_superuser", False):
+        actor_membership = get_active_membership(payload.actor, payload.organization)
+
     if payload.membership_type == MembershipType.CLIENT and customer_account is not None:
+        customer_account_scope = get_customer_account_scope(customer_account)
+        if payload.role_code:
+            role = Role.objects.filter(
+                Q(organization=payload.organization) | Q(organization__isnull=True),
+                code=payload.role_code,
+                is_active=True,
+            ).first()
+            if role is None:
+                raise MembershipError(f"Role '{payload.role_code}' does not exist for this organization.")
+            if role.membership_type != MembershipType.CLIENT:
+                raise MembershipError("Only client roles can be assigned to customer account access.")
+            if actor_membership is not None and not can_assign_role(actor_membership, role, scope=customer_account_scope):
+                raise MembershipError("You are not allowed to assign this role.")
         try:
             grant_client_account_access(
                 membership=membership,
@@ -119,6 +138,8 @@ def create_organization_user(payload: CreateOrganizationUserInput) -> tuple[Orga
             raise MembershipError(f"Role '{payload.role_code}' does not exist for this organization.")
         if role.membership_type != membership.membership_type:
             raise MembershipError("Role membership_type does not match the membership.")
+        if actor_membership is not None and not can_assign_role(actor_membership, role):
+            raise MembershipError("You are not allowed to assign this role.")
         RoleAssignment.objects.get_or_create(membership=membership, role=role)
 
     return membership, created

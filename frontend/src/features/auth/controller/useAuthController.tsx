@@ -20,7 +20,7 @@ import {
   runMfaChallengeVerification,
   runSignup,
 } from "@/features/auth/controller/actions";
-import type { AuthContextValue, BootstrapPayload, SignupPayload } from "@/features/auth/model/types";
+import type { AuthContextValue, BaseAuthSession, BootstrapPayload, SignupPayload } from "@/features/auth/model/types";
 import { loadPendingMfaChallenge, loadStoredSession } from "@/shared/storage/auth-storage";
 import type { AuthSession, PendingMfaChallenge } from "@/shared/types/domain";
 
@@ -72,6 +72,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const bootstrap = useCallback(async (payload: BootstrapPayload = {}) => {
     const nextSession = await runBootstrap(payload);
+    clearPendingChallengeStorage();
+    setPendingChallenge(null);
+    persistSession(nextSession);
+    setSession(nextSession);
+    setStatus("authenticated");
+    return nextSession;
+  }, []);
+
+  const acceptExternalSession = useCallback(async (baseSession: BaseAuthSession) => {
+    const nextSession = await hydrateSession(baseSession);
     clearPendingChallengeStorage();
     setPendingChallenge(null);
     persistSession(nextSession);
@@ -134,12 +144,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
       login,
       signup,
       bootstrap,
+      acceptExternalSession,
       switchMembership,
       completeMfaChallenge,
       clearPendingChallenge,
       logout,
     }),
-    [bootstrap, clearPendingChallenge, completeMfaChallenge, login, logout, pendingChallenge, session, signup, status, switchMembership],
+    [
+      acceptExternalSession,
+      bootstrap,
+      clearPendingChallenge,
+      completeMfaChallenge,
+      login,
+      logout,
+      pendingChallenge,
+      session,
+      signup,
+      status,
+      switchMembership,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

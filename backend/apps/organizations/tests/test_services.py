@@ -115,6 +115,23 @@ class CreateOrganizationUserServiceTests(TestCase):
                 )
             )
 
+    def test_manager_cannot_create_owner(self):
+        manager = make_user("manager2@example.com")
+        manager_membership = add_membership(manager, self.organization)
+        assign_role(manager_membership, self.manager_role)
+
+        with self.assertRaises(MembershipError):
+            create_organization_user(
+                CreateOrganizationUserInput(
+                    actor=manager,
+                    organization=self.organization,
+                    email="promoted-owner@example.com",
+                    full_name="Promoted Owner",
+                    membership_type=MembershipType.INTERNAL,
+                    role_code=Role.SystemCode.OWNER,
+                )
+            )
+
     def test_client_user_requires_customer_account(self):
         with self.assertRaises(MembershipError):
             create_organization_user(

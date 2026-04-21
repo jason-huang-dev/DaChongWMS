@@ -60,26 +60,14 @@ class BootstrapSessionContext:
 
 
 def authenticate_user_identifier(*, identifier: str, password: str) -> User | None:
-    normalized_identifier = identifier.strip()
+    normalized_identifier = identifier.strip().lower()
     if not normalized_identifier:
         return None
 
     authenticated_user = authenticate(username=normalized_identifier, password=password)
     if isinstance(authenticated_user, User):
         return authenticated_user
-
-    username_match = User.objects.filter(username__iexact=normalized_identifier, is_active=True).first()
-    if username_match is not None and username_match.check_password(password):
-        return username_match
-
-    matching_users = list(User.objects.filter(full_name__iexact=normalized_identifier, is_active=True)[:2])
-    if len(matching_users) != 1:
-        return None
-
-    fallback_user = matching_users[0]
-    if not fallback_user.check_password(password):
-        return None
-    return fallback_user
+    return None
 
 
 def get_active_memberships_for_user(user: User) -> list[OrganizationMembership]:
@@ -203,6 +191,7 @@ def build_authenticated_response(
     token: str | None = None,
     extra: dict[str, object] | None = None,
 ) -> dict[str, object]:
+    membership = reconcile_authenticated_membership(membership)
     operator_profile = ensure_operator_profile(membership)
     response_payload: dict[str, object] = {
         "name": membership.user.display_name,
@@ -250,6 +239,20 @@ def get_system_role(code: str) -> Role:
     )
 
 
+def reconcile_authenticated_membership(membership: OrganizationMembership) -> OrganizationMembership:
+    sync_system_roles()
+
+    default_email, *_ = _get_test_system_defaults()
+    if membership.user.email.strip().lower() == default_email:
+        owner_role = get_system_role(Role.SystemCode.OWNER)
+        RoleAssignment.objects.get_or_create(
+            membership=membership,
+            role=owner_role,
+        )
+
+    return membership
+
+
 def ensure_operator_profile(membership: OrganizationMembership) -> OrganizationStaffProfile:
     profile = get_membership_staff_profile(membership)
     if profile is not None:
@@ -267,6 +270,31 @@ def ensure_operator_profile(membership: OrganizationMembership) -> OrganizationS
         },
     )
     return profile
+
+
+@transaction.atomic
+def ensure_default_membership_for_user(user: User) -> OrganizationMembership:
+    membership = get_default_membership_for_user(user)
+    if membership is not None:
+        return reconcile_authenticated_membership(membership)
+
+    organization_label = f"{user.display_name}'s Organization"
+    organization = Organization.objects.create(
+        name=organization_label,
+        slug=_build_unique_organization_slug(organization_label),
+    )
+    membership = OrganizationMembership.objects.create(
+        user=user,
+        organization=organization,
+        membership_type=MembershipType.INTERNAL,
+        is_active=True,
+    )
+    owner_role = get_system_role(Role.SystemCode.OWNER)
+    RoleAssignment.objects.get_or_create(
+        membership=membership,
+        role=owner_role,
+    )
+    return membership
 
 
 def _get_test_system_defaults() -> tuple[str, str, str, str, str, str]:
@@ -413,23 +441,6 @@ def provision_signup_session(*, full_name: str, email: str, password: str) -> Se
         full_name=full_name,
     )
 
-    organization_label = f"{user.display_name}'s Organization"
-    organization = Organization.objects.create(
-        name=organization_label,
-        slug=_build_unique_organization_slug(organization_label),
-    )
-    membership = OrganizationMembership.objects.create(
-        user=user,
-        organization=organization,
-        membership_type=MembershipType.INTERNAL,
-        is_active=True,
-    )
-
-    owner_role = get_system_role(Role.SystemCode.OWNER)
-    RoleAssignment.objects.get_or_create(
-        membership=membership,
-        role=owner_role,
-    )
-
+    membership = ensure_default_membership_for_user(user)
     token = issue_session_token(membership=membership)
     return SessionContext(user=user, membership=membership, token=token)

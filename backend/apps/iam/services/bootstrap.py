@@ -71,6 +71,21 @@ def _consolidate_duplicate_system_roles(role: Role) -> Role:
     return role
 
 
+def _canonicalize_system_role_assignments(role: Role) -> None:
+    duplicate_roles = list(
+        Role.objects.filter(code=role.code).exclude(pk=role.pk).order_by("organization_id", "id")
+    )
+    for duplicate_role in duplicate_roles:
+        duplicate_assignments = RoleAssignment.objects.filter(role=duplicate_role).select_related("membership", "scope")
+        for duplicate_assignment in duplicate_assignments:
+            RoleAssignment.objects.get_or_create(
+                membership=duplicate_assignment.membership,
+                role=role,
+                scope=duplicate_assignment.scope,
+            )
+        duplicate_assignments.delete()
+
+
 @transaction.atomic
 def sync_system_roles() -> list[Role]:
     synced_roles: list[Role] = []
@@ -111,5 +126,6 @@ def sync_system_roles() -> list[Role]:
                 role.save(update_fields=["name", "membership_type", "is_system", "is_active"])
         role = _consolidate_duplicate_system_roles(role)
         _sync_role_permissions(role, spec)
+        _canonicalize_system_role_assignments(role)
         synced_roles.append(role)
     return synced_roles

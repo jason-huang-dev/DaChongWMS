@@ -91,6 +91,34 @@ function BootstrapProbe() {
   );
 }
 
+function ExternalSessionProbe() {
+  const { acceptExternalSession, session, status } = useAuth();
+
+  return (
+    <div>
+      <button
+        onClick={() =>
+          acceptExternalSession({
+            username: "social-user",
+            openid: "tenant-openid",
+            token: "social-token-17",
+            operatorId: 17,
+            companyId: 5,
+            companyName: "Acme",
+            membershipId: 9,
+          })
+        }
+        type="button"
+      >
+        Accept session
+      </button>
+      <span>{status}</span>
+      <span>{session?.username ?? "--"}</span>
+      <span>{session?.operatorName ?? "--"}</span>
+    </div>
+  );
+}
+
 test("restores a stored session and hydrates the operator profile", async () => {
   saveStoredSession({
     username: "worker",
@@ -369,4 +397,38 @@ test("bootstraps into the stable default development user and hydrates the opera
     expect(screen.getByText("authenticated")).toBeInTheDocument();
   });
   expect(screen.getAllByText("Test System Admin")).toHaveLength(2);
+});
+
+test("accepts a backend-issued external session and hydrates the operator profile", async () => {
+  const user = userEvent.setup();
+
+  installFetchMock((url, init) => {
+    if (url.pathname === "/api/staff/17/") {
+      const headers = new Headers(init?.headers);
+      expect(headers.get("TOKEN")).toBe("social-token-17");
+      expect(headers.get("OPERATOR")).toBe("17");
+      return jsonResponse({
+        id: 17,
+        staff_name: "Social User",
+        staff_type: "Owner",
+        permission_codes: ["iam.manage_memberships"],
+        check_code: 8888,
+        create_time: "2026-04-20 09:00:00",
+        update_time: "2026-04-20 09:00:00",
+        error_check_code_counter: 0,
+        is_lock: false,
+      });
+    }
+
+    return undefined;
+  });
+
+  renderWithProviders(<ExternalSessionProbe />, { includeAuth: true });
+  await user.click(screen.getByRole("button", { name: "Accept session" }));
+
+  await waitFor(() => {
+    expect(screen.getByText("authenticated")).toBeInTheDocument();
+  });
+  expect(screen.getByText("social-user")).toBeInTheDocument();
+  expect(screen.getByText("Social User")).toBeInTheDocument();
 });

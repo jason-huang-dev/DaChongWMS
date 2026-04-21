@@ -5,8 +5,11 @@ from rest_framework import serializers
 
 
 class LegacyLoginSerializer(serializers.Serializer[dict[str, str]]):
-    name = serializers.CharField(max_length=255)
+    name = serializers.EmailField(max_length=255)
     password = serializers.CharField(trim_whitespace=False)
+
+    def validate_name(self, value: str) -> str:
+        return value.strip().lower()
 
 
 class LegacySignupSerializer(serializers.Serializer[dict[str, str]]):

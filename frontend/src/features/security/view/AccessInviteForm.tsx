@@ -5,7 +5,6 @@ import { FormProvider, useForm } from "react-hook-form";
 import { useI18n } from "@/app/ui-preferences";
 import type { AccessInviteFormValues } from "@/features/security/model/types";
 import { accessInviteFormSchema } from "@/features/security/model/validators";
-import { FormSwitchField } from "@/shared/components/form-switch-field";
 import { FormTextField } from "@/shared/components/form-text-field";
 import { MutationCard } from "@/shared/components/mutation-card";
 import { ReferenceAutocompleteField } from "@/shared/components/reference-autocomplete-field";
@@ -65,9 +64,9 @@ export function AccessInviteForm({
           />
           <FormTextField label="Invite note" multiline minRows={3} name="invite_message" />
           <FormTextField label="Expires in days" name="expires_in_days" type="number" />
-          <FormSwitchField label="Company admin" name="is_company_admin" />
-          <FormSwitchField label="Can manage users" name="can_manage_users" />
-          <Alert severity="info">{t("Invites return a token so warehouse admins can distribute it through their own communication channel.")}</Alert>
+          <Alert severity="info">
+            {t("Invites return a token so warehouse admins can distribute it through their own communication channel. Administrative access is determined by the selected role.")}
+          </Alert>
           <Button disabled={isSubmitting} type="submit" variant="contained">
             {isSubmitting ? t("Issuing...") : t("Issue invite")}
           </Button>

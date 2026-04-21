@@ -92,6 +92,57 @@ The GitHub workflow does not run Django migrations automatically after backend d
 make migrate_vercel_prod
 ```
 
+## Authentication
+
+The app now supports two authentication paths:
+
+- direct Django login through `/api/login/` using email + password
+- Django social login through `django-allauth` for Google, Apple, and WeChat/Weixin
+
+### Login Hardening
+
+The legacy login endpoint no longer accepts operator full names as identifiers. This removes a straightforward OSINT/enumeration path where public staff names could be used directly against the login surface.
+
+The public signup endpoint also no longer echoes a specific “email already registered” message. Note that truly eliminating signup-based email enumeration would require a deferred verification or invite-only flow; the current change removes the explicit leak but does not change self-service signup semantics.
+
+### Social Auth Setup
+
+Provider support is enabled entirely from backend environment variables. If a provider is not configured, it does not appear on the frontend login/signup pages.
+
+Required backend variables:
+
+- `FRONTEND_BASE_URL`
+- `DJANGO_SOCIAL_GOOGLE_CLIENT_ID`
+- `DJANGO_SOCIAL_GOOGLE_SECRET`
+- `DJANGO_SOCIAL_APPLE_CLIENT_ID`
+- `DJANGO_SOCIAL_APPLE_KEY_ID`
+- `DJANGO_SOCIAL_APPLE_TEAM_ID`
+- `DJANGO_SOCIAL_APPLE_PRIVATE_KEY`
+- `DJANGO_SOCIAL_WEIXIN_CLIENT_ID`
+- `DJANGO_SOCIAL_WEIXIN_SECRET`
+
+Optional backend variable:
+
+- `DJANGO_SOCIAL_WEIXIN_SCOPE`
+
+Important Apple caveat:
+
+- Apple sends the OAuth callback back to Django as a cross-site POST.
+- If the backend and frontend are on different origins, set `DJANGO_SESSION_COOKIE_SAMESITE=None` so the Django session cookie survives the Apple callback.
+- Keep secure cookies enabled in production when using `SameSite=None`.
+
+### Social Auth Flow
+
+The frontend does not talk to Google/Apple/WeChat directly. Instead:
+
+1. the login/signup page requests `/api/v1/auth/social/providers/`
+2. the user is redirected to the backend social-auth start URL for the provider
+3. Django/allauth completes the provider handshake
+4. the backend provisions or resolves the default warehouse membership and issues the same tenant/operator token payload used by the existing app
+5. the backend redirects the browser to `/auth/social/callback` on the frontend with the session payload in the URL fragment
+
+This keeps all provider secrets and callback validation on the Django side while preserving the existing frontend auth/session model.
+
 ## Docker Environments
 
 The stack now separates shared Compose state from development and production behavior:

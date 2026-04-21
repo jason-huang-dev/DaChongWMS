@@ -50,6 +50,10 @@ function withDefaultRouteErrorElement(routes: RouteObject[]): RouteObject[] {
 
 const LoginPage = lazyNamedPage(() => import("@/features/auth/view/LoginPage"), "LoginPage");
 const SignupPage = lazyNamedPage(() => import("@/features/auth/view/SignupPage"), "SignupPage");
+const SocialAuthCallbackPage = lazyNamedPage(
+  () => import("@/features/auth/view/SocialAuthCallbackPage"),
+  "SocialAuthCallbackPage",
+);
 const MfaChallengePage = lazyNamedPage(() => import("@/features/mfa/view/MfaChallengePage"), "MfaChallengePage");
 const MfaEnrollmentPage = lazyNamedPage(() => import("@/features/mfa/view/MfaEnrollmentPage"), "MfaEnrollmentPage");
 const NotAuthorizedPage = lazyNamedPage(() => import("@/features/auth/view/NotAuthorizedPage"), "NotAuthorizedPage");
@@ -195,6 +199,11 @@ const baseRoutes: RouteObject[] = [
     path: "/signup",
     element: withSuspense(<SignupPage />),
     handle: { crumb: "Sign up" },
+  },
+  {
+    path: "/auth/social/callback",
+    element: withSuspense(<SocialAuthCallbackPage />),
+    handle: { crumb: "Social sign-in" },
   },
   {
     path: "/mfa/challenge",

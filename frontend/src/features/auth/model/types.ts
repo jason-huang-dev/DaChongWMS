@@ -56,6 +56,17 @@ export interface BootstrapPayload {
   password2?: string;
 }
 
+export interface SocialAuthProviderRecord {
+  id: string;
+  label: string;
+  login_url: string;
+}
+
+export interface SocialAuthProviderListResponse {
+  count: number;
+  results: SocialAuthProviderRecord[];
+}
+
 export interface LoginFormValues {
   name: string;
   password: string;
@@ -89,6 +100,7 @@ export interface AuthContextValue {
   login: (username: string, password: string) => Promise<LoginResult>;
   signup: (payload: SignupPayload) => Promise<SignupResult>;
   bootstrap: (payload?: BootstrapPayload) => Promise<AuthSession>;
+  acceptExternalSession: (baseSession: BaseAuthSession) => Promise<AuthSession>;
   switchMembership: (membershipId: number) => Promise<AuthSession>;
   completeMfaChallenge: (code: string) => Promise<AuthenticatedResult>;
   clearPendingChallenge: () => void;

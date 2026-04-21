@@ -23,9 +23,12 @@ from apps.accounts.services.session_service import (
     get_membership_display_role,
     provision_test_system_session,
     provision_signup_session,
+    reconcile_authenticated_membership,
 )
+from apps.accounts.throttles import LegacyLoginRateThrottle, LegacySignupRateThrottle
 from apps.iam.permissions import membership_permission_codes
 from apps.iam.models import Role
+from apps.iam.role_assignment_policy import can_assign_role, sync_role_assignment_policies
 from apps.organizations.api.compat_serializers import CompatibilityStaffSerializer
 from apps.organizations.models import OrganizationStaffProfile
 from apps.organizations.services.access_admin_service import (
@@ -94,6 +97,8 @@ def _serialize_staff_record(*, membership_id: int, user: User, role_name: str) -
 
 
 def _serialize_staff_profile(profile: OrganizationStaffProfile) -> dict[str, object]:
+    if profile.membership_id is not None:
+        reconcile_authenticated_membership(profile.membership)
     return {
         "id": profile.id,
         "staff_name": profile.staff_name,
@@ -121,12 +126,13 @@ def _serialize_staff_type(role: Role, *, position: int) -> dict[str, object]:
 class LegacyLoginAPIView(APIView):
     authentication_classes: list[type[object]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [LegacyLoginRateThrottle]
 
     def post(self, request: Request) -> Response:
         serializer = LegacyLoginSerializer(data=request.data)
         if not serializer.is_valid():
             return _legacy_error_response(
-                message="User name and password are required",
+                message="Email and password are required",
                 response_status=status.HTTP_400_BAD_REQUEST,
                 code="1011",
                 data={"name": request.data.get("name", "")},
@@ -157,6 +163,7 @@ class LegacyLoginAPIView(APIView):
 class LegacySignupAPIView(APIView):
     authentication_classes: list[type[object]] = []
     permission_classes = [AllowAny]
+    throttle_classes = [LegacySignupRateThrottle]
 
     def post(self, request: Request) -> Response:
         serializer = LegacySignupSerializer(data=request.data)
@@ -174,10 +181,9 @@ class LegacySignupAPIView(APIView):
         email = serializer.validated_data["email"]
         if User.objects.filter(email__iexact=email).exists():
             return _legacy_error_response(
-                message="Email is already registered",
-                response_status=status.HTTP_409_CONFLICT,
+                message="Unable to create an account with the provided information.",
+                response_status=status.HTTP_400_BAD_REQUEST,
                 code="1016",
-                data={"email": email},
             )
 
         signup_session = provision_signup_session(
@@ -319,14 +325,14 @@ class CompatibilityStaffTypeListAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request: Request) -> Response:
-        if not Role.objects.filter(organization__isnull=True, is_system=True).exists():
-            from apps.iam.services.bootstrap import sync_system_roles
-
-            sync_system_roles()
+        sync_role_assignment_policies()
         roles = list(
             Role.objects.filter(organization__isnull=True, is_system=True, is_active=True)
             .order_by("name", "id")
         )
+        membership = get_authenticated_membership(user=request.user, auth=request.auth)
+        if membership is not None:
+            roles = [role for role in roles if can_assign_role(membership, role)]
         paginator = CompatibilityPagination()
         page = paginator.paginate_queryset(roles, request, view=self)
         serialized_roles = [

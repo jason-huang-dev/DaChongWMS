@@ -163,6 +163,69 @@ class CompatibilityMembershipAPITests(TestCase):
         self.assertEqual(update_response.data["staff_name"], "Ops Manager Updated")
         self.assertTrue(update_response.data["is_lock"])
 
+    def test_company_membership_create_does_not_grant_admin_access_from_booleans_alone(self) -> None:
+        token = issue_session_token(membership=self.membership_a)
+        self.client.credentials(
+            HTTP_TOKEN=token,
+            HTTP_OPENID=self.organization_a.slug,
+            HTTP_OPERATOR=str(self.user.id),
+        )
+
+        create_response = self.client.post(
+            reverse("compat-company-membership-list"),
+            {
+                "username": "floor-user",
+                "email": "floor-user@example.com",
+                "password": "verysecurepassword",
+                "staff_name": "Floor User",
+                "staff_type": "Staff",
+                "check_code": 2468,
+                "is_lock": False,
+                "is_company_admin": True,
+                "can_manage_users": True,
+                "is_active": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(create_response.data["is_company_admin"])
+        self.assertFalse(create_response.data["can_manage_users"])
+
+    def test_manager_cannot_assign_owner_role(self) -> None:
+        manager_user = make_user("manager@example.com", password="secret123", full_name="Manager User")
+        manager_membership = add_membership(manager_user, self.organization_a)
+        manager_role = make_role(Role.SystemCode.MANAGER)
+        grant_role_permission(manager_role, make_permission("manage_memberships"))
+        assign_role(manager_membership, manager_role)
+
+        token = issue_session_token(membership=manager_membership)
+        self.client.credentials(
+            HTTP_TOKEN=token,
+            HTTP_OPENID=self.organization_a.slug,
+            HTTP_OPERATOR=str(manager_user.id),
+        )
+
+        role_types_response = self.client.get(reverse("compat-staff-type-list"))
+        create_response = self.client.post(
+            reverse("compat-company-membership-list"),
+            {
+                "username": "owner-candidate",
+                "email": "owner-candidate@example.com",
+                "password": "verysecurepassword",
+                "staff_name": "Owner Candidate",
+                "staff_type": "Owner",
+                "check_code": 2468,
+                "is_lock": False,
+                "is_active": True,
+            },
+            format="json",
+        )
+
+        self.assertEqual(role_types_response.status_code, status.HTTP_200_OK)
+        self.assertNotIn("Owner", [row["staff_type"] for row in role_types_response.data["results"]])
+        self.assertEqual(create_response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_invites_password_resets_and_audit_feed_are_backed_by_first_class_models(self) -> None:
         token = issue_session_token(membership=self.membership_a)
         self.client.credentials(

@@ -18,8 +18,6 @@ export const companyMembershipFormSchema = z.object({
   staff_type: z.string().trim().min(1, "Role is required"),
   check_code: z.coerce.number().int().min(1000, "Use a 4-digit verification code").max(9999, "Use a 4-digit verification code"),
   is_lock: z.boolean().default(false),
-  is_company_admin: z.boolean().default(false),
-  can_manage_users: z.boolean().default(false),
   is_active: z.boolean().default(true),
   default_warehouse: z.coerce.number().int().positive().nullable().optional(),
 });
@@ -30,8 +28,6 @@ export const accessInviteFormSchema = z.object({
   staff_type: z.string().trim().min(1, "Role is required"),
   check_code: z.coerce.number().int().min(1000, "Use a 4-digit verification code").max(9999, "Use a 4-digit verification code"),
   default_warehouse: z.coerce.number().int().positive().nullable().optional(),
-  is_company_admin: z.boolean().default(false),
-  can_manage_users: z.boolean().default(false),
   invite_message: z.string().trim().max(500, "Keep the invite note under 500 characters").default(""),
   expires_in_days: z.coerce.number().int().min(1, "Invite must stay active for at least 1 day").max(30, "Invite window is capped at 30 days"),
 });
