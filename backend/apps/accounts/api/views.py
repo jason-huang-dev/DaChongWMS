@@ -5,13 +5,28 @@ from django.contrib.auth import logout
 from django.http import Http404, HttpRequest, HttpResponseRedirect
 from django.urls import reverse
 from rest_framework.authentication import SessionAuthentication
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.request import Request
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.api.onboarding_serializers import (
+    WorkspaceOnboardingStatusSerializer,
+    WorkspaceSetupResultSerializer,
+    WorkspaceSetupSerializer,
+)
 from apps.accounts.permissions import IsActiveAuthenticated
-from apps.accounts.services.session_service import build_authenticated_response, ensure_default_membership_for_user
+from apps.accounts.services.onboarding_service import (
+    can_manage_workspace_setup,
+    create_workspace_setup,
+    get_onboarding_status,
+)
+from apps.accounts.services.session_service import (
+    build_authenticated_response,
+    ensure_default_membership_for_user,
+    get_authenticated_membership,
+)
 from apps.accounts.social_auth import build_social_auth_redirect_url, social_provider_label
 from apps.accounts.throttles import SocialAuthBeginRateThrottle, SocialAuthProviderListRateThrottle
 from apps.accounts.serializers import CurrentUserSerializer
@@ -23,6 +38,34 @@ class CurrentUserAPIView(APIView):
     def get(self, request: Request) -> Response:
         serializer = CurrentUserSerializer(request.user)
         return Response(serializer.data)
+
+
+class WorkspaceOnboardingAPIView(APIView):
+    permission_classes = [IsActiveAuthenticated]
+
+    def get_membership(self, request: Request):
+        membership = get_authenticated_membership(user=request.user, auth=request.auth)
+        if membership is None:
+            raise PermissionDenied("No active organization membership exists for this session.")
+        return membership
+
+    def get(self, request: Request) -> Response:
+        membership = self.get_membership(request)
+        onboarding_status = get_onboarding_status(membership)
+        return Response(WorkspaceOnboardingStatusSerializer.from_status(onboarding_status))
+
+    def post(self, request: Request) -> Response:
+        membership = self.get_membership(request)
+        if not can_manage_workspace_setup(membership):
+            raise PermissionDenied("You do not have permission to set up this workspace.")
+
+        serializer = WorkspaceSetupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        setup_result = create_workspace_setup(
+            membership=membership,
+            payload=serializer.to_setup_input(),
+        )
+        return Response(WorkspaceSetupResultSerializer.from_result(setup_result), status=201)
 
 
 class SocialAuthProviderListAPIView(APIView):

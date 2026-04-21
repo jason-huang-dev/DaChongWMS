@@ -1660,20 +1660,60 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Create workspace account": "创建工作空间账户",
     "Sign in with your warehouse account. The frontend uses the backend login endpoint and keeps the tenant token and operator id in browser storage for API access.":
       "使用您的仓库账户登录。前端通过后端登录接口认证，并在浏览器中保存租户令牌和操作员编号以供 API 访问。",
+    "Sign in with your warehouse account or a configured identity provider. The frontend still uses the backend-issued tenant token and operator id for every API call.":
+      "使用仓库账户或已配置的身份提供商登录。前端仍使用后端签发的租户令牌和操作员编号发起每个 API 请求。",
     "Create a manager account backed by Django auth, a tenant user profile, and a matching staff record. Email is required so MFA enrollment and recovery can be added without changing the account model later.":
       "创建一个由 Django 认证、租户用户档案和对应员工记录支撑的管理员账户。邮箱为必填项，以便后续在不修改账户模型的情况下启用 MFA 注册和恢复。",
+    "Create a manager account backed by Django auth, a tenant user profile, and a matching staff record, or bootstrap directly from a configured identity provider.":
+      "创建由 Django 认证、租户用户档案和对应员工记录支撑的管理员账户，或直接通过已配置的身份提供商初始化。",
     "Precision-built access for every warehouse role": "面向各类仓库角色的精密访问入口",
     "Provision a workspace with industrial clarity": "以工业化清晰度创建工作空间",
     "Scanner-first receiving": "扫码优先收货",
     "Inventory and finance controls": "库存与财务控制",
     "MFA-backed sign-in": "MFA 保护登录",
+    "Provider-backed SSO": "身份提供商单点登录",
     "Tenant bootstrap ready": "可立即初始化租户",
     "Manager role by default": "默认分配经理角色",
     "Immediate MFA enrollment": "立即启用 MFA 注册",
+    "Provider-backed onboarding": "身份提供商初始化",
     "The operator shell now uses industrial surface layering, restrained yellow emphasis, and sharper hierarchy instead of generic dashboard defaults.":
       "操作界面现采用工业化的表面层级、克制的黄色重点以及更清晰的层次结构，替代通用仪表盘式默认风格。",
     "The signup flow now follows the same industrial kinetic system as the operator shell, with cleaner surfaces and a tighter operational hierarchy.":
       "注册流程现已与操作台使用同一套工业动态设计系统，具备更干净的表面层次和更紧凑的业务层级。",
+    "Finalizing authentication": "正在完成认证",
+    "The browser is finalizing a backend-issued warehouse session after the identity provider callback.":
+      "浏览器正在身份提供商回调后完成后端签发的仓库会话。",
+    "Completing secure sign-in": "正在完成安全登录",
+    "Social sign-in is completed on the Django backend and translated into the same operator session the rest of the app already expects.":
+      "第三方登录由 Django 后端完成，并转换为应用其余部分已使用的操作员会话。",
+    "Provider callback validation": "身份提供商回调验证",
+    "Backend-issued operator token": "后端签发的操作员令牌",
+    "Single hydration pass": "单次会话恢复",
+    "Continue with a trusted identity provider": "使用可信身份提供商继续",
+    "Set up your warehouse": "设置您的仓库",
+    "Create the minimum warehouse topology required before operators can receive, store, pick, and count inventory.":
+      "在操作员收货、存储、拣货和盘点库存前，创建所需的最小仓库拓扑。",
+    "Warehouse master": "仓库主数据",
+    "Shelf grid": "货架网格",
+    "Location type": "库位类型",
+    "This one-time setup creates real IAM-controlled warehouse and location records, not a temporary onboarding profile.":
+      "此一次性设置会创建真实受 IAM 控制的仓库和库位记录，而不是临时引导档案。",
+    "Build your first warehouse map": "构建您的第一张仓库地图",
+    "Setup plan": "设置计划",
+    "This will create {{count}} shelf locations in the first storage area.":
+      "这将在第一个存储区域中创建 {{count}} 个货架库位。",
+    "Warehouse name": "仓库名称",
+    "Warehouse code": "仓库代码",
+    "Storage area name": "存储区域名称",
+    "Storage area code": "存储区域代码",
+    "Shelf prefix": "货架前缀",
+    Aisles: "巷道数",
+    Bays: "列数",
+    Levels: "层数",
+    Slots: "格位数",
+    "Location type name": "库位类型名称",
+    "Location type code": "库位类型代码",
+    "Create warehouse setup": "创建仓库设置",
     "Step-up verification before warehouse access": "在进入仓库系统前进行二次验证",
     "MFA challenges stay outside the authenticated route tree and use the same industrial surface language as login and signup.":
       "MFA 挑战流程位于已认证路由树之外，并沿用与登录和注册相同的工业化界面语言。",
@@ -1692,6 +1732,8 @@ const rawMessages: Record<AppLocale, Record<string, TranslationValue>> = {
     "Back to login": "返回登录",
     "Back to dashboard": "返回仪表盘",
     "User name": "用户名",
+    "Email address": "邮箱地址",
+    "Display name": "显示名称",
     Email: "邮箱",
     Password: "密码",
     "Confirm password": "确认密码",

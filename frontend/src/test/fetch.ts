@@ -82,6 +82,16 @@ export function installFetchMock(...handlers: FetchHandler[]) {
     if (url.pathname === "/api/warehouse/") {
       return jsonResponse(buildPaginatedResponse([]));
     }
+    if (url.pathname === "/api/v1/auth/onboarding/workspace-setup/") {
+      return jsonResponse({
+        is_required: false,
+        can_manage_setup: true,
+        warehouse_count: 1,
+        storage_area_count: 1,
+        location_type_count: 1,
+        location_count: 1,
+      });
+    }
     if (
       /^\/api\/v1\/organizations\/\d+\/customer-accounts\/$/.test(url.pathname) ||
       /^\/api\/v1\/organizations\/\d+\/products\/$/.test(url.pathname) ||

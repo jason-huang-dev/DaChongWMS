@@ -14,7 +14,9 @@ from apps.counting.models import CycleCount
 from apps.fees.models import ChargeItem, ManualCharge, ReceivableBill
 from apps.iam.constants import PermissionCode
 from apps.iam.models import Role
+from apps.iam.services.bootstrap import sync_system_roles
 from apps.inbound.models import PurchaseOrder
+from apps.locations.models import Location, LocationType, Zone
 from apps.logistics.models import LogisticsCharge, LogisticsProvider, LogisticsProviderChannel
 from apps.organizations.tests.test_factories import (
     add_membership,
@@ -357,3 +359,81 @@ class SocialAuthAPITests(TestCase):
 
         user.refresh_from_db()
         self.assertEqual(user.organization_memberships.filter(is_active=True).count(), 1)
+
+
+class WorkspaceOnboardingAPITests(TestCase):
+    def setUp(self) -> None:
+        self.client = APIClient()
+        self.organization = make_organization()
+        self.owner = make_user("setup-owner@example.com", password="secret123", full_name="Setup Owner")
+        self.owner_membership = add_membership(self.owner, self.organization)
+        sync_system_roles()
+        assign_role(self.owner_membership, Role.objects.get(code=Role.SystemCode.OWNER, organization__isnull=True))
+
+    def authenticate_membership(self, membership) -> None:
+        token = issue_session_token(membership=membership)
+        self.client.credentials(
+            HTTP_TOKEN=token,
+            HTTP_OPENID=membership.organization.slug,
+            HTTP_OPERATOR=str(membership.user_id),
+        )
+
+    def test_onboarding_status_requires_setup_for_owner_without_warehouse_topology(self) -> None:
+        self.authenticate_membership(self.owner_membership)
+
+        response = self.client.get(reverse("auth-workspace-onboarding"))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["is_required"])
+        self.assertTrue(response.data["can_manage_setup"])
+        self.assertEqual(response.data["warehouse_count"], 0)
+        self.assertEqual(response.data["storage_area_count"], 0)
+        self.assertEqual(response.data["location_type_count"], 0)
+        self.assertEqual(response.data["location_count"], 0)
+
+    def test_owner_can_create_initial_warehouse_storage_area_and_shelf_locations(self) -> None:
+        self.authenticate_membership(self.owner_membership)
+
+        response = self.client.post(
+            reverse("auth-workspace-onboarding"),
+            {
+                "warehouse_name": "Main Warehouse",
+                "warehouse_code": "main",
+                "storage_area_name": "Primary Storage",
+                "storage_area_code": "stor",
+                "location_type_name": "Storage Bin",
+                "location_type_code": "bin",
+                "shelf_prefix": "a",
+                "aisle_count": 1,
+                "bay_count": 2,
+                "level_count": 2,
+                "slot_count": 1,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["warehouse_name"], "Main Warehouse")
+        self.assertEqual(response.data["storage_area_code"], "STOR")
+        self.assertEqual(response.data["location_type_code"], "BIN")
+        self.assertEqual(response.data["created_location_count"], 4)
+        self.assertFalse(response.data["status"]["is_required"])
+        self.assertEqual(Warehouse.objects.get(organization=self.organization).code, "MAIN")
+        self.assertEqual(Zone.objects.get(organization=self.organization).code, "STOR")
+        self.assertEqual(LocationType.objects.get(organization=self.organization).code, "BIN")
+        self.assertEqual(Location.objects.filter(organization=self.organization).count(), 4)
+        self.assertTrue(Location.objects.filter(code="A-01-02-02-01").exists())
+
+    def test_staff_without_topology_permissions_cannot_run_workspace_setup(self) -> None:
+        staff = make_user("scanner@example.com", password="secret123", full_name="Scanner")
+        staff_membership = add_membership(staff, self.organization)
+        assign_role(staff_membership, Role.objects.get(code=Role.SystemCode.STAFF, organization__isnull=True))
+        self.authenticate_membership(staff_membership)
+
+        status_response = self.client.get(reverse("auth-workspace-onboarding"))
+        setup_response = self.client.post(reverse("auth-workspace-onboarding"), {}, format="json")
+
+        self.assertEqual(status_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(status_response.data["is_required"])
+        self.assertFalse(status_response.data["can_manage_setup"])
+        self.assertEqual(setup_response.status_code, status.HTTP_403_FORBIDDEN)

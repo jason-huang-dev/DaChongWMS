@@ -57,6 +57,10 @@ const SocialAuthCallbackPage = lazyNamedPage(
 const MfaChallengePage = lazyNamedPage(() => import("@/features/mfa/view/MfaChallengePage"), "MfaChallengePage");
 const MfaEnrollmentPage = lazyNamedPage(() => import("@/features/mfa/view/MfaEnrollmentPage"), "MfaEnrollmentPage");
 const NotAuthorizedPage = lazyNamedPage(() => import("@/features/auth/view/NotAuthorizedPage"), "NotAuthorizedPage");
+const WorkspaceSetupPage = lazyNamedPage(
+  () => import("@/features/onboarding/view/WorkspaceSetupPage"),
+  "WorkspaceSetupPage",
+);
 const SecurityPage = lazyNamedPage(() => import("@/features/security/view/SecurityPage"), "SecurityPage");
 const DashboardPage = lazyNamedPage(() => import("@/features/dashboard/view/DashboardPage"), "DashboardPage");
 const InventoryWorkspaceLayout = lazyNamedPage(
@@ -217,6 +221,11 @@ const baseRoutes: RouteObject[] = [
   {
     element: <RequireAuth />,
     children: [
+      {
+        path: "/onboarding/warehouse-setup",
+        element: withSuspense(<WorkspaceSetupPage />),
+        handle: { crumb: "Warehouse setup" },
+      },
       {
         element: <AppShell />,
         children: [
